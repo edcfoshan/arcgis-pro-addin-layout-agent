@@ -1,21 +1,24 @@
 import { expect, test } from '@playwright/test';
 
-test('迁移版 Ribbon 设计器主流程', async ({ page }) => {
+test('Ribbon 设计器主流程', async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => window.localStorage.clear());
   await page.reload();
 
-  await expect(page.getByRole('heading', { name: '迁移版 Spike：Puck 外壳 + RGL 槽位' })).toBeVisible();
-  await expect(page.getByText('每个子组 6列 x 3行')).toBeVisible();
-  await expect(page.getByText('Puck 配置已接入')).toBeVisible();
-  await expect(page.getByText('Ribbon 命令类')).toBeVisible();
+  await expect(page.getByText('Add-In Ribbon 布局设计器')).toBeVisible();
+  await expect(page.getByText('Ribbon 画布')).toBeVisible();
+  await expect(page.getByText('控件库')).toBeVisible();
+  await expect(page.getByText('1格=最小按钮空间')).toBeVisible();
 
   const firstDrop = page.locator('[data-testid^="next-drop-"]').first();
   await expect(firstDrop).toBeVisible();
 
+  await page.getByRole('button', { name: '+行' }).first().click();
+  await expect(page.getByText(/4 行|4行/).first()).toBeVisible();
+
   await page
     .getByTestId('next-palette-button-large')
-    .dragTo(firstDrop, { targetPosition: { x: 176, y: 48 } });
+    .dragTo(firstDrop, { targetPosition: { x: 280, y: 104 } });
 
   const addedButton = page.locator('[data-testid^="next-control-button_"]').last();
   await expect(addedButton).toBeVisible();
@@ -34,5 +37,5 @@ test('迁移版 Ribbon 设计器主流程', async ({ page }) => {
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toMatch(/\.json$/);
 
-  await page.screenshot({ path: 'playwright-next-rgl-smoke.png', fullPage: true });
+  await page.screenshot({ path: 'playwright-ribbon-smoke.png', fullPage: true });
 });

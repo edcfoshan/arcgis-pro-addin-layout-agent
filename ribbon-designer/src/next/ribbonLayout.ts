@@ -119,11 +119,14 @@ export const getSubgroupLayout = (
       output.push(saved);
       continue;
     }
-    const packed = packRects([{ id: control.id, footprint }], {
-      cols: spec.cols,
-      rows: spec.rows,
-    }).find((item) => canPlaceRect(item, existing, spec));
-    const fallback = packed ?? { i: control.id, x: 0, y: 0, w: footprint.w, h: footprint.h };
+    let fallback: GridRect | null = null;
+    for (let y = 0; y <= spec.rows - footprint.h && !fallback; y += 1) {
+      for (let x = 0; x <= spec.cols - footprint.w && !fallback; x += 1) {
+        const candidate = { i: control.id, x, y, w: footprint.w, h: footprint.h };
+        if (canPlaceRect(candidate, existing, spec)) fallback = candidate;
+      }
+    }
+    fallback ??= { i: control.id, x: 0, y: 0, w: footprint.w, h: footprint.h };
     existing.push(fallback);
     output.push(fallback);
   }
