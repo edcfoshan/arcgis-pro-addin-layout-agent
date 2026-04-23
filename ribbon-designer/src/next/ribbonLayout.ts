@@ -13,8 +13,7 @@ export const DEFAULT_GROUP_COLS = 8;
 export const DEFAULT_GROUP_ROWS = 3;
 export const MIN_GROUP_COLS = 3;
 export const MAX_GROUP_COLS = 18;
-export const MIN_GROUP_ROWS = 1;
-export const MAX_GROUP_ROWS = 8;
+export const FIXED_GROUP_ROWS = 3;
 
 export interface Footprint {
   w: number;
@@ -59,7 +58,7 @@ export const getRenderedFootprint = (
 
 export const getGridSpec = (subgroup?: RibbonSubgroup): GridSpec => ({
   cols: subgroup?.layout?.columns ?? DEFAULT_GROUP_COLS,
-  rows: subgroup?.layout?.rows ?? DEFAULT_GROUP_ROWS,
+  rows: FIXED_GROUP_ROWS,
 });
 
 export const isInsideGrid = ({ x, y, w, h }: Omit<GridRect, 'i'>, spec: GridSpec) =>
@@ -126,12 +125,27 @@ export const getSubgroupLayout = (
         if (canPlaceRect(candidate, existing, spec)) fallback = candidate;
       }
     }
-    fallback ??= { i: control.id, x: 0, y: 0, w: footprint.w, h: footprint.h };
-    existing.push(fallback);
-    output.push(fallback);
+    if (fallback) {
+      existing.push(fallback);
+      output.push(fallback);
+    }
   }
 
   return output;
+};
+
+export const findFirstOpenSlot = (
+  footprint: Footprint,
+  existing: GridRect[],
+  spec: GridSpec,
+): GridRect | null => {
+  for (let y = 0; y <= spec.rows - footprint.h; y += 1) {
+    for (let x = 0; x <= spec.cols - footprint.w; x += 1) {
+      const candidate = { i: '__candidate__', x, y, w: footprint.w, h: footprint.h };
+      if (canPlaceRect(candidate, existing, spec)) return candidate;
+    }
+  }
+  return null;
 };
 
 export const normalizeDocumentLayouts = (

@@ -9,18 +9,15 @@ import {
   FolderInput,
   LayoutGrid,
   Plus,
-  RotateCcw,
   Trash2,
   Upload,
 } from 'lucide-react';
 import { CONTROL_LIBRARY, SIZE_LABELS } from '../library';
 import {
   cloneDocumentWithTimestamp,
-  createAddInTemplate,
   createControlFromType,
   createEmptyDocument,
   createId,
-  createMapTemplate,
   parseImportedDocument,
 } from '../ribbon';
 import type {
@@ -29,24 +26,21 @@ import type {
   RibbonControlSize,
   RibbonDocument,
   RibbonGroup,
-  RibbonPreviewMode,
   RibbonSubgroup,
 } from '../types';
 import { ControlMock } from './ControlMock';
-import { ribbonPuckConfig } from './puckConfig';
 import {
   DEFAULT_GROUP_COLS,
   DEFAULT_GROUP_ROWS,
+  FIXED_GROUP_ROWS,
   MAX_GROUP_COLS,
-  MAX_GROUP_ROWS,
   MIN_GROUP_COLS,
-  MIN_GROUP_ROWS,
   RIBBON_CELL,
   canPlaceRect,
+  findFirstOpenSlot,
   footprintLabel,
   getFootprint,
   getGridSpec,
-  getRenderedSize,
   getSubgroupControls,
   getSubgroupLayout,
   normalizeDocumentLayouts,
@@ -55,25 +49,6 @@ import './NextRibbonDesigner.css';
 
 const STORAGE_KEY = 'gispro-ribbon-designer-next-doc';
 const fixedSlotCompactor = getCompactor(null, false, true);
-
-const previewLabels: Record<RibbonPreviewMode, string> = {
-  Large: '宽屏',
-  Medium: '标准',
-  Small: '紧凑',
-  Collapsed: '折叠',
-};
-
-const templateFactories = {
-  blank: createEmptyDocument,
-  addin: createAddInTemplate,
-  map: createMapTemplate,
-};
-
-const templateLabels = {
-  blank: '空白 Ribbon',
-  addin: 'Add-In 工具箱',
-  map: '地图风格',
-};
 
 const librarySections = [
   {
@@ -95,7 +70,7 @@ const createInitialDocument = () => {
     if (parsed) return ensureSingleGridPerGroup(parsed);
     localStorage.removeItem(STORAGE_KEY);
   }
-  return ensureSingleGridPerGroup(createAddInTemplate());
+  return ensureSingleGridPerGroup(createEmptyDocument());
 };
 
 const downloadJson = (document: RibbonDocument) => {
@@ -128,24 +103,23 @@ const ensureSingleGridPerGroup = (source: RibbonDocument): RibbonDocument => {
       id: primaryId,
       groupId: group.id,
       caption: '分组网格',
-      sizeMode: existing?.sizeMode ?? 'Default',
+      sizeMode: 'AlwaysLarge',
       verticalAlignment: existing?.verticalAlignment ?? 'Top',
       layout: {
         row: 0,
         columns: existing?.layout?.columns ?? DEFAULT_GROUP_COLS,
-        rows: existing?.layout?.rows ?? DEFAULT_GROUP_ROWS,
+        rows: FIXED_GROUP_ROWS,
       },
       controlIds: allControlIds,
     });
     return { ...group, subgroupIds: [primaryId] };
   });
 
-  return normalizeDocumentLayouts({ ...source, groups, subgroups: nextSubgroups, controls });
+  return normalizeDocumentLayouts({ ...source, groups, subgroups: nextSubgroups, controls }, 'Large');
 };
 
 export default function NextRibbonDesigner() {
   const [document, setDocument] = useState<RibbonDocument>(() => createInitialDocument());
-  const [previewMode, setPreviewMode] = useState<RibbonPreviewMode>('Large');
   const [activeTabId, setActiveTabId] = useState(document.tabs[0]?.id ?? '');
   const [selectedControlId, setSelectedControlId] = useState<string | null>(null);
   const [activeLibraryItem, setActiveLibraryItem] = useState<{
@@ -182,12 +156,12 @@ export default function NextRibbonDesigner() {
     window.setTimeout(() => setToast(''), 2200);
   };
 
-  const loadTemplate = (key: keyof typeof templateFactories) => {
-    const next = ensureSingleGridPerGroup(templateFactories[key]());
+  const resetToBlank = () => {
+    const next = ensureSingleGridPerGroup(createEmptyDocument());
     setDocument(next);
     setActiveTabId(next.tabs[0]?.id ?? '');
     setSelectedControlId(null);
-    showToast(`已载入：${templateLabels[key]}`);
+    showToast('已重置为空白 Ribbon');
   };
 
   const addGroup = () => {
@@ -207,7 +181,7 @@ export default function NextRibbonDesigner() {
       id: subgroupId,
       groupId,
       caption: '分组网格',
-      sizeMode: 'Default',
+      sizeMode: 'AlwaysLarge',
       verticalAlignment: 'Top',
       layout: { row: 0, columns: DEFAULT_GROUP_COLS, rows: DEFAULT_GROUP_ROWS },
       controlIds: [],
@@ -229,7 +203,7 @@ export default function NextRibbonDesigner() {
     }));
   };
 
-  const updateGroupGrid = (groupId: string, patch: Partial<RibbonSubgroup['layout']>) => {
+  const updateGroupColumns = (groupId: string, columns: number) => {
     commit((current) => ({
       ...current,
       subgroups: current.subgroups.map((subgroup) =>
@@ -238,10 +212,8 @@ export default function NextRibbonDesigner() {
               ...subgroup,
               layout: {
                 row: 0,
-                columns: DEFAULT_GROUP_COLS,
-                rows: DEFAULT_GROUP_ROWS,
-                ...subgroup.layout,
-                ...patch,
+                columns,
+                rows: FIXED_GROUP_ROWS,
               },
             }
           : subgroup,
@@ -250,6 +222,40 @@ export default function NextRibbonDesigner() {
   };
 
   const updateControl = (controlId: string, patch: Partial<RibbonControl>) => {
+    if (patch.size) {
+      let rejected = false;
+      commit((current) => {
+        const control = current.controls.find((item) => item.id === controlId);
+        const subgroup = control ? current.subgroups.find((item) => item.id === control.subgroupId) : null;
+        if (!control || !subgroup) return current;
+        const spec = getGridSpec(subgroup);
+        const layout = getSubgroupLayout(current, subgroup, 'Large').filter((item) => item.i !== control.id);
+        const footprint = getFootprint(control.type, patch.size as RibbonControlSize);
+        const currentLayout = control.layout ?? { x: 0, y: 0 };
+        const candidate = {
+          i: control.id,
+          x: currentLayout.x,
+          y: currentLayout.y,
+          w: footprint.w,
+          h: footprint.h,
+        };
+        const slot = canPlaceRect(candidate, layout, spec) ? candidate : findFirstOpenSlot(footprint, layout, spec);
+        if (!slot) {
+          rejected = true;
+          return current;
+        }
+        return {
+          ...current,
+          controls: current.controls.map((item) =>
+            item.id === controlId
+              ? { ...item, ...patch, layout: { x: slot.x, y: slot.y, w: slot.w, h: slot.h } }
+              : item,
+          ),
+        };
+      });
+      if (rejected) showToast('当前分组没有足够空位，尺寸未修改');
+      return;
+    }
     commit((current) => ({
       ...current,
       controls: current.controls.map((control) =>
@@ -351,26 +357,10 @@ export default function NextRibbonDesigner() {
             <Plus size={14} />
             新增分组
           </button>
-          {(Object.keys(templateFactories) as Array<keyof typeof templateFactories>).map((key) => (
-            <button key={key} onClick={() => loadTemplate(key)}>
-              {templateLabels[key]}
-            </button>
-          ))}
+          <button onClick={resetToBlank}>空白 Ribbon</button>
         </div>
         <div className="next-toolbar-right">
-          {(['Large', 'Medium', 'Small', 'Collapsed'] as RibbonPreviewMode[]).map((mode) => (
-            <button
-              key={mode}
-              className={mode === previewMode ? 'active' : ''}
-              onClick={() => setPreviewMode(mode)}
-            >
-              {previewLabels[mode]}
-            </button>
-          ))}
-          <button onClick={() => loadTemplate('addin')}>
-            <RotateCcw size={14} />
-            重置
-          </button>
+          <span className="mode-pill">宽屏</span>
           <button
             onClick={() =>
               navigator.clipboard
@@ -397,27 +387,19 @@ export default function NextRibbonDesigner() {
         <section className="next-canvas">
           <div className="next-canvas-title">
             <strong>Ribbon 画布</strong>
-            <span>1格=最小按钮空间；控件按真实占格吸附，分组可扩列、加行。</span>
+            <span>仅宽屏预览；功能区高度固定为 3 行，不允许控件重叠。</span>
           </div>
           <div className="next-ribbon-area">
-            {previewMode === 'Collapsed' ? (
-              activeGroups.map((group) => (
-                <section className="next-group collapsed" key={group.id}>
-                  <div className="collapsed-tile">组</div>
-                  <div className="next-group-caption">{group.caption}</div>
-                </section>
-              ))
-            ) : activeGroups.length ? (
+            {activeGroups.length ? (
               activeGroups.map((group) => (
                 <RibbonGroupView
                   key={group.id}
                   document={document}
                   group={group}
-                  previewMode={previewMode}
                   selectedControlId={selectedControlId}
                   activeLibraryItem={activeLibraryItem}
                   onUpdateGroup={updateGroup}
-                  onUpdateGrid={updateGroupGrid}
+                  onUpdateColumns={updateGroupColumns}
                   onAddControl={addControlAt}
                   onLayoutChange={updateSubgroupLayout}
                   onSelectControl={setSelectedControlId}
@@ -425,7 +407,7 @@ export default function NextRibbonDesigner() {
                 />
               ))
             ) : (
-              <div className="next-empty-canvas">先新增一个分组，再从右侧拖入控件。</div>
+              <div className="next-empty-canvas">当前是空白 Ribbon。先新增分组，再从右侧拖入控件。</div>
             )}
           </div>
         </section>
@@ -474,11 +456,10 @@ export default function NextRibbonDesigner() {
 function RibbonGroupView({
   document,
   group,
-  previewMode,
   selectedControlId,
   activeLibraryItem,
   onUpdateGroup,
-  onUpdateGrid,
+  onUpdateColumns,
   onAddControl,
   onLayoutChange,
   onSelectControl,
@@ -486,11 +467,10 @@ function RibbonGroupView({
 }: {
   document: RibbonDocument;
   group: RibbonGroup;
-  previewMode: RibbonPreviewMode;
   selectedControlId: string | null;
   activeLibraryItem: { item: LibraryControlDefinition; size: RibbonControlSize } | null;
   onUpdateGroup: (groupId: string, patch: Partial<RibbonGroup>) => void;
-  onUpdateGrid: (groupId: string, patch: Partial<RibbonSubgroup['layout']>) => void;
+  onUpdateColumns: (groupId: string, columns: number) => void;
   onAddControl: (
     subgroup: RibbonSubgroup,
     definition: LibraryControlDefinition,
@@ -506,31 +486,24 @@ function RibbonGroupView({
   const spec = getGridSpec(subgroup);
 
   return (
-    <section className="next-group">
+    <section className="next-group" style={{ '--group-cols': spec.cols } as CSSProperties}>
       <div className="next-group-tools">
         <label>
           分组名
           <input value={group.caption} onChange={(event) => onUpdateGroup(group.id, { caption: event.target.value })} />
         </label>
-        <button onClick={() => onUpdateGrid(group.id, { columns: Math.max(MIN_GROUP_COLS, spec.cols - 1) })}>
+        <button onClick={() => onUpdateColumns(group.id, Math.max(MIN_GROUP_COLS, spec.cols - 1))}>
           -列
         </button>
         <strong>{spec.cols}列</strong>
-        <button onClick={() => onUpdateGrid(group.id, { columns: Math.min(MAX_GROUP_COLS, spec.cols + 1) })}>
+        <button onClick={() => onUpdateColumns(group.id, Math.min(MAX_GROUP_COLS, spec.cols + 1))}>
           +列
         </button>
-        <button onClick={() => onUpdateGrid(group.id, { rows: Math.max(MIN_GROUP_ROWS, spec.rows - 1) })}>
-          -行
-        </button>
-        <strong>{spec.rows}行</strong>
-        <button onClick={() => onUpdateGrid(group.id, { rows: Math.min(MAX_GROUP_ROWS, spec.rows + 1) })}>
-          +行
-        </button>
+        <strong className="fixed-height-label">固定3行</strong>
       </div>
       <RibbonGroupGrid
         document={document}
         subgroup={subgroup}
-        previewMode={previewMode}
         selectedControlId={selectedControlId}
         activeLibraryItem={activeLibraryItem}
         onAddControl={onAddControl}
@@ -546,7 +519,6 @@ function RibbonGroupView({
 function RibbonGroupGrid({
   document,
   subgroup,
-  previewMode,
   selectedControlId,
   activeLibraryItem,
   onAddControl,
@@ -556,7 +528,6 @@ function RibbonGroupGrid({
 }: {
   document: RibbonDocument;
   subgroup: RibbonSubgroup;
-  previewMode: RibbonPreviewMode;
   selectedControlId: string | null;
   activeLibraryItem: { item: LibraryControlDefinition; size: RibbonControlSize } | null;
   onAddControl: (
@@ -572,7 +543,7 @@ function RibbonGroupGrid({
   const [preview, setPreview] = useState<LayoutItem | null>(null);
   const controls = getSubgroupControls(document, subgroup);
   const spec = getGridSpec(subgroup);
-  const layout = getSubgroupLayout(document, subgroup, previewMode).map((item) => ({
+  const layout = getSubgroupLayout(document, subgroup, 'Large').map((item) => ({
     ...item,
     minW: item.w,
     maxW: item.w,
@@ -581,6 +552,9 @@ function RibbonGroupGrid({
     isResizable: false,
     isBounded: true,
   }));
+  const layoutIds = new Set(layout.map((item) => item.i));
+  const renderedControls = controls.filter((control) => layoutIds.has(control.id));
+  const hiddenCount = controls.length - renderedControls.length;
   const usedColumns = layout.reduce((max, item) => Math.max(max, item.x + item.w), 0);
 
   const computeDrop = (event: React.DragEvent<HTMLDivElement>) => {
@@ -599,9 +573,9 @@ function RibbonGroupGrid({
       style={{ '--group-cols': spec.cols, '--group-rows': spec.rows } as CSSProperties}
     >
       <div className="next-subgroup-head">
-        <span>1格=小按钮</span>
+        <span>宽屏固定高度</span>
         <strong>
-          已用到 {usedColumns}/{spec.cols} 列 · {spec.rows} 行
+          已用到 {usedColumns}/{spec.cols} 列 · 3 行
         </strong>
       </div>
       <div className="next-ruler">
@@ -623,7 +597,7 @@ function RibbonGroupGrid({
           event.preventDefault();
           const result = computeDrop(event);
           if (!activeLibraryItem || !result?.valid) {
-            onToast(`放不下：当前分组是 ${spec.cols}列 x ${spec.rows}行，可先加行或扩列`);
+            onToast(`放不下：当前分组是 ${spec.cols}列 x 3行，不能增高，只能扩列或换位置`);
             setPreview(null);
             return;
           }
@@ -671,20 +645,18 @@ function RibbonGroupGrid({
             else onToast('目标格位已有控件，已回退');
           }}
         >
-          {controls.map((control) => {
-            const renderedSize = getRenderedSize(control, subgroup, previewMode);
-            return (
-              <button
-                key={control.id}
-                data-testid={`next-control-${control.id}`}
-                className={`next-ribbon-control ${control.id === selectedControlId ? 'selected' : ''}`}
-                onClick={() => onSelectControl(control.id)}
-              >
-                <ControlMock type={control.type} caption={control.caption} size={renderedSize} />
-              </button>
-            );
-          })}
+          {renderedControls.map((control) => (
+            <button
+              key={control.id}
+              data-testid={`next-control-${control.id}`}
+              className={`next-ribbon-control ${control.id === selectedControlId ? 'selected' : ''}`}
+              onClick={() => onSelectControl(control.id)}
+            >
+              <ControlMock type={control.type} caption={control.caption} size={control.size} />
+            </button>
+          ))}
         </ReactGridLayout>
+        {hiddenCount > 0 ? <div className="hidden-controls-warning">有 {hiddenCount} 个控件因无空位未显示</div> : null}
       </div>
     </div>
   );
@@ -803,7 +775,7 @@ function Inspector({
 
       <div className="next-puck-note">
         <FileJson size={14} />
-        <span>Puck 迁移层已接入：{Object.keys(ribbonPuckConfig.components).join(' / ')}</span>
+        <span>当前导出保留内部 subgroups 字段；界面按单一分组网格编辑。</span>
       </div>
       <textarea className="next-json" value={json} readOnly rows={16} />
     </section>
