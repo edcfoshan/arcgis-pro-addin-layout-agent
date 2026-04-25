@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "VVe0btAn9Ms=",
+  "success": true,
+  "projectFilePath": "D:\\addin-布局交互\\arcgis-pro-validation\\GisProRibbonLayoutValidator.AddIn\\GisProRibbonLayoutValidator.AddIn.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Administrator\\.nuget\\packages\\esri.arcgispro.extensions30\\3.5.0.57366\\esri.arcgispro.extensions30.3.5.0.57366.nupkg.sha512"
+  ],
+  "logs": []
+}

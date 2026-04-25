@@ -1,0 +1,6 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<Project ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ImportGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Import Project="$(NuGetPackageRoot)esri.arcgispro.extensions30\3.5.0.57366\build\net8.0-windows7.0\Esri.ArcGISPro.Extensions30.targets" Condition="Exists('$(NuGetPackageRoot)esri.arcgispro.extensions30\3.5.0.57366\build\net8.0-windows7.0\Esri.ArcGISPro.Extensions30.targets')" />
+  </ImportGroup>
+</Project>

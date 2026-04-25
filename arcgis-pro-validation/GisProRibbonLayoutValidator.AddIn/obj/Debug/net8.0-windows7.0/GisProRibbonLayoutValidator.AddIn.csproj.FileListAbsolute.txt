@@ -1,0 +1,14 @@
+D:\addin-布局交互\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\obj\Debug\net8.0-windows7.0\GisProRibbonLayoutValidator.AddIn.csproj.AssemblyReference.cache
+D:\addin-布局交互\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\obj\Debug\net8.0-windows7.0\GisProRibbonLayoutValidator.AddIn.GeneratedMSBuildEditorConfig.editorconfig
+D:\addin-布局交互\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\obj\Debug\net8.0-windows7.0\GisProRibbonLayoutValidator.AddIn.AssemblyInfoInputs.cache
+D:\addin-布局交互\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\obj\Debug\net8.0-windows7.0\GisProRibbonLayoutValidator.AddIn.AssemblyInfo.cs
+D:\addin-布局交互\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\obj\Debug\net8.0-windows7.0\GisProRibbonLayoutValidator.AddIn.csproj.CoreCompileInputs.cache
+D:\addin-布局交互\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\obj\Debug\net8.0-windows7.0\GisProRibbonLayoutValidator.AddIn.sourcelink.json
+D:\addin-布局交互\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\bin\Debug\net8.0-windows7.0\Layout\current-layout.json
+D:\addin-布局交互\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\bin\Debug\net8.0-windows7.0\GisProRibbonLayoutValidator.AddIn.deps.json
+D:\addin-布局交互\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\bin\Debug\net8.0-windows7.0\GisProRibbonLayoutValidator.AddIn.dll
+D:\addin-布局交互\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\bin\Debug\net8.0-windows7.0\GisProRibbonLayoutValidator.AddIn.pdb
+D:\addin-布局交互\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\obj\Debug\net8.0-windows7.0\GisProRibbonLayoutValidator.AddIn.dll
+D:\addin-布局交互\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\obj\Debug\net8.0-windows7.0\refint\GisProRibbonLayoutValidator.AddIn.dll
+D:\addin-布局交互\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\obj\Debug\net8.0-windows7.0\GisProRibbonLayoutValidator.AddIn.pdb
+D:\addin-布局交互\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\obj\Debug\net8.0-windows7.0\ref\GisProRibbonLayoutValidator.AddIn.dll

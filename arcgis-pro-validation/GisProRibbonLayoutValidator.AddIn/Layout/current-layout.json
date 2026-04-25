@@ -1,0 +1,87 @@
+{
+  "metadata": {
+    "id": "doc_6f85b629",
+    "name": "空白 Ribbon",
+    "app": "gispro-ribbon-designer",
+    "schemaVersion": "1.0",
+    "lastUpdated": "2026-04-25T07:03:15.343Z"
+  },
+  "tabs": [
+    {
+      "id": "tab_fa787a25",
+      "caption": "自定义工具箱",
+      "keytip": "A",
+      "groupIds": [
+        "group_fbc32a3b"
+      ]
+    }
+  ],
+  "groups": [
+    {
+      "id": "group_fbc32a3b",
+      "tabId": "tab_fa787a25",
+      "caption": "新分组 1",
+      "keytip": "G1",
+      "launcherButton": false,
+      "sizePriorities": [
+        30,
+        80,
+        120
+      ],
+      "subgroupIds": [
+        "subgroup_67b9e10e"
+      ]
+    }
+  ],
+  "subgroups": [
+    {
+      "id": "subgroup_67b9e10e",
+      "groupId": "group_fbc32a3b",
+      "caption": "分组网格",
+      "sizeMode": "AlwaysLarge",
+      "verticalAlignment": "Top",
+      "layout": {
+        "row": 0,
+        "columns": 8,
+        "rows": 3
+      },
+      "controlIds": [
+        "button_cafa36da"
+      ]
+    }
+  ],
+  "controls": [
+    {
+      "id": "button_cafa36da",
+      "subgroupId": "subgroup_67b9e10e",
+      "type": "button",
+      "caption": "按钮",
+      "tooltip": "执行按钮命令",
+      "condition": "",
+      "size": "large",
+      "supportedSizes": [
+        "small",
+        "middle",
+        "large"
+      ],
+      "icon": {
+        "small": "button16",
+        "large": "button32"
+      },
+      "behavior": {
+        "commandType": "button",
+        "className": "ExportCommand",
+        "target": "currentView",
+        "arguments": {}
+      },
+      "eventBindings": [],
+      "aiNotes": "单次触发的 Ribbon 按钮。",
+      "layout": {
+        "x": 0,
+        "y": 0,
+        "w": 2,
+        "h": 3
+      }
+    }
+  ]
+}

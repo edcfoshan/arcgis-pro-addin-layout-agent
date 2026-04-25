@@ -9,6 +9,7 @@ import {
   FolderInput,
   LayoutGrid,
   Plus,
+  Save,
   Trash2,
   Upload,
 } from 'lucide-react';
@@ -20,6 +21,7 @@ import {
   createId,
   parseImportedDocument,
 } from '../ribbon';
+import { buildConfigDaml } from '../../shared/arcgisProValidation';
 import type {
   LibraryControlDefinition,
   RibbonControl,
@@ -49,6 +51,7 @@ import './NextRibbonDesigner.css';
 
 const STORAGE_KEY = 'gispro-ribbon-designer-next-doc';
 const fixedSlotCompactor = getCompactor(null, false, true);
+type SidePanelMode = 'palette' | 'inspector';
 
 const librarySections = [
   {
@@ -63,6 +66,15 @@ const librarySections = [
   },
 ];
 
+const getLibraryHelpText = (item: LibraryControlDefinition) => {
+  const sizeAdvice = item.supportedSizes.map((size) => SIZE_LABELS[size]).join(' / ');
+  return [
+    `适用场景：${item.shortDescription}`,
+    `推荐尺寸：支持 ${sizeAdvice}，请根据功能区空间和操作频率选择。`,
+    `开发建议：建议映射为 ${item.defaultBehavior.className}，目标区域是 ${item.defaultBehavior.target}。`,
+  ].join('\n');
+};
+
 const createInitialDocument = () => {
   const saved = localStorage.getItem(STORAGE_KEY);
   if (saved) {
@@ -73,14 +85,24 @@ const createInitialDocument = () => {
   return ensureSingleGridPerGroup(createEmptyDocument());
 };
 
+const persistDocument = (document: RibbonDocument) => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(document));
+};
+
 const downloadJson = (document: RibbonDocument) => {
-  const blob = new Blob([JSON.stringify(document, null, 2)], {
-    type: 'application/json;charset=utf-8',
-  });
+  downloadTextFile(
+    `${document.metadata.name || 'ribbon-layout'}.json`,
+    JSON.stringify(document, null, 2),
+    'application/json;charset=utf-8',
+  );
+};
+
+const downloadTextFile = (filename: string, content: string, type: string) => {
+  const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
   const link = globalThis.document.createElement('a');
   link.href = url;
-  link.download = `${document.metadata.name || 'ribbon-layout'}.json`;
+  link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
 };
@@ -122,6 +144,7 @@ export default function NextRibbonDesigner() {
   const [document, setDocument] = useState<RibbonDocument>(() => createInitialDocument());
   const [activeTabId, setActiveTabId] = useState(document.tabs[0]?.id ?? '');
   const [selectedControlId, setSelectedControlId] = useState<string | null>(null);
+  const [sidePanel, setSidePanel] = useState<SidePanelMode>('palette');
   const [activeLibraryItem, setActiveLibraryItem] = useState<{
     item: LibraryControlDefinition;
     size: RibbonControlSize;
@@ -129,9 +152,11 @@ export default function NextRibbonDesigner() {
   const [toast, setToast] = useState('');
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState('');
+  const [lastSavedAt, setLastSavedAt] = useState(document.metadata.lastUpdated);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(document));
+    persistDocument(document);
+    setLastSavedAt(document.metadata.lastUpdated);
   }, [document]);
 
   const activeTab = document.tabs.find((tab) => tab.id === activeTabId) ?? document.tabs[0];
@@ -146,6 +171,17 @@ export default function NextRibbonDesigner() {
   );
   const selectedControl = document.controls.find((control) => control.id === selectedControlId) ?? null;
   const json = useMemo(() => JSON.stringify(document, null, 2), [document]);
+  const lastSavedLabel = useMemo(() => {
+    const savedAt = new Date(lastSavedAt);
+    return Number.isNaN(savedAt.getTime())
+      ? '本地草稿已同步'
+      : `本地草稿 ${new Intl.DateTimeFormat('zh-CN', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false,
+        }).format(savedAt)} 已保存`;
+  }, [lastSavedAt]);
 
   const commit = (recipe: (current: RibbonDocument) => RibbonDocument) => {
     setDocument((current) => ensureSingleGridPerGroup(cloneDocumentWithTimestamp(recipe(current))));
@@ -219,6 +255,42 @@ export default function NextRibbonDesigner() {
           : subgroup,
       ),
     }));
+  };
+
+  const deleteGroup = (groupId: string) => {
+    const targetGroup = document.groups.find((group) => group.id === groupId);
+    if (!targetGroup) return;
+    const ownerTab = document.tabs.find((tab) => tab.id === targetGroup.tabId);
+    if (ownerTab?.groupIds[0] === groupId) {
+      showToast('首个分组默认保留，不支持删除');
+      return;
+    }
+
+    const subgroupIds = new Set(targetGroup.subgroupIds);
+    const controlIds = new Set(
+      document.subgroups
+        .filter((subgroup) => subgroupIds.has(subgroup.id))
+        .flatMap((subgroup) => subgroup.controlIds),
+    );
+
+    commit((current) => ({
+      ...current,
+      tabs: current.tabs.map((tab) =>
+        tab.id === targetGroup.tabId
+          ? { ...tab, groupIds: tab.groupIds.filter((id) => id !== groupId) }
+          : tab,
+      ),
+      groups: current.groups.filter((group) => group.id !== groupId),
+      subgroups: current.subgroups.filter((subgroup) => !subgroupIds.has(subgroup.id)),
+      controls: current.controls.filter((control) => !controlIds.has(control.id)),
+    }));
+
+    if (selectedControlId && controlIds.has(selectedControlId)) {
+      setSelectedControlId(null);
+      setSidePanel('palette');
+    }
+
+    showToast(`已删除分组 ${targetGroup.caption}`);
   };
 
   const updateControl = (controlId: string, patch: Partial<RibbonControl>) => {
@@ -324,6 +396,13 @@ export default function NextRibbonDesigner() {
     showToast('已导入 JSON');
   };
 
+  const saveCanvas = () => {
+    const savedAt = new Date().toISOString();
+    persistDocument(document);
+    setLastSavedAt(savedAt);
+    showToast('已保存当前画布，下次打开网页会自动恢复');
+  };
+
   return (
     <div className="next-shell">
       <header className="next-titlebar">
@@ -357,10 +436,15 @@ export default function NextRibbonDesigner() {
             <Plus size={14} />
             新增分组
           </button>
-          <button onClick={resetToBlank}>空白 Ribbon</button>
+          <button onClick={resetToBlank}>清空控件</button>
         </div>
         <div className="next-toolbar-right">
           <span className="mode-pill">宽屏</span>
+          <span className="draft-status">{lastSavedLabel}</span>
+          <button onClick={saveCanvas}>
+            <Save size={14} />
+            保存画布
+          </button>
           <button
             onClick={() =>
               navigator.clipboard
@@ -375,6 +459,15 @@ export default function NextRibbonDesigner() {
           <button onClick={() => setImportOpen(true)}>
             <Upload size={14} />
             导入
+          </button>
+          <button
+            onClick={() => {
+              downloadTextFile('Config.daml', buildConfigDaml(document), 'application/xml;charset=utf-8');
+              showToast('Config.daml 已导出');
+            }}
+          >
+            <FileJson size={14} />
+            导出 Config.daml
           </button>
           <button className="primary" onClick={() => downloadJson(document)}>
             <Download size={14} />
@@ -391,18 +484,23 @@ export default function NextRibbonDesigner() {
           </div>
           <div className="next-ribbon-area">
             {activeGroups.length ? (
-              activeGroups.map((group) => (
+              activeGroups.map((group, index) => (
                 <RibbonGroupView
                   key={group.id}
                   document={document}
                   group={group}
+                  canDelete={index > 0}
                   selectedControlId={selectedControlId}
                   activeLibraryItem={activeLibraryItem}
                   onUpdateGroup={updateGroup}
                   onUpdateColumns={updateGroupColumns}
+                  onDeleteGroup={deleteGroup}
                   onAddControl={addControlAt}
                   onLayoutChange={updateSubgroupLayout}
-                  onSelectControl={setSelectedControlId}
+                  onSelectControl={(controlId) => {
+                    setSelectedControlId(controlId);
+                    setSidePanel('inspector');
+                  }}
                   onToast={showToast}
                 />
               ))
@@ -413,12 +511,43 @@ export default function NextRibbonDesigner() {
         </section>
 
         <aside className="next-side">
-          <Palette
-            activeLibraryItem={activeLibraryItem}
-            onPick={setActiveLibraryItem}
-            onDragEnd={() => setActiveLibraryItem(null)}
-          />
-          <Inspector control={selectedControl} json={json} onUpdate={updateControl} onDelete={deleteControl} />
+          <div className="next-side-tabs" role="tablist" aria-label="右侧工作区">
+            <button
+              type="button"
+              role="tab"
+              data-testid="next-side-tab-palette"
+              aria-selected={sidePanel === 'palette'}
+              className={sidePanel === 'palette' ? 'active' : ''}
+              onClick={() => setSidePanel('palette')}
+            >
+              控件库
+            </button>
+            <button
+              type="button"
+              role="tab"
+              data-testid="next-side-tab-inspector"
+              aria-selected={sidePanel === 'inspector'}
+              className={sidePanel === 'inspector' ? 'active' : ''}
+              onClick={() => setSidePanel('inspector')}
+            >
+              属性
+            </button>
+          </div>
+          <div className="next-side-body">
+            {sidePanel === 'palette' ? (
+              <Palette
+                activeLibraryItem={activeLibraryItem}
+                onPick={setActiveLibraryItem}
+                onDragEnd={() => setActiveLibraryItem(null)}
+              />
+            ) : (
+              <Inspector
+                control={selectedControl}
+                onUpdate={updateControl}
+                onDelete={deleteControl}
+              />
+            )}
+          </div>
         </aside>
       </main>
 
@@ -456,10 +585,12 @@ export default function NextRibbonDesigner() {
 function RibbonGroupView({
   document,
   group,
+  canDelete,
   selectedControlId,
   activeLibraryItem,
   onUpdateGroup,
   onUpdateColumns,
+  onDeleteGroup,
   onAddControl,
   onLayoutChange,
   onSelectControl,
@@ -467,10 +598,12 @@ function RibbonGroupView({
 }: {
   document: RibbonDocument;
   group: RibbonGroup;
+  canDelete: boolean;
   selectedControlId: string | null;
   activeLibraryItem: { item: LibraryControlDefinition; size: RibbonControlSize } | null;
   onUpdateGroup: (groupId: string, patch: Partial<RibbonGroup>) => void;
   onUpdateColumns: (groupId: string, columns: number) => void;
+  onDeleteGroup: (groupId: string) => void;
   onAddControl: (
     subgroup: RibbonSubgroup,
     definition: LibraryControlDefinition,
@@ -499,7 +632,6 @@ function RibbonGroupView({
         <button onClick={() => onUpdateColumns(group.id, Math.min(MAX_GROUP_COLS, spec.cols + 1))}>
           +列
         </button>
-        <strong className="fixed-height-label">固定3行</strong>
       </div>
       <RibbonGroupGrid
         document={document}
@@ -511,7 +643,15 @@ function RibbonGroupView({
         onSelectControl={onSelectControl}
         onToast={onToast}
       />
-      <div className="next-group-caption">{group.caption}</div>
+      <div className="next-group-footer">
+        <div className="next-group-caption">{group.caption}</div>
+        {canDelete ? (
+          <button className="danger next-group-delete" onClick={() => onDeleteGroup(group.id)}>
+            <Trash2 size={12} />
+            删除分组
+          </button>
+        ) : null}
+      </div>
     </section>
   );
 }
@@ -671,8 +811,10 @@ function Palette({
   onPick: (value: { item: LibraryControlDefinition; size: RibbonControlSize }) => void;
   onDragEnd: () => void;
 }) {
+  const [activeHelpType, setActiveHelpType] = useState<string | null>(null);
+
   return (
-    <section className="next-panel">
+    <section className="next-panel next-palette-panel" data-testid="next-palette-panel">
       <div className="next-panel-title">
         <LayoutGrid size={15} />
         <strong>控件库</strong>
@@ -683,7 +825,27 @@ function Palette({
           {section.items.map((item) => (
             <div className="next-library-row" key={item.type}>
               <div className="library-row-text">
-                <strong>{item.label}</strong>
+                <div className="library-row-heading">
+                  <strong>{item.label}</strong>
+                  <span className="library-help">
+                    <button
+                      type="button"
+                      className="library-help-button"
+                      aria-label={`${item.label} 使用说明`}
+                      onMouseEnter={() => setActiveHelpType(item.type)}
+                      onMouseLeave={() => setActiveHelpType((current) => (current === item.type ? null : current))}
+                      onFocus={() => setActiveHelpType(item.type)}
+                      onBlur={() => setActiveHelpType((current) => (current === item.type ? null : current))}
+                    >
+                      ?
+                    </button>
+                    <span
+                      className={`library-help-popover ${activeHelpType === item.type ? 'visible' : ''}`}
+                    >
+                      {getLibraryHelpText(item)}
+                    </span>
+                  </span>
+                </div>
                 <span>{item.shortDescription}</span>
               </div>
               <div className="next-library-sizes">
@@ -750,12 +912,10 @@ function PalettePreview({
 
 function Inspector({
   control,
-  json,
   onUpdate,
   onDelete,
 }: {
   control: RibbonControl | null;
-  json: string;
   onUpdate: (controlId: string, patch: Partial<RibbonControl>) => void;
   onDelete: (controlId: string) => void;
 }) {
@@ -763,7 +923,7 @@ function Inspector({
     <section className="next-panel next-inspector">
       <div className="next-panel-title">
         <FileJson size={15} />
-        <strong>属性与 JSON</strong>
+        <strong>属性</strong>
       </div>
       {control ? (
         <div className="next-form">
@@ -808,12 +968,6 @@ function Inspector({
       ) : (
         <p className="next-muted">选中画布中的控件后编辑属性。</p>
       )}
-
-      <div className="next-puck-note">
-        <FileJson size={14} />
-        <span>当前导出保留内部 subgroups 字段；界面按单一分组网格编辑。</span>
-      </div>
-      <textarea className="next-json" value={json} readOnly rows={16} />
     </section>
   );
 }

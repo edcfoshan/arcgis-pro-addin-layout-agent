@@ -1,0 +1,191 @@
+{
+  "version": 3,
+  "targets": {
+    "net8.0-windows7.0": {
+      "Esri.ArcGISPro.Extensions30/3.5.0.57366": {
+        "type": "package",
+        "compile": {
+          "ref/net8.0-windows7.0/ArcGIS.Core.dll": {
+            "related": ".XML"
+          },
+          "ref/net8.0-windows7.0/ArcGIS.Desktop.Catalog.dll": {
+            "related": ".XML"
+          },
+          "ref/net8.0-windows7.0/ArcGIS.Desktop.Core.dll": {
+            "related": ".XML"
+          },
+          "ref/net8.0-windows7.0/ArcGIS.Desktop.DataGrid.Contrib.Wpf.dll": {},
+          "ref/net8.0-windows7.0/ArcGIS.Desktop.DataReviewer.dll": {
+            "related": ".XML"
+          },
+          "ref/net8.0-windows7.0/ArcGIS.Desktop.Editing.dll": {
+            "related": ".XML"
+          },
+          "ref/net8.0-windows7.0/ArcGIS.Desktop.Editors.Wpf.dll": {},
+          "ref/net8.0-windows7.0/ArcGIS.Desktop.Extensions.dll": {
+            "related": ".XML"
+          },
+          "ref/net8.0-windows7.0/ArcGIS.Desktop.Framework.dll": {
+            "related": ".XML"
+          },
+          "ref/net8.0-windows7.0/ArcGIS.Desktop.GeoProcessing.dll": {
+            "related": ".XML"
+          },
+          "ref/net8.0-windows7.0/ArcGIS.Desktop.KnowledgeGraph.dll": {
+            "related": ".xml"
+          },
+          "ref/net8.0-windows7.0/ArcGIS.Desktop.Layouts.dll": {
+            "related": ".XML"
+          },
+          "ref/net8.0-windows7.0/ArcGIS.Desktop.Mapping.dll": {
+            "related": ".XML"
+          },
+          "ref/net8.0-windows7.0/ArcGIS.Desktop.Resources.dll": {},
+          "ref/net8.0-windows7.0/ArcGIS.Desktop.Ribbon.Wpf.dll": {},
+          "ref/net8.0-windows7.0/ArcGIS.Desktop.Shared.Wpf.dll": {},
+          "ref/net8.0-windows7.0/ArcGIS.Desktop.TaskAssistant.dll": {
+            "related": ".XML"
+          },
+          "ref/net8.0-windows7.0/ESRI.ArcGIS.ItemIndex.dll": {
+            "related": ".XML"
+          }
+        },
+        "build": {
+          "build/net8.0-windows7.0/Esri.ArcGISPro.Extensions30.targets": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "Esri.ArcGISPro.Extensions30/3.5.0.57366": {
+      "sha512": "uc9k4zmv3JvHrnvQzfV06eH2/eJCmUOvmfoPKBak3L/aWzOHZwKdDzVoHyPOvzv5y8dpEL15++62PJp4q6RaOg==",
+      "type": "package",
+      "path": "esri.arcgispro.extensions30/3.5.0.57366",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "ArcGISPro.png",
+        "EULA.txt",
+        "README.md",
+        "arcgis-pro-sdk.png",
+        "build/net8.0-windows7.0/Esri.ArcGISPro.Extensions30.targets",
+        "esri.arcgispro.extensions30.3.5.0.57366.nupkg.sha512",
+        "esri.arcgispro.extensions30.nuspec",
+        "ref/net8.0-windows7.0/ArcGIS.Core.XML",
+        "ref/net8.0-windows7.0/ArcGIS.Core.dll",
+        "ref/net8.0-windows7.0/ArcGIS.Desktop.Catalog.XML",
+        "ref/net8.0-windows7.0/ArcGIS.Desktop.Catalog.dll",
+        "ref/net8.0-windows7.0/ArcGIS.Desktop.Core.XML",
+        "ref/net8.0-windows7.0/ArcGIS.Desktop.Core.dll",
+        "ref/net8.0-windows7.0/ArcGIS.Desktop.DataGrid.Contrib.Wpf.dll",
+        "ref/net8.0-windows7.0/ArcGIS.Desktop.DataReviewer.XML",
+        "ref/net8.0-windows7.0/ArcGIS.Desktop.DataReviewer.dll",
+        "ref/net8.0-windows7.0/ArcGIS.Desktop.Editing.XML",
+        "ref/net8.0-windows7.0/ArcGIS.Desktop.Editing.dll",
+        "ref/net8.0-windows7.0/ArcGIS.Desktop.Editors.Wpf.dll",
+        "ref/net8.0-windows7.0/ArcGIS.Desktop.Extensions.XML",
+        "ref/net8.0-windows7.0/ArcGIS.Desktop.Extensions.dll",
+        "ref/net8.0-windows7.0/ArcGIS.Desktop.Framework.XML",
+        "ref/net8.0-windows7.0/ArcGIS.Desktop.Framework.dll",
+        "ref/net8.0-windows7.0/ArcGIS.Desktop.GeoProcessing.XML",
+        "ref/net8.0-windows7.0/ArcGIS.Desktop.GeoProcessing.dll",
+        "ref/net8.0-windows7.0/ArcGIS.Desktop.KnowledgeGraph.dll",
+        "ref/net8.0-windows7.0/ArcGIS.Desktop.KnowledgeGraph.xml",
+        "ref/net8.0-windows7.0/ArcGIS.Desktop.Layouts.XML",
+        "ref/net8.0-windows7.0/ArcGIS.Desktop.Layouts.dll",
+        "ref/net8.0-windows7.0/ArcGIS.Desktop.Mapping.XML",
+        "ref/net8.0-windows7.0/ArcGIS.Desktop.Mapping.dll",
+        "ref/net8.0-windows7.0/ArcGIS.Desktop.Resources.dll",
+        "ref/net8.0-windows7.0/ArcGIS.Desktop.Ribbon.Wpf.dll",
+        "ref/net8.0-windows7.0/ArcGIS.Desktop.Shared.Wpf.dll",
+        "ref/net8.0-windows7.0/ArcGIS.Desktop.TaskAssistant.XML",
+        "ref/net8.0-windows7.0/ArcGIS.Desktop.TaskAssistant.dll",
+        "ref/net8.0-windows7.0/ESRI.ArcGIS.ItemIndex.XML",
+        "ref/net8.0-windows7.0/ESRI.ArcGIS.ItemIndex.dll"
+      ]
+    }
+  },
+  "projectFileDependencyGroups": {
+    "net8.0-windows7.0": [
+      "Esri.ArcGISPro.Extensions30 >= 3.5.0.57366"
+    ]
+  },
+  "packageFolders": {
+    "C:\\Users\\Administrator\\.nuget\\packages\\": {},
+    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
+  },
+  "project": {
+    "version": "1.0.0",
+    "restore": {
+      "projectUniqueName": "D:\\addin-布局交互\\arcgis-pro-validation\\GisProRibbonLayoutValidator.AddIn\\GisProRibbonLayoutValidator.AddIn.csproj",
+      "projectName": "GisProRibbonLayoutValidator.AddIn",
+      "projectPath": "D:\\addin-布局交互\\arcgis-pro-validation\\GisProRibbonLayoutValidator.AddIn\\GisProRibbonLayoutValidator.AddIn.csproj",
+      "packagesPath": "C:\\Users\\Administrator\\.nuget\\packages\\",
+      "outputPath": "D:\\addin-布局交互\\arcgis-pro-validation\\GisProRibbonLayoutValidator.AddIn\\obj\\",
+      "projectStyle": "PackageReference",
+      "fallbackFolders": [
+        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+      ],
+      "configFilePaths": [
+        "C:\\Users\\Administrator\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+      ],
+      "originalTargetFrameworks": [
+        "net8.0-windows7.0"
+      ],
+      "sources": {
+        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+        "https://api.nuget.org/v3/index.json": {}
+      },
+      "frameworks": {
+        "net8.0-windows7.0": {
+          "targetAlias": "net8.0-windows7.0",
+          "projectReferences": {}
+        }
+      },
+      "warningProperties": {
+        "warnAsError": [
+          "NU1605"
+        ]
+      },
+      "restoreAuditProperties": {
+        "enableAudit": "true",
+        "auditLevel": "low",
+        "auditMode": "direct"
+      },
+      "SdkAnalysisLevel": "9.0.300"
+    },
+    "frameworks": {
+      "net8.0-windows7.0": {
+        "targetAlias": "net8.0-windows7.0",
+        "dependencies": {
+          "Esri.ArcGISPro.Extensions30": {
+            "target": "Package",
+            "version": "[3.5.0.57366, )"
+          }
+        },
+        "imports": [
+          "net461",
+          "net462",
+          "net47",
+          "net471",
+          "net472",
+          "net48",
+          "net481"
+        ],
+        "assetTargetFallback": true,
+        "warn": true,
+        "frameworkReferences": {
+          "Microsoft.NETCore.App": {
+            "privateAssets": "all"
+          },
+          "Microsoft.WindowsDesktop.App.WPF": {
+            "privateAssets": "none"
+          }
+        },
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.312/PortableRuntimeIdentifierGraph.json"
+      }
+    }
+  }
+}

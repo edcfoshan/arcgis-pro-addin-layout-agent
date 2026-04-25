@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ArcGIS defaultAssembly="GisProRibbonLayoutValidator.AddIn.dll" defaultNamespace="GisProRibbonLayoutValidator.AddIn" xmlns="http://schemas.esri.com/DADF/Registry" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <AddInInfo id="{04dd0d49-883f-472d-a5d3-b8007d03f167}" version="1.0.0" desktopVersion="3.5.0">
+    <Name>空白 Ribbon</Name>
+    <Description>Generated from the Ribbon designer to validate ArcGIS Pro 3.5 ribbon layout.</Description>
+    <Author>Codex</Author>
+    <Company>OpenAI</Company>
+    <Date>2026-04-25</Date>
+    <Subject>Ribbon layout validation</Subject>
+  </AddInInfo>
+  <modules>
+    <insertModule id="GisProRibbonLayoutValidator_AddIn_Module" className="AddInModule" autoLoad="false" caption="空白 Ribbon">
+      <tabs>
+        <tab id="GisProRibbonLayoutValidator_AddIn_tab_fa787a25" caption="自定义工具箱" keytip="A">
+          <group refID="GisProRibbonLayoutValidator_AddIn_group_fbc32a3b" />
+        </tab>
+      </tabs>
+      <groups>
+        <group id="GisProRibbonLayoutValidator_AddIn_group_fbc32a3b" caption="新分组 1" keytip="G1">
+          <subgroup refID="GisProRibbonLayoutValidator_AddIn_group_fbc32a3b_subgroup_1" />
+        </group>
+      </groups>
+      <controls>
+        <button id="GisProRibbonLayoutValidator_AddIn_button_cafa36da" caption="按钮" className="Generated.ExportCommandPlaceholderfa36da" loadOnClick="true" keytip="C1">
+          <tooltip heading="按钮">执行按钮命令
+          单次触发的 Ribbon 按钮。
+          Suggested handler: ExportCommand
+          Target: currentView</tooltip>
+        </button>
+      </controls>
+      <subgroups>
+        <subgroup id="GisProRibbonLayoutValidator_AddIn_group_fbc32a3b_subgroup_1" size="AlwaysLarge" verticalAlignment="Top">
+          <button refID="GisProRibbonLayoutValidator_AddIn_button_cafa36da" size="large" />
+        </subgroup>
+      </subgroups>
+    </insertModule>
+  </modules>
+</ArcGIS>
