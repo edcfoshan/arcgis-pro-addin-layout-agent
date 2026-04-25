@@ -38,7 +38,7 @@ const controlFromLibrary = (
   id: createId(definition.type),
   subgroupId,
   type: definition.type,
-  caption: definition.defaultCaption,
+  caption: definition.label,
   tooltip: definition.defaultTooltip,
   condition: '',
   size: definition.supportedSizes.at(-1) ?? 'large',
