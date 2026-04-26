@@ -68,11 +68,6 @@ interface GeneratedToolPalette {
   childIds: string[];
 }
 
-interface GeneratedSubgroup {
-  id: string;
-  items: GeneratedGroupItem[];
-}
-
 interface GeneratedGroupItem {
   kind: 'button' | 'tool' | 'menu' | 'splitButton' | 'comboBox' | 'editBox' | 'checkBox' | 'gallery' | 'toolPalette';
   refId: string;
@@ -84,11 +79,6 @@ interface GeneratedGroup {
   caption: string;
   keytip: string;
   subgroupIds: string[];
-}
-
-interface LayoutStack {
-  order: number;
-  controls: RibbonControl[];
 }
 
 const DEFAULT_OPTIONS: Required<ArcGISProValidationOptions> = {
@@ -104,6 +94,14 @@ const DEFAULT_OPTIONS: Required<ArcGISProValidationOptions> = {
   moduleId: 'GisProRibbonLayoutValidator_AddIn_Module',
   moduleClassName: 'AddInModule',
   moduleCaption: 'Ribbon Layout Validator',
+};
+
+const buildVersionFromDocument = (document: RibbonDocument) => {
+  const lastUpdated = Date.parse(document.metadata.lastUpdated || '');
+  const sourceTime = Number.isNaN(lastUpdated) ? Date.now() : lastUpdated;
+  const daysSinceEpoch = Math.floor(sourceTime / 86_400_000);
+  const secondsOfDay = Math.floor((sourceTime % 86_400_000) / 1000);
+  return `1.${daysSinceEpoch % 65_535}.${Math.floor(secondsOfDay / 2)}`;
 };
 
 const fallbackCaptionByType: Record<ControlType, string> = {
@@ -194,9 +192,15 @@ const resolveOptions = (
   overrides?: ArcGISProValidationOptions,
 ): Required<ArcGISProValidationOptions> => {
   const merged = { ...DEFAULT_OPTIONS, ...overrides };
+  const version = overrides?.version || buildVersionFromDocument(document);
   return {
     ...merged,
-    addInId: merged.addInId || stableGuid(`${merged.assemblyName}:${document.metadata.id}:${document.metadata.name}`),
+    version,
+    addInId:
+      merged.addInId ||
+      stableGuid(
+        `${merged.assemblyName}:${document.metadata.id}:${document.metadata.name}:${document.metadata.lastUpdated}`,
+      ),
     moduleCaption: overrides?.moduleCaption || document.metadata.name || DEFAULT_OPTIONS.moduleCaption,
   };
 };
@@ -213,7 +217,7 @@ const createLeafControl = (
   const suffix = labelSuffix ? `${control.id}_${labelSuffix}` : control.id;
   const token = sanitizeToken(suffix, `${type}_${order + 1}`);
   const suggestedClassName = control.behavior.className || toPascalCase(`${control.type}_${control.id}`, 'GeneratedControl');
-  const baseClassName = `${toPascalCase(suggestedClassName, 'GeneratedControl')}Placeholder${token.slice(-6)}`;
+  const baseClassName = `${toPascalCase(suggestedClassName, 'GeneratedControl')}Placeholder${token}`;
   return {
     id: createRefId(projectToken, suffix),
     type,
@@ -231,56 +235,20 @@ const createLeafControl = (
   };
 };
 
-const sortControlsForLayout = (controls: RibbonControl[]) =>
+const sortControlsForGroup = (controls: RibbonControl[]) =>
   [...controls].sort((left, right) => {
-    const lx = left.layout?.x ?? Number.MAX_SAFE_INTEGER;
-    const rx = right.layout?.x ?? Number.MAX_SAFE_INTEGER;
-    if (lx !== rx) return lx - rx;
     const ly = left.layout?.y ?? Number.MAX_SAFE_INTEGER;
     const ry = right.layout?.y ?? Number.MAX_SAFE_INTEGER;
     if (ly !== ry) return ly - ry;
+    const lx = left.layout?.x ?? Number.MAX_SAFE_INTEGER;
+    const rx = right.layout?.x ?? Number.MAX_SAFE_INTEGER;
+    if (lx !== rx) return lx - rx;
     return left.id.localeCompare(right.id);
   });
-
-const buildStacks = (controls: RibbonControl[]): LayoutStack[] => {
-  if (!controls.length) return [];
-  const sorted = sortControlsForLayout(controls);
-  const byX = new Map<number, RibbonControl[]>();
-  sorted.forEach((control, index) => {
-    const key = control.layout?.x ?? index;
-    const current = byX.get(key) ?? [];
-    current.push(control);
-    byX.set(key, current);
-  });
-  return Array.from(byX.entries())
-    .sort(([left], [right]) => left - right)
-    .flatMap(([order, stackControls]) => {
-      const topToBottom = [...stackControls].sort((left, right) => {
-        const ly = left.layout?.y ?? 0;
-        const ry = right.layout?.y ?? 0;
-        if (ly !== ry) return ly - ry;
-        return left.id.localeCompare(right.id);
-      });
-      const chunks: LayoutStack[] = [];
-      for (let index = 0; index < topToBottom.length; index += 3) {
-        chunks.push({
-          order: order + index / 10,
-          controls: topToBottom.slice(index, index + 3),
-        });
-      }
-      return chunks;
-    });
-};
-
-const toGroupItems = (leafByControlId: Map<string, GeneratedGroupItem>, stack: LayoutStack) =>
-  stack.controls
-    .map((control) => leafByControlId.get(control.id))
-    .filter(Boolean) as GeneratedGroupItem[];
 
 const buildArtifactsModel = (document: RibbonDocument, options: Required<ArcGISProValidationOptions>) => {
   const projectToken = sanitizeToken(options.assemblyName.replace(/\./g, '_'), 'RibbonLayoutValidator');
   const generatedGroups: GeneratedGroup[] = [];
-  const generatedSubgroups: GeneratedSubgroup[] = [];
   const leafControls: GeneratedLeafControl[] = [];
   const menus: GeneratedMenu[] = [];
   const splitButtons: GeneratedSplitButton[] = [];
@@ -417,35 +385,18 @@ const buildArtifactsModel = (document: RibbonDocument, options: Required<ArcGISP
   });
 
   document.groups.forEach((group, groupIndex) => {
-    const relatedControls = document.controls.filter((control) =>
-      document.subgroups.some(
-        (subgroup) => subgroup.groupId === group.id && subgroup.id === control.subgroupId,
-      ),
-    );
-    const stacks = buildStacks(relatedControls);
-    const subgroupIds = stacks.map((_stack, stackIndex) =>
-      createRefId(projectToken, `${group.id}_subgroup_${stackIndex + 1}`),
-    );
-
     generatedGroups.push({
       id: createRefId(projectToken, group.id),
       caption: group.caption,
       keytip: group.keytip || `G${groupIndex + 1}`,
-      subgroupIds,
-    });
-
-    stacks.forEach((stack, stackIndex) => {
-      generatedSubgroups.push({
-        id: subgroupIds[stackIndex],
-        items: toGroupItems(leafByControlId, stack),
-      });
+      subgroupIds: group.subgroupIds.map((subgroupId) => createRefId(projectToken, subgroupId)),
     });
   });
 
   return {
     projectToken,
     generatedGroups,
-    generatedSubgroups,
+    leafByControlId,
     leafControls,
     menus,
     splitButtons,
@@ -564,23 +515,20 @@ const renderConfigDaml = (
     .join('\n');
 
   const groups = model.generatedGroups
-    .map((group) =>
-      [
-        `<group id="${group.id}" caption="${xmlEscape(group.caption)}" keytip="${xmlEscape(group.keytip)}">`,
-        ...group.subgroupIds.map((subgroupId) => indent(1, `<subgroup refID="${subgroupId}" />`)),
-        `</group>`,
-      ].join('\n'),
-    )
-    .join('\n');
+    .map((group) => {
+      const relatedControls = sortControlsForGroup(
+        document.controls.filter((control) => group.subgroupIds.includes(createRefId(model.projectToken, control.subgroupId))),
+      );
+      const directItems = relatedControls
+        .map((control) => model.leafByControlId.get(control.id))
+        .filter(Boolean) as GeneratedGroupItem[];
 
-  const subgroups = model.generatedSubgroups
-    .map((subgroup) =>
-      [
-        `<subgroup id="${subgroup.id}" size="AlwaysLarge" verticalAlignment="Top">`,
-        ...subgroup.items.map((item) => indent(1, renderGroupItem(item))),
-        `</subgroup>`,
-      ].join('\n'),
-    )
+      return [
+        `<group id="${group.id}" caption="${xmlEscape(group.caption)}" keytip="${xmlEscape(group.keytip)}">`,
+        ...directItems.map((item) => indent(1, renderGroupItem(item))),
+        `</group>`,
+      ].join('\n');
+    })
     .join('\n');
 
   const controls = model.leafControls
@@ -644,7 +592,6 @@ const renderConfigDaml = (
         tabs ? indent(1, `<tabs>\n${indent(1, tabs)}\n</tabs>`) : '',
         groups ? indent(1, `<groups>\n${indent(1, groups)}\n</groups>`) : '',
         controls ? indent(1, `<controls>\n${indent(1, controls)}\n</controls>`) : '',
-        subgroups ? indent(1, `<subgroups>\n${indent(1, subgroups)}\n</subgroups>`) : '',
         galleries ? indent(1, `<galleries>\n${indent(1, galleries)}\n</galleries>`) : '',
         splitButtons ? indent(1, `<splitButtons>\n${indent(1, splitButtons)}\n</splitButtons>`) : '',
         palettes ? indent(1, `<palettes>\n${indent(1, palettes)}\n</palettes>`) : '',
@@ -743,11 +690,12 @@ export const buildArcGISProValidationArtifacts = (
 ): ArcGISProValidationArtifacts => {
   const options = resolveOptions(document, overrides);
   const model = buildArtifactsModel(document, options);
+  const packageVersion = options.version.replace(/[^0-9A-Za-z.-]/g, '_');
   return {
     configDaml: renderConfigDaml(document, options, model),
     generatedControls: renderGeneratedControls(options, model.leafControls),
     layoutSnapshot: JSON.stringify(document, null, 2),
-    packageFileName: `${options.assemblyName}.esriAddinX`,
+    packageFileName: `${options.assemblyName}-${packageVersion}.esriAddInX`,
     projectName: options.assemblyName,
     options,
   };

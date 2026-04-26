@@ -1,6 +1,7 @@
 param(
     [string]$InputJson = (Join-Path $PSScriptRoot '..\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\Layout\current-layout.json'),
-    [string]$ProjectDir = (Join-Path $PSScriptRoot '..\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn')
+    [string]$ProjectDir = (Join-Path $PSScriptRoot '..\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn'),
+    [string]$Version
 )
 
 $generator = Join-Path $PSScriptRoot 'generate-arcgis-pro-validation.mts'
@@ -9,4 +10,9 @@ if (-not (Test-Path $InputJson)) {
     throw "Layout JSON not found: $InputJson"
 }
 
-node --experimental-strip-types $generator --input $InputJson --project-dir $ProjectDir
+$generatorArgs = @('--input', $InputJson, '--project-dir', $ProjectDir)
+if ($Version) {
+    $generatorArgs += @('--version', $Version)
+}
+
+node --experimental-strip-types $generator @generatorArgs

@@ -1,13 +1,18 @@
 param(
     [string]$InputJson = (Join-Path $PSScriptRoot '..\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\Layout\current-layout.json'),
     [string]$ProjectDir = (Join-Path $PSScriptRoot '..\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn'),
-    [string]$Configuration = 'Debug'
+    [string]$Configuration = 'Debug',
+    [string]$Version
 )
 
 $syncScript = Join-Path $PSScriptRoot 'sync-arcgis-pro-validation.ps1'
 $projectFile = Join-Path $ProjectDir 'GisProRibbonLayoutValidator.AddIn.csproj'
 
-& $syncScript -InputJson $InputJson -ProjectDir $ProjectDir
+if ($Version) {
+    & $syncScript -InputJson $InputJson -ProjectDir $ProjectDir -Version $Version
+} else {
+    & $syncScript -InputJson $InputJson -ProjectDir $ProjectDir
+}
 
 $msbuildCandidates = @(
     "$env:ProgramFiles\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe",
@@ -20,4 +25,20 @@ if (-not $msbuild) {
     throw 'MSBuild.exe was not found. ArcGIS Pro Add-in packaging cannot continue.'
 }
 
-& $msbuild $projectFile /restore /t:Build /p:Configuration=$Configuration
+$msbuildArgs = @(
+    $projectFile,
+    '/restore',
+    '/t:Build',
+    "/p:Configuration=$Configuration"
+)
+if ($Version) {
+    $msbuildArgs += @(
+        "/p:PublicVersion=$Version",
+        "/p:Version=$Version",
+        "/p:AssemblyVersion=$Version.0",
+        "/p:FileVersion=$Version.0",
+        "/p:InformationalVersion=$Version"
+    )
+}
+
+& $msbuild @msbuildArgs
