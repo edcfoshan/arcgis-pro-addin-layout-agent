@@ -12,3 +12,17 @@ D:\addin-布局交互\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\ob
 D:\addin-布局交互\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\obj\Debug\net8.0-windows7.0\refint\GisProRibbonLayoutValidator.AddIn.dll
 D:\addin-布局交互\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\obj\Debug\net8.0-windows7.0\GisProRibbonLayoutValidator.AddIn.pdb
 D:\addin-布局交互\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\obj\Debug\net8.0-windows7.0\ref\GisProRibbonLayoutValidator.AddIn.dll
+C:\Users\13975\Documents\arcgis-pro-addin-layout-agent\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\bin\Debug\net8.0-windows7.0\Layout\current-layout.json
+C:\Users\13975\Documents\arcgis-pro-addin-layout-agent\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\bin\Debug\net8.0-windows7.0\GisProRibbonLayoutValidator.AddIn.deps.json
+C:\Users\13975\Documents\arcgis-pro-addin-layout-agent\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\bin\Debug\net8.0-windows7.0\GisProRibbonLayoutValidator.AddIn.dll
+C:\Users\13975\Documents\arcgis-pro-addin-layout-agent\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\bin\Debug\net8.0-windows7.0\GisProRibbonLayoutValidator.AddIn.pdb
+C:\Users\13975\Documents\arcgis-pro-addin-layout-agent\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\obj\Debug\net8.0-windows7.0\GisProRibbonLayoutValidator.AddIn.csproj.AssemblyReference.cache
+C:\Users\13975\Documents\arcgis-pro-addin-layout-agent\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\obj\Debug\net8.0-windows7.0\GisProRibbonLayoutValidator.AddIn.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\13975\Documents\arcgis-pro-addin-layout-agent\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\obj\Debug\net8.0-windows7.0\GisProRibbonLayoutValidator.AddIn.AssemblyInfoInputs.cache
+C:\Users\13975\Documents\arcgis-pro-addin-layout-agent\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\obj\Debug\net8.0-windows7.0\GisProRibbonLayoutValidator.AddIn.AssemblyInfo.cs
+C:\Users\13975\Documents\arcgis-pro-addin-layout-agent\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\obj\Debug\net8.0-windows7.0\GisProRibbonLayoutValidator.AddIn.csproj.CoreCompileInputs.cache
+C:\Users\13975\Documents\arcgis-pro-addin-layout-agent\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\obj\Debug\net8.0-windows7.0\GisProRibbonLayoutValidator.AddIn.sourcelink.json
+C:\Users\13975\Documents\arcgis-pro-addin-layout-agent\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\obj\Debug\net8.0-windows7.0\GisProRibbonLayoutValidator.AddIn.dll
+C:\Users\13975\Documents\arcgis-pro-addin-layout-agent\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\obj\Debug\net8.0-windows7.0\refint\GisProRibbonLayoutValidator.AddIn.dll
+C:\Users\13975\Documents\arcgis-pro-addin-layout-agent\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\obj\Debug\net8.0-windows7.0\GisProRibbonLayoutValidator.AddIn.pdb
+C:\Users\13975\Documents\arcgis-pro-addin-layout-agent\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\obj\Debug\net8.0-windows7.0\ref\GisProRibbonLayoutValidator.AddIn.dll

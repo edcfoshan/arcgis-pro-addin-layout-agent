@@ -53,9 +53,14 @@ import {
 import './NextRibbonDesigner.css';
 
 const STORAGE_KEY = 'gispro-ribbon-designer-next-doc';
+const FIXED_DOWNLOAD_ENDPOINT = 'http://127.0.0.1:4174/write-file';
+const DOWNLOAD_CONFIG_ENDPOINT = 'http://127.0.0.1:4174/config';
+const DOWNLOAD_ADDON_PACKAGE_ENDPOINT = 'http://127.0.0.1:4174/package-addon';
+const DOWNLOAD_HEALTH_ENDPOINT = 'http://127.0.0.1:4174/health';
+const DOWNLOAD_DIRECTORY_STORAGE_KEY = 'gispro-ribbon-designer-download-dir';
+const DEFAULT_DOWNLOAD_DIRECTORY = 'C:\\Users\\13975\\Documents\\arcgis-pro-addin-layout-agent\\arcgis-pro-validation\\GisProRibbonLayoutValidator.AddIn\\bin\\Debug\\net8.0-windows7.0';
 const fixedSlotCompactor = getCompactor(null, false, true);
 type SidePanelMode = 'palette' | 'inspector';
-type DirectoryPicker = (options?: { mode?: 'read' | 'readwrite' }) => Promise<FileSystemDirectoryHandle>;
 
 const librarySections = [
   {
@@ -93,220 +98,114 @@ const persistDocument = (document: RibbonDocument) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(document));
 };
 
-const downloadJson = async (document: RibbonDocument, directoryHandle?: FileSystemDirectoryHandle | null) => {
+const loadStoredDownloadDirectory = () => {
+  const stored = localStorage.getItem(DOWNLOAD_DIRECTORY_STORAGE_KEY);
+  return stored && stored.trim() ? stored.trim() : DEFAULT_DOWNLOAD_DIRECTORY;
+};
+
+const persistDownloadDirectory = (downloadDirectory: string) => {
+  localStorage.setItem(DOWNLOAD_DIRECTORY_STORAGE_KEY, downloadDirectory);
+};
+
+const downloadJson = async (document: RibbonDocument) => {
   await downloadTextFile(
     `${document.metadata.name || 'ribbon-layout'}.json`,
     JSON.stringify(document, null, 2),
-    'application/json;charset=utf-8',
-    directoryHandle,
+    {
+      description: 'JSON file',
+      mimeType: 'application/json',
+      extensions: ['json'],
+    },
   );
 };
 
-const downloadConfigDaml = async (document: RibbonDocument, directoryHandle?: FileSystemDirectoryHandle | null) => {
+const downloadConfigDaml = async (document: RibbonDocument) => {
   await downloadTextFile(
     'Config.daml',
     buildConfigDaml(document),
-    'application/xml;charset=utf-8',
-    directoryHandle,
+    {
+      description: 'Config file',
+      mimeType: 'application/xml',
+      extensions: ['daml'],
+    },
   );
 };
 
-const downloadAddInInstallTestPackage = async (
-  document: RibbonDocument,
-  directoryHandle?: FileSystemDirectoryHandle | null,
-) => {
+const downloadAddInInstallTestPackage = async (document: RibbonDocument) => {
   const artifacts = buildArcGISProValidationArtifacts(document);
-  const zip = buildZipBlob([
-    { name: `${artifacts.projectName}/Config.daml`, content: artifacts.configDaml },
-    { name: `${artifacts.projectName}/Generated/LayoutControls.g.cs`, content: artifacts.generatedControls },
-    { name: `${artifacts.projectName}/Layout/current-layout.json`, content: artifacts.layoutSnapshot },
-    { name: `${artifacts.projectName}/${artifacts.projectName}.csproj`, content: VALIDATION_CSPROJ },
-    { name: `${artifacts.projectName}/AddInModule.cs`, content: VALIDATION_ADDIN_MODULE_CS },
-    { name: `${artifacts.projectName}/README.md`, content: VALIDATION_README },
-  ]);
+  const response = await fetch(DOWNLOAD_ADDON_PACKAGE_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      packageFileName: artifacts.packageFileName,
+      configDaml: artifacts.configDaml,
+      generatedControls: artifacts.generatedControls,
+      layoutSnapshot: artifacts.layoutSnapshot,
+    }),
+  });
 
-  await downloadBlob(`${artifacts.projectName}.zip`, zip, directoryHandle);
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(message || 'Failed to generate add-in package');
+  }
 };
 
 const downloadTextFile = (
   filename: string,
   content: string,
-  type: string,
-  directoryHandle?: FileSystemDirectoryHandle | null,
+  accept: DownloadAccept,
 ) => {
-  const blob = new Blob([content], { type });
-  return downloadBlob(filename, blob, directoryHandle);
+  const blob = new Blob([content], { type: accept.mimeType });
+  return downloadBlob(filename, blob, accept);
 };
 
-const DOWNLOAD_LOCATION_DB = 'gispro-ribbon-designer-download-location';
-const DOWNLOAD_LOCATION_STORE = 'settings';
-const DOWNLOAD_LOCATION_KEY = 'preferred-directory';
-
-const openDownloadLocationDatabase = () =>
-  new Promise<IDBDatabase>((resolve, reject) => {
-    const request = indexedDB.open(DOWNLOAD_LOCATION_DB, 1);
-    request.onupgradeneeded = () => {
-      request.result.createObjectStore(DOWNLOAD_LOCATION_STORE);
-    };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error ?? new Error('Failed to open download location database'));
-  });
-
-const loadPreferredDownloadDirectory = async () => {
-  try {
-    const db = await openDownloadLocationDatabase();
-    try {
-      const tx = db.transaction(DOWNLOAD_LOCATION_STORE, 'readonly');
-      const store = tx.objectStore(DOWNLOAD_LOCATION_STORE);
-      const handle = await new Promise<FileSystemDirectoryHandle | null>((resolve, reject) => {
-        const request = store.get(DOWNLOAD_LOCATION_KEY);
-        request.onsuccess = () => resolve((request.result as FileSystemDirectoryHandle | undefined) ?? null);
-        request.onerror = () => reject(request.error ?? new Error('Failed to load download location'));
-      });
-
-      if (!handle) return null;
-      const permission = await (handle as FileSystemDirectoryHandle & {
-        queryPermission?: (options: { mode: 'readwrite' }) => Promise<PermissionState>;
-      }).queryPermission?.({ mode: 'readwrite' });
-      return permission === 'granted' ? handle : null;
-    } finally {
-      db.close();
-    }
-  } catch {
-    return null;
-  }
+type DownloadAccept = {
+  description: string;
+  mimeType: string;
+  extensions: string[];
 };
 
-const savePreferredDownloadDirectory = async (handle: FileSystemDirectoryHandle) => {
-  const db = await openDownloadLocationDatabase();
+type SaveFilePicker = (options?: {
+  suggestedName?: string;
+  types?: Array<{ description?: string; accept: Record<string, string[]> }>;
+  excludeAcceptAllOption?: boolean;
+}) => Promise<FileSystemFileHandle>;
+
+const saveBlobToFixedDirectory = async (filename: string, blob: Blob) => {
   try {
-    const tx = db.transaction(DOWNLOAD_LOCATION_STORE, 'readwrite');
-    tx.objectStore(DOWNLOAD_LOCATION_STORE).put(handle, DOWNLOAD_LOCATION_KEY);
-    await new Promise<void>((resolve, reject) => {
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error ?? new Error('Failed to save download location'));
-      tx.onabort = () => reject(tx.error ?? new Error('Failed to save download location'));
+    const response = await fetch(FIXED_DOWNLOAD_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'X-Filename': filename,
+        'Content-Type': blob.type || 'application/octet-stream',
+      },
+      body: blob,
     });
-  } finally {
-    db.close();
+    return response.ok;
+  } catch {
+    return false;
   }
 };
 
-const textEncoder = new TextEncoder();
+const downloadBlob = async (filename: string, blob: Blob, accept: DownloadAccept) => {
+  if (await saveBlobToFixedDirectory(filename, blob)) return;
 
-const VALIDATION_ADDIN_MODULE_CS = [
-  'using ArcGIS.Desktop.Framework;',
-  'using ArcGIS.Desktop.Framework.Contracts;',
-  '',
-  'namespace GisProRibbonLayoutValidator.AddIn;',
-  '',
-  'public class AddInModule : Module',
-  '{',
-  '    internal const string ModuleId = "GisProRibbonLayoutValidator_AddIn_Module";',
-  '',
-  '    public static AddInModule? Current => FrameworkApplication.FindModule(ModuleId) as AddInModule;',
-  '',
-  '    protected override bool CanUnload() => true;',
-  '}',
-].join('\n');
-
-const VALIDATION_CSPROJ = [
-  '<Project Sdk="Microsoft.NET.Sdk">',
-  '  <PropertyGroup>',
-  '    <TargetFramework>net8.0-windows7.0</TargetFramework>',
-  '    <UseWPF>true</UseWPF>',
-  '    <ImplicitUsings>enable</ImplicitUsings>',
-  '    <Nullable>enable</Nullable>',
-  '    <Platforms>x64</Platforms>',
-  '    <PlatformTarget>x64</PlatformTarget>',
-  '    <RootNamespace>GisProRibbonLayoutValidator.AddIn</RootNamespace>',
-  '    <PackageType>AddIn</PackageType>',
-  '    <LangVersion>latest</LangVersion>',
-  '    <PublicVersion>1.0.0</PublicVersion>',
-  '    <Version>$(PublicVersion)</Version>',
-  '    <AssemblyVersion>$(PublicVersion).0</AssemblyVersion>',
-  '    <FileVersion>$(PublicVersion).0</FileVersion>',
-  '    <InformationalVersion>$(PublicVersion)</InformationalVersion>',
-  '  </PropertyGroup>',
-  '',
-  '  <ItemGroup>',
-  '    <PackageReference Include="Esri.ArcGISPro.Extensions30" Version="3.5.0.57366">',
-  '      <ExcludeAssets Condition="\'$(MSBuildRuntimeType)\' == \'Core\'">build</ExcludeAssets>',
-  '    </PackageReference>',
-  '  </ItemGroup>',
-  '',
-  '  <ItemGroup>',
-  '    <Content Include="Config.daml">',
-  '      <CopyToOutputDirectory>Never</CopyToOutputDirectory>',
-  '    </Content>',
-  '    <Content Include="Layout\\*.json">',
-  '      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>',
-  '    </Content>',
-  '  </ItemGroup>',
-  '</Project>',
-].join('\n');
-
-const VALIDATION_README = [
-  '# GisProRibbonLayoutValidator.AddIn',
-  '',
-  'This package was exported from the Ribbon designer.',
-  '',
-  'Included files:',
-  '- Config.daml',
-  '- Generated/LayoutControls.g.cs',
-  '- Layout/current-layout.json',
-  '- GisProRibbonLayoutValidator.AddIn.csproj',
-  '- AddInModule.cs',
-  '',
-  'Use this folder as the source for a local ArcGIS Pro Add-In build test.',
-].join('\n');
-
-const crc32Table = (() => {
-  const table = new Uint32Array(256);
-  for (let i = 0; i < 256; i += 1) {
-    let value = i;
-    for (let bit = 0; bit < 8; bit += 1) {
-      value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1;
-    }
-    table[i] = value >>> 0;
-  }
-  return table;
-})();
-
-const crc32 = (bytes: Uint8Array) => {
-  let value = 0xffffffff;
-  for (const byte of bytes) {
-    value = crc32Table[(value ^ byte) & 0xff] ^ (value >>> 8);
-  }
-  return (value ^ 0xffffffff) >>> 0;
-};
-
-const setUint16LE = (buffer: Uint8Array, offset: number, value: number) => {
-  new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength).setUint16(offset, value, true);
-};
-
-const setUint32LE = (buffer: Uint8Array, offset: number, value: number) => {
-  new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength).setUint32(offset, value, true);
-};
-
-const saveBlobToDirectory = async (directoryHandle: FileSystemDirectoryHandle, filename: string, blob: Blob) => {
-  const fileHandle = await directoryHandle.getFileHandle(filename, { create: true });
-  const writable = await fileHandle.createWritable();
-  await writable.write(blob);
-  await writable.close();
-};
-
-const downloadBlob = async (
-  filename: string,
-  blob: Blob,
-  directoryHandle?: FileSystemDirectoryHandle | null,
-) => {
-  if (directoryHandle) {
+  const picker = (globalThis as typeof globalThis & { showSaveFilePicker?: SaveFilePicker }).showSaveFilePicker;
+  if (picker) {
     try {
-      await saveBlobToDirectory(directoryHandle, filename, blob);
+      const handle = await picker({
+        suggestedName: filename,
+        types: [{ description: accept.description, accept: { [accept.mimeType]: accept.extensions } }],
+        excludeAcceptAllOption: false,
+      });
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
       return;
-    } catch {
-      // Fall back to the browser's normal download flow when the saved handle is no longer usable.
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
     }
   }
 
@@ -318,68 +217,30 @@ const downloadBlob = async (
   URL.revokeObjectURL(url);
 };
 
-const buildZipBlob = (entries: Array<{ name: string; content: string }>) => {
-  const chunks: Uint8Array[] = [];
-  const centralDirectory: Uint8Array[] = [];
-  let offset = 0;
-
-  for (const entry of entries) {
-    const nameBytes = textEncoder.encode(entry.name);
-    const dataBytes = textEncoder.encode(entry.content);
-    const checksum = crc32(dataBytes);
-
-    const localHeader = new Uint8Array(30 + nameBytes.length);
-    setUint32LE(localHeader, 0, 0x04034b50);
-    setUint16LE(localHeader, 4, 20);
-    setUint16LE(localHeader, 6, 0x0800);
-    setUint16LE(localHeader, 8, 0);
-    setUint16LE(localHeader, 10, 0);
-    setUint16LE(localHeader, 12, 0);
-    setUint32LE(localHeader, 14, checksum);
-    setUint32LE(localHeader, 18, dataBytes.length);
-    setUint32LE(localHeader, 22, dataBytes.length);
-    setUint16LE(localHeader, 26, nameBytes.length);
-    setUint16LE(localHeader, 28, 0);
-    localHeader.set(nameBytes, 30);
-    chunks.push(localHeader, dataBytes);
-
-    const centralHeader = new Uint8Array(46 + nameBytes.length);
-    setUint32LE(centralHeader, 0, 0x02014b50);
-    setUint16LE(centralHeader, 4, 20);
-    setUint16LE(centralHeader, 6, 20);
-    setUint16LE(centralHeader, 8, 0x0800);
-    setUint16LE(centralHeader, 10, 0);
-    setUint16LE(centralHeader, 12, 0);
-    setUint16LE(centralHeader, 14, 0);
-    setUint32LE(centralHeader, 16, checksum);
-    setUint32LE(centralHeader, 20, dataBytes.length);
-    setUint32LE(centralHeader, 24, dataBytes.length);
-    setUint16LE(centralHeader, 28, nameBytes.length);
-    setUint16LE(centralHeader, 30, 0);
-    setUint16LE(centralHeader, 32, 0);
-    setUint16LE(centralHeader, 34, 0);
-    setUint16LE(centralHeader, 36, 0);
-    setUint32LE(centralHeader, 38, 0);
-    setUint32LE(centralHeader, 42, offset);
-    centralHeader.set(nameBytes, 46);
-    centralDirectory.push(centralHeader);
-
-    offset += localHeader.length + dataBytes.length;
+const readFixedDownloadDir = async () => {
+  try {
+    const response = await fetch(DOWNLOAD_HEALTH_ENDPOINT);
+    if (!response.ok) return loadStoredDownloadDirectory();
+    const data = (await response.json()) as { downloadDir?: string };
+    return data.downloadDir && data.downloadDir.trim()
+      ? data.downloadDir.trim()
+      : loadStoredDownloadDirectory();
+  } catch {
+    return loadStoredDownloadDirectory();
   }
+};
 
-  const centralSize = centralDirectory.reduce((sum, chunk) => sum + chunk.length, 0);
-  const centralOffset = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
-  const eocd = new Uint8Array(22);
-  setUint32LE(eocd, 0, 0x06054b50);
-  setUint16LE(eocd, 4, 0);
-  setUint16LE(eocd, 6, 0);
-  setUint16LE(eocd, 8, entries.length);
-  setUint16LE(eocd, 10, entries.length);
-  setUint32LE(eocd, 12, centralSize);
-  setUint32LE(eocd, 16, centralOffset);
-  setUint16LE(eocd, 20, 0);
+const saveFixedDownloadDir = async (downloadDir: string) => {
+  const response = await fetch(DOWNLOAD_CONFIG_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ downloadDir }),
+  });
 
-  return new Blob([...chunks, ...centralDirectory, eocd] as BlobPart[], { type: 'application/zip' });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || 'Failed to update download directory');
+  }
 };
 
 const ensureSingleGridPerGroup = (source: RibbonDocument): RibbonDocument => {
@@ -428,29 +289,16 @@ export default function NextRibbonDesigner() {
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState('');
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
-  const [downloadLocationLabel, setDownloadLocationLabel] = useState('默认下载');
+  const [downloadDirectory, setDownloadDirectory] = useState(DEFAULT_DOWNLOAD_DIRECTORY);
+  const [downloadDirectoryDraft, setDownloadDirectoryDraft] = useState(DEFAULT_DOWNLOAD_DIRECTORY);
+  const [downloadDirectorySaving, setDownloadDirectorySaving] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState(document.metadata.lastUpdated);
   const downloadMenuRef = useRef<HTMLDivElement | null>(null);
-  const downloadDirectoryRef = useRef<FileSystemDirectoryHandle | null>(null);
 
   useEffect(() => {
     persistDocument(document);
     setLastSavedAt(document.metadata.lastUpdated);
   }, [document]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    void loadPreferredDownloadDirectory().then((handle) => {
-      if (cancelled || !handle) return;
-      downloadDirectoryRef.current = handle;
-      setDownloadLocationLabel(handle.name || '自定义位置');
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     if (!downloadMenuOpen) return undefined;
@@ -476,6 +324,23 @@ export default function NextRibbonDesigner() {
     };
   }, [downloadMenuOpen]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const initDownloadDirectory = async () => {
+      const nextDirectory = await readFixedDownloadDir();
+      if (cancelled) return;
+      setDownloadDirectory(nextDirectory);
+      setDownloadDirectoryDraft(nextDirectory);
+      persistDownloadDirectory(nextDirectory);
+    };
+
+    void initDownloadDirectory();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const activeTab = document.tabs.find((tab) => tab.id === activeTabId) ?? document.tabs[0];
   const activeGroups = useMemo(
     () =>
@@ -507,36 +372,6 @@ export default function NextRibbonDesigner() {
   const showToast = (message: string) => {
     setToast(message);
     window.setTimeout(() => setToast(''), 2200);
-  };
-
-  const selectDownloadDirectory = async () => {
-    const picker = (globalThis as typeof globalThis & { showDirectoryPicker?: DirectoryPicker }).showDirectoryPicker;
-    if (!picker) {
-      showToast('当前浏览器不支持选择保存位置');
-      return;
-    }
-
-    try {
-      const handle = await picker({ mode: 'readwrite' });
-      const permission = await (handle as FileSystemDirectoryHandle & {
-        requestPermission?: (options: { mode: 'readwrite' }) => Promise<PermissionState>;
-      }).requestPermission?.({ mode: 'readwrite' });
-      if (permission !== 'granted') {
-        showToast('未获得保存位置权限');
-        return;
-      }
-
-      downloadDirectoryRef.current = handle;
-      setDownloadLocationLabel(handle.name || '自定义位置');
-      await savePreferredDownloadDirectory(handle);
-      showToast(`已设置保存位置：${handle.name || '自定义位置'}`);
-      setDownloadMenuOpen(false);
-    } catch (error) {
-      const name = error instanceof DOMException ? error.name : '';
-      if (name !== 'AbortError') {
-        showToast('未设置保存位置');
-      }
-    }
   };
 
   const resetToBlank = () => {
@@ -750,6 +585,26 @@ export default function NextRibbonDesigner() {
     showToast('已保存当前画布，下次打开网页会自动恢复');
   };
 
+  const applyDownloadDirectory = async () => {
+    const nextDirectory = downloadDirectoryDraft.trim();
+    if (!nextDirectory) {
+      showToast('请输入有效的本地路径');
+      return;
+    }
+
+    setDownloadDirectorySaving(true);
+    try {
+      await saveFixedDownloadDir(nextDirectory);
+      setDownloadDirectory(nextDirectory);
+      persistDownloadDirectory(nextDirectory);
+      showToast(`下载路径已更新到 ${nextDirectory}`);
+    } catch {
+      showToast('下载路径保存失败');
+    } finally {
+      setDownloadDirectorySaving(false);
+    }
+  };
+
   return (
     <div className="next-shell">
       <header className="next-titlebar">
@@ -788,7 +643,6 @@ export default function NextRibbonDesigner() {
         <div className="next-toolbar-right">
           <span className="mode-pill">宽屏</span>
           <span className="draft-status">{lastSavedLabel}</span>
-          <span className="download-location-pill">保存位置：{downloadLocationLabel}</span>
           <button onClick={saveCanvas}>
             <Save size={14} />
             保存画布
@@ -801,7 +655,7 @@ export default function NextRibbonDesigner() {
             <button
               className="toolbar-download-main"
               onClick={() => {
-                void downloadConfigDaml(document, downloadDirectoryRef.current).then(() => {
+                void downloadConfigDaml(document).then(() => {
                   showToast('Config.daml 已导出');
                 });
               }}
@@ -820,13 +674,39 @@ export default function NextRibbonDesigner() {
             </button>
             {downloadMenuOpen ? (
               <div className="toolbar-download-menu" role="menu" aria-label="下载选项">
-                <button role="menuitem" onClick={selectDownloadDirectory}>
-                  选择保存位置
-                </button>
+                <div className="toolbar-download-config" role="none">
+                  <label htmlFor="download-directory-input">指定下载地址</label>
+                  <input
+                    id="download-directory-input"
+                    value={downloadDirectoryDraft}
+                    onChange={(event) => setDownloadDirectoryDraft(event.target.value)}
+                    spellCheck={false}
+                  />
+                  <div className="toolbar-download-config-actions">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void applyDownloadDirectory();
+                      }}
+                      disabled={downloadDirectorySaving}
+                    >
+                      {downloadDirectorySaving ? '保存中...' : '应用'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDownloadDirectoryDraft(DEFAULT_DOWNLOAD_DIRECTORY)}
+                    >
+                      恢复默认
+                    </button>
+                  </div>
+                  <div className="toolbar-download-config-hint">
+                    当前生效地址：{downloadDirectory}
+                  </div>
+                </div>
                 <button
                   role="menuitem"
                   onClick={() => {
-                    void downloadConfigDaml(document, downloadDirectoryRef.current).then(() => {
+                    void downloadConfigDaml(document).then(() => {
                       showToast('Config.daml 已导出');
                     });
                     setDownloadMenuOpen(false);
@@ -837,19 +717,19 @@ export default function NextRibbonDesigner() {
                 <button
                   role="menuitem"
                   onClick={() => {
-                    void downloadAddInInstallTestPackage(document, downloadDirectoryRef.current).then(() => {
-                      showToast('addin 安装测试文件已导出');
+                    void downloadAddInInstallTestPackage(document).then(() => {
+                    showToast('addin 安装包已导出');
                     });
                     setDownloadMenuOpen(false);
                   }}
                 >
-                  下载 addin 安装测试文件
+                  下载 addin 安装包
                 </button>
               </div>
             ) : null}
           </div>
           <button className="primary" onClick={() => {
-            void downloadJson(document, downloadDirectoryRef.current).then(() => {
+            void downloadJson(document).then(() => {
               showToast('JSON 已导出');
             });
           }}>

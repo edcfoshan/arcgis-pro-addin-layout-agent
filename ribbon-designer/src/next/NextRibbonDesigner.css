@@ -159,11 +159,59 @@
   top: calc(100% + 6px);
   right: 0;
   z-index: 20;
-  min-width: 220px;
+  min-width: 360px;
   padding: 6px;
   border: 1px solid #cfd6de;
   background: #fff;
   box-shadow: 0 10px 24px rgba(21, 35, 55, 0.16);
+}
+
+.toolbar-download-config {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  margin-bottom: 8px;
+  border: 1px solid #d8e1ea;
+  background: #f7faff;
+}
+
+.toolbar-download-config label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #30455e;
+}
+
+.toolbar-download-config input {
+  width: 100%;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid #c8d2dd;
+  background: #fff;
+  color: #1f2d3d;
+  font: inherit;
+}
+
+.toolbar-download-config input:focus {
+  outline: none;
+  border-color: #2f77df;
+  box-shadow: 0 0 0 2px rgba(47, 119, 223, 0.14);
+}
+
+.toolbar-download-config-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.toolbar-download-config-actions button {
+  width: auto;
+  padding: 0 10px;
+}
+
+.toolbar-download-config-hint {
+  color: #607086;
+  font-size: 12px;
+  word-break: break-all;
 }
 
 .toolbar-download-menu button {
@@ -183,12 +231,6 @@
 }
 
 .draft-status {
-  color: #607086;
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.download-location-pill {
   color: #607086;
   font-size: 12px;
   white-space: nowrap;

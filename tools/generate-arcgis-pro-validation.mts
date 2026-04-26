@@ -12,6 +12,7 @@ const getArgValue = (name: string) => {
 
 const inputJson = getArgValue('--input');
 const projectDir = getArgValue('--project-dir');
+const version = getArgValue('--version');
 
 if (!inputJson || !projectDir) {
   console.error('Usage: node --experimental-strip-types tools/generate-arcgis-pro-validation.mts --input <layout.json> --project-dir <project>');
@@ -23,7 +24,10 @@ const absoluteProjectDir = path.resolve(process.cwd(), projectDir);
 const raw = readFileSync(absoluteInput, 'utf8');
 const document = JSON.parse(raw) as RibbonDocument;
 
-const artifacts = buildArcGISProValidationArtifacts(document);
+const artifacts = buildArcGISProValidationArtifacts(
+  document,
+  version ? { version } : undefined,
+);
 
 mkdirSync(path.join(absoluteProjectDir, 'Generated'), { recursive: true });
 mkdirSync(path.join(absoluteProjectDir, 'Layout'), { recursive: true });

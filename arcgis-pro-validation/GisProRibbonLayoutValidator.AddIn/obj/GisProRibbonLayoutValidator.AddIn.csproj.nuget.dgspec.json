@@ -1,24 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "D:\\addin-布局交互\\arcgis-pro-validation\\GisProRibbonLayoutValidator.AddIn\\GisProRibbonLayoutValidator.AddIn.csproj": {}
+    "C:\\Users\\13975\\Documents\\arcgis-pro-addin-layout-agent\\arcgis-pro-validation\\GisProRibbonLayoutValidator.AddIn\\GisProRibbonLayoutValidator.AddIn.csproj": {}
   },
   "projects": {
-    "D:\\addin-布局交互\\arcgis-pro-validation\\GisProRibbonLayoutValidator.AddIn\\GisProRibbonLayoutValidator.AddIn.csproj": {
+    "C:\\Users\\13975\\Documents\\arcgis-pro-addin-layout-agent\\arcgis-pro-validation\\GisProRibbonLayoutValidator.AddIn\\GisProRibbonLayoutValidator.AddIn.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\addin-布局交互\\arcgis-pro-validation\\GisProRibbonLayoutValidator.AddIn\\GisProRibbonLayoutValidator.AddIn.csproj",
+        "projectUniqueName": "C:\\Users\\13975\\Documents\\arcgis-pro-addin-layout-agent\\arcgis-pro-validation\\GisProRibbonLayoutValidator.AddIn\\GisProRibbonLayoutValidator.AddIn.csproj",
         "projectName": "GisProRibbonLayoutValidator.AddIn",
-        "projectPath": "D:\\addin-布局交互\\arcgis-pro-validation\\GisProRibbonLayoutValidator.AddIn\\GisProRibbonLayoutValidator.AddIn.csproj",
-        "packagesPath": "C:\\Users\\Administrator\\.nuget\\packages\\",
-        "outputPath": "D:\\addin-布局交互\\arcgis-pro-validation\\GisProRibbonLayoutValidator.AddIn\\obj\\",
+        "projectPath": "C:\\Users\\13975\\Documents\\arcgis-pro-addin-layout-agent\\arcgis-pro-validation\\GisProRibbonLayoutValidator.AddIn\\GisProRibbonLayoutValidator.AddIn.csproj",
+        "packagesPath": "C:\\Users\\13975\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\13975\\Documents\\arcgis-pro-addin-layout-agent\\arcgis-pro-validation\\GisProRibbonLayoutValidator.AddIn\\obj\\",
         "projectStyle": "PackageReference",
-        "fallbackFolders": [
-          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-        ],
         "configFilePaths": [
-          "C:\\Users\\Administrator\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Users\\13975\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
@@ -74,7 +70,7 @@
               "privateAssets": "none"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.312/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.311/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

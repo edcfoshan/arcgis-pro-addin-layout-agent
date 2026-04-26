@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("GisProRibbonLayoutValidator.AddIn")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b555fd4c9881dbf967de8ffc1412e027b5fb106f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+feb360248a3b826398f846a25610330a72f3b665")]
 [assembly: System.Reflection.AssemblyProductAttribute("GisProRibbonLayoutValidator.AddIn")]
 [assembly: System.Reflection.AssemblyTitleAttribute("GisProRibbonLayoutValidator.AddIn")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

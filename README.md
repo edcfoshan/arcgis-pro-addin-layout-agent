@@ -151,3 +151,13 @@ ribbon-designer/tests/ribbon-smoke.spec.ts        Playwright 主流程测试
 - 增加命令事件配置面板。
 - 增加 DAML/XML 生成器。
 - 根据更多官方控件文档继续校准 SplitButton、Gallery、ComboBox 等控件的展示规则。
+
+## 最新状态
+
+- 顶部下载按钮已经改成分裂按钮，主按钮用于下载 `Config.daml`，下拉里还提供 `下载 addin 安装包`。
+- `Config.daml` 现在会写到你在工具栏里指定的本机目录，不再只走默认浏览器下载目录。
+- 安装包已经改为真实的 `.esriAddInX` 文件，不再是伪装成 add-in 的 zip。
+- 为了减少 ArcGIS Pro 复用旧包的概率，安装包文件名会带上布局版本号，`AddInInfo id` 也会随最新布局时间变化。
+- 目前默认下载目录是：
+  `C:\Users\13975\Documents\arcgis-pro-addin-layout-agent\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\bin\Debug\net8.0-windows7.0`
+- 如果 ArcGIS Pro 安装后的内容和设计器不一致，先删除旧的 add-in 包，再安装最新版本号的 `.esriAddInX`。
