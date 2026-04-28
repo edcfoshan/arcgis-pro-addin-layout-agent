@@ -6,191 +6,107 @@ namespace GisProRibbonLayoutValidator.AddIn.Generated;
 
 
 
-internal sealed class ExportCommandPlaceholderbutton_ef091fc1 : LayoutButtonBase
+internal sealed class SelectToolPlaceholdertool_01_0004 : LayoutToolBase
 {
-    public ExportCommandPlaceholderbutton_ef091fc1() : base("按钮", "ExportCommand", "currentView")
+    public SelectToolPlaceholdertool_01_0004() : base("交互工具", "SelectTool", "map")
     {
     }
 }
 
-internal sealed class ExportCommandPlaceholderbutton_c46e9e9c : LayoutButtonBase
+internal sealed class ToggleLabelPlaceholdercheckBox_01_0005 : LayoutCheckBoxBase
 {
-    public ExportCommandPlaceholderbutton_c46e9e9c() : base("按钮", "ExportCommand", "currentView")
+    public ToggleLabelPlaceholdercheckBox_01_0005() : base("复选框", "ToggleLabel")
     {
     }
 }
 
-internal sealed class ExportCommandPlaceholderbutton_6f01d3ce : LayoutButtonBase
+internal sealed class AdminSelectorPlaceholdercomboBox_01_0006 : LayoutComboBoxBase
 {
-    public ExportCommandPlaceholderbutton_6f01d3ce() : base("按钮", "ExportCommand", "currentView")
+    public AdminSelectorPlaceholdercomboBox_01_0006() : base("下拉框", "AdminSelector", new[] { "下拉框 A", "下拉框 B", "下拉框 C" })
     {
     }
 }
 
-internal sealed class SelectToolPlaceholdertool_727be73d : LayoutToolBase
+internal sealed class OptionsMenuPlaceholdermenu_01_0007_menu_item_1 : LayoutButtonBase
 {
-    public SelectToolPlaceholdertool_727be73d() : base("交互工具", "SelectTool", "map")
+    public OptionsMenuPlaceholdermenu_01_0007_menu_item_1() : base("菜单第一项", "OptionsMenu", "menu")
     {
     }
 }
 
-internal sealed class SelectToolPlaceholdertool_a6831d97 : LayoutToolBase
+internal sealed class OptionsMenuPlaceholdermenu_01_0007_menu_item_2 : LayoutButtonBase
 {
-    public SelectToolPlaceholdertool_a6831d97() : base("交互工具", "SelectTool", "map")
+    public OptionsMenuPlaceholdermenu_01_0007_menu_item_2() : base("菜单第二项", "OptionsMenu", "menu")
     {
     }
 }
 
-internal sealed class SelectToolPlaceholdertool_1a288707 : LayoutToolBase
+internal sealed class OptionsMenuPlaceholdermenu_01_0007_menu_item_3 : LayoutButtonBase
 {
-    public SelectToolPlaceholdertool_1a288707() : base("交互工具", "SelectTool", "map")
+    public OptionsMenuPlaceholdermenu_01_0007_menu_item_3() : base("菜单第三项", "OptionsMenu", "menu")
     {
     }
 }
 
-internal sealed class AddLayerSplitButtonPlaceholdersplitButton_586cc1f0_primary : LayoutButtonBase
+internal sealed class AddLayerSplitButtonPlaceholdersplitButton_01_0008_primary : LayoutButtonBase
 {
-    public AddLayerSplitButtonPlaceholdersplitButton_586cc1f0_primary() : base("分裂按钮", "AddLayerSplitButton", "menu")
+    public AddLayerSplitButtonPlaceholdersplitButton_01_0008_primary() : base("分裂按钮", "AddLayerSplitButton", "menu")
     {
     }
 }
 
-internal sealed class AddLayerSplitButtonPlaceholdersplitButton_586cc1f0_split_item_1 : LayoutButtonBase
+internal sealed class AddLayerSplitButtonPlaceholdersplitButton_01_0008_split_item_1 : LayoutButtonBase
 {
-    public AddLayerSplitButtonPlaceholdersplitButton_586cc1f0_split_item_1() : base("分裂按钮主选项", "AddLayerSplitButton", "menu")
+    public AddLayerSplitButtonPlaceholdersplitButton_01_0008_split_item_1() : base("分裂按钮主选项", "AddLayerSplitButton", "menu")
     {
     }
 }
 
-internal sealed class AddLayerSplitButtonPlaceholdersplitButton_586cc1f0_split_item_2 : LayoutButtonBase
+internal sealed class AddLayerSplitButtonPlaceholdersplitButton_01_0008_split_item_2 : LayoutButtonBase
 {
-    public AddLayerSplitButtonPlaceholdersplitButton_586cc1f0_split_item_2() : base("分裂按钮备选项", "AddLayerSplitButton", "menu")
+    public AddLayerSplitButtonPlaceholdersplitButton_01_0008_split_item_2() : base("分裂按钮备选项", "AddLayerSplitButton", "menu")
     {
     }
 }
 
-internal sealed class AddLayerSplitButtonPlaceholdersplitButton_909e7d19_primary : LayoutButtonBase
+internal sealed class DrawPalettePlaceholdertoolPalette_01_0009_palette_tool_1 : LayoutToolBase
 {
-    public AddLayerSplitButtonPlaceholdersplitButton_909e7d19_primary() : base("分裂按钮", "AddLayerSplitButton", "menu")
+    public DrawPalettePlaceholdertoolPalette_01_0009_palette_tool_1() : base("工具板浏览", "DrawPalette", "map")
     {
     }
 }
 
-internal sealed class AddLayerSplitButtonPlaceholdersplitButton_909e7d19_split_item_1 : LayoutButtonBase
+internal sealed class DrawPalettePlaceholdertoolPalette_01_0009_palette_tool_2 : LayoutToolBase
 {
-    public AddLayerSplitButtonPlaceholdersplitButton_909e7d19_split_item_1() : base("分裂按钮主选项", "AddLayerSplitButton", "menu")
+    public DrawPalettePlaceholdertoolPalette_01_0009_palette_tool_2() : base("工具板拾取", "DrawPalette", "map")
     {
     }
 }
 
-internal sealed class AddLayerSplitButtonPlaceholdersplitButton_909e7d19_split_item_2 : LayoutButtonBase
+internal sealed class DrawPalettePlaceholdertoolPalette_01_0009_palette_tool_3 : LayoutToolBase
 {
-    public AddLayerSplitButtonPlaceholdersplitButton_909e7d19_split_item_2() : base("分裂按钮备选项", "AddLayerSplitButton", "menu")
+    public DrawPalettePlaceholdertoolPalette_01_0009_palette_tool_3() : base("工具板绘制", "DrawPalette", "map")
     {
     }
 }
 
-internal sealed class DrawPalettePlaceholdertoolPalette_88881415_palette_tool_1 : LayoutToolBase
+internal sealed class FillStyleGalleryPlaceholdergallery_01_0010 : LayoutGalleryBase
 {
-    public DrawPalettePlaceholdertoolPalette_88881415_palette_tool_1() : base("工具板浏览", "DrawPalette", "map")
+    public FillStyleGalleryPlaceholdergallery_01_0010() : base("画廊", "FillStyleGallery", new[] { "画廊 方案 A", "画廊 方案 B", "画廊 方案 C", "画廊 方案 D" })
     {
     }
 }
 
-internal sealed class DrawPalettePlaceholdertoolPalette_88881415_palette_tool_2 : LayoutToolBase
+internal sealed class ExportCommandPlaceholderbutton_01_0011 : LayoutButtonBase
 {
-    public DrawPalettePlaceholdertoolPalette_88881415_palette_tool_2() : base("工具板拾取", "DrawPalette", "map")
+    public ExportCommandPlaceholderbutton_01_0011() : base("按钮", "ExportCommand", "currentView")
     {
     }
 }
 
-internal sealed class DrawPalettePlaceholdertoolPalette_88881415_palette_tool_3 : LayoutToolBase
+internal sealed class ExportCommandPlaceholderbutton_01_0012 : LayoutButtonBase
 {
-    public DrawPalettePlaceholdertoolPalette_88881415_palette_tool_3() : base("工具板绘制", "DrawPalette", "map")
-    {
-    }
-}
-
-internal sealed class DrawPalettePlaceholdertoolPalette_b1198a36_palette_tool_1 : LayoutToolBase
-{
-    public DrawPalettePlaceholdertoolPalette_b1198a36_palette_tool_1() : base("工具板浏览", "DrawPalette", "map")
-    {
-    }
-}
-
-internal sealed class DrawPalettePlaceholdertoolPalette_b1198a36_palette_tool_2 : LayoutToolBase
-{
-    public DrawPalettePlaceholdertoolPalette_b1198a36_palette_tool_2() : base("工具板拾取", "DrawPalette", "map")
-    {
-    }
-}
-
-internal sealed class DrawPalettePlaceholdertoolPalette_b1198a36_palette_tool_3 : LayoutToolBase
-{
-    public DrawPalettePlaceholdertoolPalette_b1198a36_palette_tool_3() : base("工具板绘制", "DrawPalette", "map")
-    {
-    }
-}
-
-internal sealed class OptionsMenuPlaceholdermenu_5205eba6_menu_item_1 : LayoutButtonBase
-{
-    public OptionsMenuPlaceholdermenu_5205eba6_menu_item_1() : base("菜单第一项", "OptionsMenu", "menu")
-    {
-    }
-}
-
-internal sealed class OptionsMenuPlaceholdermenu_5205eba6_menu_item_2 : LayoutButtonBase
-{
-    public OptionsMenuPlaceholdermenu_5205eba6_menu_item_2() : base("菜单第二项", "OptionsMenu", "menu")
-    {
-    }
-}
-
-internal sealed class OptionsMenuPlaceholdermenu_5205eba6_menu_item_3 : LayoutButtonBase
-{
-    public OptionsMenuPlaceholdermenu_5205eba6_menu_item_3() : base("菜单第三项", "OptionsMenu", "menu")
-    {
-    }
-}
-
-internal sealed class OptionsMenuPlaceholdermenu_9e40bee4_menu_item_1 : LayoutButtonBase
-{
-    public OptionsMenuPlaceholdermenu_9e40bee4_menu_item_1() : base("菜单第一项", "OptionsMenu", "menu")
-    {
-    }
-}
-
-internal sealed class OptionsMenuPlaceholdermenu_9e40bee4_menu_item_2 : LayoutButtonBase
-{
-    public OptionsMenuPlaceholdermenu_9e40bee4_menu_item_2() : base("菜单第二项", "OptionsMenu", "menu")
-    {
-    }
-}
-
-internal sealed class OptionsMenuPlaceholdermenu_9e40bee4_menu_item_3 : LayoutButtonBase
-{
-    public OptionsMenuPlaceholdermenu_9e40bee4_menu_item_3() : base("菜单第三项", "OptionsMenu", "menu")
-    {
-    }
-}
-
-internal sealed class OptionsMenuPlaceholdermenu_4e799c45_menu_item_1 : LayoutButtonBase
-{
-    public OptionsMenuPlaceholdermenu_4e799c45_menu_item_1() : base("菜单第一项", "OptionsMenu", "menu")
-    {
-    }
-}
-
-internal sealed class OptionsMenuPlaceholdermenu_4e799c45_menu_item_2 : LayoutButtonBase
-{
-    public OptionsMenuPlaceholdermenu_4e799c45_menu_item_2() : base("菜单第二项", "OptionsMenu", "menu")
-    {
-    }
-}
-
-internal sealed class OptionsMenuPlaceholdermenu_4e799c45_menu_item_3 : LayoutButtonBase
-{
-    public OptionsMenuPlaceholdermenu_4e799c45_menu_item_3() : base("菜单第三项", "OptionsMenu", "menu")
+    public ExportCommandPlaceholderbutton_01_0012() : base("按钮", "ExportCommand", "currentView")
     {
     }
 }

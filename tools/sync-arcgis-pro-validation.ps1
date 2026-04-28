@@ -16,3 +16,6 @@ if ($Version) {
 }
 
 node --experimental-strip-types $generator @generatorArgs
+if ($LASTEXITCODE -ne 0) {
+    throw "ArcGIS Pro validation artifact generation failed with exit code $LASTEXITCODE"
+}

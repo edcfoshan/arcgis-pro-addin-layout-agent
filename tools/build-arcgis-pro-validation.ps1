@@ -42,3 +42,6 @@ if ($Version) {
 }
 
 & $msbuild @msbuildArgs
+if ($LASTEXITCODE -ne 0) {
+    throw "MSBuild failed with exit code $LASTEXITCODE"
+}

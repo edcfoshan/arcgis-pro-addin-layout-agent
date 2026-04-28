@@ -3,11 +3,14 @@ using ArcGIS.Desktop.Framework.Contracts;
 
 namespace GisProRibbonLayoutValidator.AddIn;
 
-public class AddInModule : Module
+internal sealed class AddInModule : Module
 {
-    internal const string ModuleId = "GisProRibbonLayoutValidator_AddIn_Module";
+    private static AddInModule? _this;
 
-    public static AddInModule? Current => FrameworkApplication.FindModule(ModuleId) as AddInModule;
+    public static AddInModule Current => _this ??= (AddInModule)FrameworkApplication.FindModule("GisProRibbonLayoutValidator_AddIn_Module");
 
-    protected override bool CanUnload() => true;
+    protected override bool CanUnload()
+    {
+        return true;
+    }
 }

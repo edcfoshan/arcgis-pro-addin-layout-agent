@@ -1,0 +1,3 @@
+validation-runs/
+arcgis-pro-validation/**/bin/
+arcgis-pro-validation/**/obj/

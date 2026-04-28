@@ -9,6 +9,47 @@
 .\tools\build-arcgis-pro-validation.ps1
 ```
 
+## 批量随机验证
+
+一键生成随机布局、同步 `Config.daml`、构建 `.esriAddinX`，并归档每个用例的输入、输出和构建日志：
+
+```powershell
+.\tools\run-ribbon-layout-validation.ps1 -Cases 10
+```
+
+固定随机种子复现实验：
+
+```powershell
+.\tools\run-ribbon-layout-validation.ps1 -Cases 10 -Seed 20260428
+```
+
+输出目录：
+
+```text
+validation-runs\<timestamp>\
+```
+
+每个 case 会包含：
+
+- `layout.json`
+- `Config.daml`
+- `LayoutControls.g.cs`
+- `GisProRibbonLayoutValidator.AddIn.esriAddinX`
+- `build.log`
+
+总报告：
+
+```text
+validation-runs\<timestamp>\report.html
+validation-runs\<timestamp>\results.json
+```
+
+可选启动 ArcGIS Pro 并截屏：
+
+```powershell
+.\tools\run-ribbon-layout-validation.ps1 -Cases 3 -RunProUiCheck
+```
+
 如果要换成别的布局 JSON：
 
 ```powershell
