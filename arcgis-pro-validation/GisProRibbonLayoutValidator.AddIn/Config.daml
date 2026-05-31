@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ArcGIS defaultAssembly="GisProRibbonLayoutValidator.AddIn.dll" defaultNamespace="GisProRibbonLayoutValidator.AddIn" xmlns="http://schemas.esri.com/DADF/Registry" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <AddInInfo id="{083c064c-cf29-4c0c-8ee3-83f17f6b9322}" version="1.118.1001" desktopVersion="3.5.0">
+  <AddInInfo id="{30f08b52-ab5a-4d7a-8150-079f538536a4}" version="1.151.1001" desktopVersion="3.5.0">
     <Name>随机 Ribbon 验证 01</Name>
     <Description>Generated from the Ribbon designer to validate ArcGIS Pro 3.5 ribbon layout.</Description>
     <Author>Codex</Author>
     <Company>OpenAI</Company>
-    <Date>2026-04-28</Date>
+    <Date>2026-05-31</Date>
     <Subject>Ribbon layout validation</Subject>
   </AddInInfo>
   <modules>
@@ -13,109 +13,199 @@
       <tabs>
         <tab id="GisProRibbonLayoutValidator_AddIn_tab_01_0001" caption="随机验证 01" keytip="A">
           <group refID="GisProRibbonLayoutValidator_AddIn_group_01_0002" />
+          <group refID="GisProRibbonLayoutValidator_AddIn_group_01_0011" />
         </tab>
       </tabs>
       <groups>
         <group id="GisProRibbonLayoutValidator_AddIn_group_01_0002" caption="随机分组 1-1" keytip="R1">
-          <tool refID="GisProRibbonLayoutValidator_AddIn_tool_01_0004" size="middle" />
+          <menu refID="GisProRibbonLayoutValidator_AddIn_menu_01_0004_menu" size="small" />
           <checkBox refID="GisProRibbonLayoutValidator_AddIn_checkBox_01_0005" size="middle" />
-          <comboBox refID="GisProRibbonLayoutValidator_AddIn_comboBox_01_0006" size="middle" />
-          <button refID="GisProRibbonLayoutValidator_AddIn_button_01_0012" size="small" />
-          <menu refID="GisProRibbonLayoutValidator_AddIn_menu_01_0007_menu" size="middle" />
-          <splitButton refID="GisProRibbonLayoutValidator_AddIn_splitButton_01_0008_split" size="large" />
-          <toolPalette refID="GisProRibbonLayoutValidator_AddIn_toolPalette_01_0009_palette" size="middle" />
-          <button refID="GisProRibbonLayoutValidator_AddIn_button_01_0011" size="middle" />
-          <gallery refID="GisProRibbonLayoutValidator_AddIn_gallery_01_0010" size="middle" />
+          <tool refID="GisProRibbonLayoutValidator_AddIn_tool_01_0006" size="small" />
+          <button refID="GisProRibbonLayoutValidator_AddIn_button_01_0007" size="large" />
+          <splitButton refID="GisProRibbonLayoutValidator_AddIn_splitButton_01_0009_split" size="middle" />
+          <comboBox refID="GisProRibbonLayoutValidator_AddIn_comboBox_01_0008" size="middle" />
+          <editBox refID="GisProRibbonLayoutValidator_AddIn_editBox_01_0010" size="large" />
+        </group>
+        <group id="GisProRibbonLayoutValidator_AddIn_group_01_0011" caption="随机分组 1-2" keytip="R2">
+          <menu refID="GisProRibbonLayoutValidator_AddIn_menu_01_0013_menu" size="small" />
+          <tool refID="GisProRibbonLayoutValidator_AddIn_tool_01_0014" size="middle" />
+          <button refID="GisProRibbonLayoutValidator_AddIn_button_01_0015" size="large" />
+          <checkBox refID="GisProRibbonLayoutValidator_AddIn_checkBox_01_0016" size="middle" />
+          <splitButton refID="GisProRibbonLayoutValidator_AddIn_splitButton_01_0017_split" size="middle" />
+          <comboBox refID="GisProRibbonLayoutValidator_AddIn_comboBox_01_0018" size="middle" />
+          <editBox refID="GisProRibbonLayoutValidator_AddIn_editBox_01_0019" size="middle" />
+          <button refID="GisProRibbonLayoutValidator_AddIn_button_01_0022" size="small" />
+          <toolPalette refID="GisProRibbonLayoutValidator_AddIn_toolPalette_01_0020_palette" size="middle" />
+          <gallery refID="GisProRibbonLayoutValidator_AddIn_gallery_01_0021" size="middle" />
+          <tool refID="GisProRibbonLayoutValidator_AddIn_tool_01_0023" size="small" />
         </group>
       </groups>
       <controls>
-        <tool id="GisProRibbonLayoutValidator_AddIn_tool_01_0004" caption="交互工具" className="Generated.SelectToolPlaceholdertool_01_0004" loadOnClick="true" keytip="C1">
-          <tooltip heading="交互工具">激活地图交互工具
-          进入地图交互模式的工具。
-          Suggested handler: SelectTool
-          Target: map</tooltip>
-        </tool>
-        <checkBox id="GisProRibbonLayoutValidator_AddIn_checkBox_01_0005" caption="复选框" className="Generated.ToggleLabelPlaceholdercheckBox_01_0005" keytip="C2">
-          <tooltip heading="复选框">切换开关状态
-          用于布尔开关选项。
-          Suggested handler: ToggleLabel
-          Target: settings</tooltip>
-        </checkBox>
-        <comboBox id="GisProRibbonLayoutValidator_AddIn_comboBox_01_0006" caption="下拉框" className="Generated.AdminSelectorPlaceholdercomboBox_01_0006" keytip="C3" isEditable="false" isReadOnly="true" sizeString="下拉框">
-          <tooltip heading="下拉框">从列表中选择值
-          通过列表选择参数值的控件。
-          Suggested handler: AdminSelector
-          Target: selection</tooltip>
-        </comboBox>
-        <button id="GisProRibbonLayoutValidator_AddIn_menu_01_0007_menu_item_1" caption="菜单第一项" className="Generated.OptionsMenuPlaceholdermenu_01_0007_menu_item_1" loadOnClick="true" keytip="C4">
+        <button id="GisProRibbonLayoutValidator_AddIn_menu_01_0004_menu_item_1" caption="菜单第一项" className="Generated.OptionsMenuPlaceholdermenu_01_0004_menu_item_1" loadOnClick="true" keytip="C1">
           <tooltip heading="菜单第一项">展开菜单命令 1
           包含多条命令项的菜单。
           Suggested handler: OptionsMenu
           Target: menu</tooltip>
         </button>
-        <button id="GisProRibbonLayoutValidator_AddIn_menu_01_0007_menu_item_2" caption="菜单第二项" className="Generated.OptionsMenuPlaceholdermenu_01_0007_menu_item_2" loadOnClick="true" keytip="C5">
+        <button id="GisProRibbonLayoutValidator_AddIn_menu_01_0004_menu_item_2" caption="菜单第二项" className="Generated.OptionsMenuPlaceholdermenu_01_0004_menu_item_2" loadOnClick="true" keytip="C2">
           <tooltip heading="菜单第二项">展开菜单命令 2
           包含多条命令项的菜单。
           Suggested handler: OptionsMenu
           Target: menu</tooltip>
         </button>
-        <button id="GisProRibbonLayoutValidator_AddIn_menu_01_0007_menu_item_3" caption="菜单第三项" className="Generated.OptionsMenuPlaceholdermenu_01_0007_menu_item_3" loadOnClick="true" keytip="C6">
+        <button id="GisProRibbonLayoutValidator_AddIn_menu_01_0004_menu_item_3" caption="菜单第三项" className="Generated.OptionsMenuPlaceholdermenu_01_0004_menu_item_3" loadOnClick="true" keytip="C3">
           <tooltip heading="菜单第三项">展开菜单命令 3
           包含多条命令项的菜单。
           Suggested handler: OptionsMenu
           Target: menu</tooltip>
         </button>
-        <button id="GisProRibbonLayoutValidator_AddIn_splitButton_01_0008_primary" caption="分裂按钮" className="Generated.AddLayerSplitButtonPlaceholdersplitButton_01_0008_primary" loadOnClick="true" keytip="C7">
+        <checkBox id="GisProRibbonLayoutValidator_AddIn_checkBox_01_0005" caption="复选框" className="Generated.ToggleLabelPlaceholdercheckBox_01_0005" keytip="C4">
+          <tooltip heading="复选框">切换开关状态
+          用于布尔开关选项。
+          Suggested handler: ToggleLabel
+          Target: settings</tooltip>
+        </checkBox>
+        <tool id="GisProRibbonLayoutValidator_AddIn_tool_01_0006" caption="交互工具" className="Generated.SelectToolPlaceholdertool_01_0006" loadOnClick="true" keytip="C5">
+          <tooltip heading="交互工具">激活地图交互工具
+          进入地图交互模式的工具。
+          Suggested handler: SelectTool
+          Target: map</tooltip>
+        </tool>
+        <button id="GisProRibbonLayoutValidator_AddIn_button_01_0007" caption="按钮" className="Generated.ExportCommandPlaceholderbutton_01_0007" loadOnClick="true" keytip="C6">
+          <tooltip heading="按钮">执行按钮命令
+          单次触发的 Ribbon 按钮。
+          Suggested handler: ExportCommand
+          Target: currentView</tooltip>
+        </button>
+        <comboBox id="GisProRibbonLayoutValidator_AddIn_comboBox_01_0008" caption="下拉框" className="Generated.AdminSelectorPlaceholdercomboBox_01_0008" keytip="C7" isEditable="false" isReadOnly="true" sizeString="下拉框">
+          <tooltip heading="下拉框">从列表中选择值
+          通过列表选择参数值的控件。
+          Suggested handler: AdminSelector
+          Target: selection</tooltip>
+        </comboBox>
+        <button id="GisProRibbonLayoutValidator_AddIn_splitButton_01_0009_primary" caption="分裂按钮" className="Generated.AddLayerSplitButtonPlaceholdersplitButton_01_0009_primary" loadOnClick="true" keytip="C8">
           <tooltip heading="分裂按钮">主命令与候选命令组合
           带主命令与下拉候选命令的组合按钮。
           Suggested handler: AddLayerSplitButton
           Target: menu</tooltip>
         </button>
-        <button id="GisProRibbonLayoutValidator_AddIn_splitButton_01_0008_split_item_1" caption="分裂按钮主选项" className="Generated.AddLayerSplitButtonPlaceholdersplitButton_01_0008_split_item_1" loadOnClick="true" keytip="C8">
+        <button id="GisProRibbonLayoutValidator_AddIn_splitButton_01_0009_split_item_1" caption="分裂按钮主选项" className="Generated.AddLayerSplitButtonPlaceholdersplitButton_01_0009_split_item_1" loadOnClick="true" keytip="C9">
           <tooltip heading="分裂按钮主选项">主命令与候选命令组合 1
           带主命令与下拉候选命令的组合按钮。
           Suggested handler: AddLayerSplitButton
           Target: menu</tooltip>
         </button>
-        <button id="GisProRibbonLayoutValidator_AddIn_splitButton_01_0008_split_item_2" caption="分裂按钮备选项" className="Generated.AddLayerSplitButtonPlaceholdersplitButton_01_0008_split_item_2" loadOnClick="true" keytip="C9">
+        <button id="GisProRibbonLayoutValidator_AddIn_splitButton_01_0009_split_item_2" caption="分裂按钮备选项" className="Generated.AddLayerSplitButtonPlaceholdersplitButton_01_0009_split_item_2" loadOnClick="true" keytip="C10">
           <tooltip heading="分裂按钮备选项">主命令与候选命令组合 2
           带主命令与下拉候选命令的组合按钮。
           Suggested handler: AddLayerSplitButton
           Target: menu</tooltip>
         </button>
-        <tool id="GisProRibbonLayoutValidator_AddIn_toolPalette_01_0009_palette_tool_1" caption="工具板浏览" className="Generated.DrawPalettePlaceholdertoolPalette_01_0009_palette_tool_1" loadOnClick="true" keytip="C10">
+        <editBox id="GisProRibbonLayoutValidator_AddIn_editBox_01_0010" caption="输入框" className="Generated.PathEditorPlaceholdereditBox_01_0010" keytip="C11" sizeString="输入框" editHint="输入框">
+          <tooltip heading="输入框">录入参数值
+          用于录入文本、数字或路径参数。
+          Suggested handler: PathEditor
+          Target: form</tooltip>
+        </editBox>
+        <button id="GisProRibbonLayoutValidator_AddIn_menu_01_0013_menu_item_1" caption="菜单第一项" className="Generated.OptionsMenuPlaceholdermenu_01_0013_menu_item_1" loadOnClick="true" keytip="C12">
+          <tooltip heading="菜单第一项">展开菜单命令 1
+          包含多条命令项的菜单。
+          Suggested handler: OptionsMenu
+          Target: menu</tooltip>
+        </button>
+        <button id="GisProRibbonLayoutValidator_AddIn_menu_01_0013_menu_item_2" caption="菜单第二项" className="Generated.OptionsMenuPlaceholdermenu_01_0013_menu_item_2" loadOnClick="true" keytip="C13">
+          <tooltip heading="菜单第二项">展开菜单命令 2
+          包含多条命令项的菜单。
+          Suggested handler: OptionsMenu
+          Target: menu</tooltip>
+        </button>
+        <button id="GisProRibbonLayoutValidator_AddIn_menu_01_0013_menu_item_3" caption="菜单第三项" className="Generated.OptionsMenuPlaceholdermenu_01_0013_menu_item_3" loadOnClick="true" keytip="C14">
+          <tooltip heading="菜单第三项">展开菜单命令 3
+          包含多条命令项的菜单。
+          Suggested handler: OptionsMenu
+          Target: menu</tooltip>
+        </button>
+        <tool id="GisProRibbonLayoutValidator_AddIn_tool_01_0014" caption="交互工具" className="Generated.SelectToolPlaceholdertool_01_0014" loadOnClick="true" keytip="C15">
+          <tooltip heading="交互工具">激活地图交互工具
+          进入地图交互模式的工具。
+          Suggested handler: SelectTool
+          Target: map</tooltip>
+        </tool>
+        <button id="GisProRibbonLayoutValidator_AddIn_button_01_0015" caption="按钮" className="Generated.ExportCommandPlaceholderbutton_01_0015" loadOnClick="true" keytip="C16">
+          <tooltip heading="按钮">执行按钮命令
+          单次触发的 Ribbon 按钮。
+          Suggested handler: ExportCommand
+          Target: currentView</tooltip>
+        </button>
+        <checkBox id="GisProRibbonLayoutValidator_AddIn_checkBox_01_0016" caption="复选框" className="Generated.ToggleLabelPlaceholdercheckBox_01_0016" keytip="C17">
+          <tooltip heading="复选框">切换开关状态
+          用于布尔开关选项。
+          Suggested handler: ToggleLabel
+          Target: settings</tooltip>
+        </checkBox>
+        <button id="GisProRibbonLayoutValidator_AddIn_splitButton_01_0017_primary" caption="分裂按钮" className="Generated.AddLayerSplitButtonPlaceholdersplitButton_01_0017_primary" loadOnClick="true" keytip="C18">
+          <tooltip heading="分裂按钮">主命令与候选命令组合
+          带主命令与下拉候选命令的组合按钮。
+          Suggested handler: AddLayerSplitButton
+          Target: menu</tooltip>
+        </button>
+        <button id="GisProRibbonLayoutValidator_AddIn_splitButton_01_0017_split_item_1" caption="分裂按钮主选项" className="Generated.AddLayerSplitButtonPlaceholdersplitButton_01_0017_split_item_1" loadOnClick="true" keytip="C19">
+          <tooltip heading="分裂按钮主选项">主命令与候选命令组合 1
+          带主命令与下拉候选命令的组合按钮。
+          Suggested handler: AddLayerSplitButton
+          Target: menu</tooltip>
+        </button>
+        <button id="GisProRibbonLayoutValidator_AddIn_splitButton_01_0017_split_item_2" caption="分裂按钮备选项" className="Generated.AddLayerSplitButtonPlaceholdersplitButton_01_0017_split_item_2" loadOnClick="true" keytip="C20">
+          <tooltip heading="分裂按钮备选项">主命令与候选命令组合 2
+          带主命令与下拉候选命令的组合按钮。
+          Suggested handler: AddLayerSplitButton
+          Target: menu</tooltip>
+        </button>
+        <comboBox id="GisProRibbonLayoutValidator_AddIn_comboBox_01_0018" caption="下拉框" className="Generated.AdminSelectorPlaceholdercomboBox_01_0018" keytip="C21" isEditable="false" isReadOnly="true" sizeString="下拉框">
+          <tooltip heading="下拉框">从列表中选择值
+          通过列表选择参数值的控件。
+          Suggested handler: AdminSelector
+          Target: selection</tooltip>
+        </comboBox>
+        <editBox id="GisProRibbonLayoutValidator_AddIn_editBox_01_0019" caption="输入框" className="Generated.PathEditorPlaceholdereditBox_01_0019" keytip="C22" sizeString="输入框" editHint="输入框">
+          <tooltip heading="输入框">录入参数值
+          用于录入文本、数字或路径参数。
+          Suggested handler: PathEditor
+          Target: form</tooltip>
+        </editBox>
+        <tool id="GisProRibbonLayoutValidator_AddIn_toolPalette_01_0020_palette_tool_1" caption="工具板浏览" className="Generated.DrawPalettePlaceholdertoolPalette_01_0020_palette_tool_1" loadOnClick="true" keytip="C23">
           <tooltip heading="工具板浏览">从一组工具中切换 1
           多个同类工具的集合入口。
           Suggested handler: DrawPalette
           Target: map</tooltip>
         </tool>
-        <tool id="GisProRibbonLayoutValidator_AddIn_toolPalette_01_0009_palette_tool_2" caption="工具板拾取" className="Generated.DrawPalettePlaceholdertoolPalette_01_0009_palette_tool_2" loadOnClick="true" keytip="C11">
+        <tool id="GisProRibbonLayoutValidator_AddIn_toolPalette_01_0020_palette_tool_2" caption="工具板拾取" className="Generated.DrawPalettePlaceholdertoolPalette_01_0020_palette_tool_2" loadOnClick="true" keytip="C24">
           <tooltip heading="工具板拾取">从一组工具中切换 2
           多个同类工具的集合入口。
           Suggested handler: DrawPalette
           Target: map</tooltip>
         </tool>
-        <tool id="GisProRibbonLayoutValidator_AddIn_toolPalette_01_0009_palette_tool_3" caption="工具板绘制" className="Generated.DrawPalettePlaceholdertoolPalette_01_0009_palette_tool_3" loadOnClick="true" keytip="C12">
+        <tool id="GisProRibbonLayoutValidator_AddIn_toolPalette_01_0020_palette_tool_3" caption="工具板绘制" className="Generated.DrawPalettePlaceholdertoolPalette_01_0020_palette_tool_3" loadOnClick="true" keytip="C25">
           <tooltip heading="工具板绘制">从一组工具中切换 3
           多个同类工具的集合入口。
           Suggested handler: DrawPalette
           Target: map</tooltip>
         </tool>
-        <button id="GisProRibbonLayoutValidator_AddIn_button_01_0011" caption="按钮" className="Generated.ExportCommandPlaceholderbutton_01_0011" loadOnClick="true" keytip="C14">
+        <button id="GisProRibbonLayoutValidator_AddIn_button_01_0022" caption="按钮" className="Generated.ExportCommandPlaceholderbutton_01_0022" loadOnClick="true" keytip="C27">
           <tooltip heading="按钮">执行按钮命令
           单次触发的 Ribbon 按钮。
           Suggested handler: ExportCommand
           Target: currentView</tooltip>
         </button>
-        <button id="GisProRibbonLayoutValidator_AddIn_button_01_0012" caption="按钮" className="Generated.ExportCommandPlaceholderbutton_01_0012" loadOnClick="true" keytip="C15">
-          <tooltip heading="按钮">执行按钮命令
-          单次触发的 Ribbon 按钮。
-          Suggested handler: ExportCommand
-          Target: currentView</tooltip>
-        </button>
+        <tool id="GisProRibbonLayoutValidator_AddIn_tool_01_0023" caption="交互工具" className="Generated.SelectToolPlaceholdertool_01_0023" loadOnClick="true" keytip="C28">
+          <tooltip heading="交互工具">激活地图交互工具
+          进入地图交互模式的工具。
+          Suggested handler: SelectTool
+          Target: map</tooltip>
+        </tool>
       </controls>
       <galleries>
-        <gallery id="GisProRibbonLayoutValidator_AddIn_gallery_01_0010" caption="画廊" className="Generated.FillStyleGalleryPlaceholdergallery_01_0010" itemsInRow="3" showItemCaption="true" itemWidth="96">
+        <gallery id="GisProRibbonLayoutValidator_AddIn_gallery_01_0021" caption="画廊" className="Generated.FillStyleGalleryPlaceholdergallery_01_0021" itemsInRow="3" showItemCaption="true" itemWidth="96">
           <tooltip heading="画廊">从图块中选择样式
           用于样式、模板或符号的可视化选择。
           Suggested handler: FillStyleGallery
@@ -123,24 +213,34 @@
         </gallery>
       </galleries>
       <splitButtons>
-        <splitButton id="GisProRibbonLayoutValidator_AddIn_splitButton_01_0008_split">
-          <button refID="GisProRibbonLayoutValidator_AddIn_splitButton_01_0008_primary" />
-          <button refID="GisProRibbonLayoutValidator_AddIn_splitButton_01_0008_split_item_1" />
-          <button refID="GisProRibbonLayoutValidator_AddIn_splitButton_01_0008_split_item_2" />
+        <splitButton id="GisProRibbonLayoutValidator_AddIn_splitButton_01_0009_split">
+          <button refID="GisProRibbonLayoutValidator_AddIn_splitButton_01_0009_primary" />
+          <button refID="GisProRibbonLayoutValidator_AddIn_splitButton_01_0009_split_item_1" />
+          <button refID="GisProRibbonLayoutValidator_AddIn_splitButton_01_0009_split_item_2" />
+        </splitButton>
+        <splitButton id="GisProRibbonLayoutValidator_AddIn_splitButton_01_0017_split">
+          <button refID="GisProRibbonLayoutValidator_AddIn_splitButton_01_0017_primary" />
+          <button refID="GisProRibbonLayoutValidator_AddIn_splitButton_01_0017_split_item_1" />
+          <button refID="GisProRibbonLayoutValidator_AddIn_splitButton_01_0017_split_item_2" />
         </splitButton>
       </splitButtons>
       <palettes>
-        <toolPalette id="GisProRibbonLayoutValidator_AddIn_toolPalette_01_0009_palette" caption="工具板" showItemCaption="true" itemWidth="96" itemHeight="64" itemsInRow="2">
-          <tool refID="GisProRibbonLayoutValidator_AddIn_toolPalette_01_0009_palette_tool_1" />
-          <tool refID="GisProRibbonLayoutValidator_AddIn_toolPalette_01_0009_palette_tool_2" />
-          <tool refID="GisProRibbonLayoutValidator_AddIn_toolPalette_01_0009_palette_tool_3" />
+        <toolPalette id="GisProRibbonLayoutValidator_AddIn_toolPalette_01_0020_palette" caption="工具板" showItemCaption="true" itemWidth="96" itemHeight="64" itemsInRow="2">
+          <tool refID="GisProRibbonLayoutValidator_AddIn_toolPalette_01_0020_palette_tool_1" />
+          <tool refID="GisProRibbonLayoutValidator_AddIn_toolPalette_01_0020_palette_tool_2" />
+          <tool refID="GisProRibbonLayoutValidator_AddIn_toolPalette_01_0020_palette_tool_3" />
         </toolPalette>
       </palettes>
       <menus>
-        <menu id="GisProRibbonLayoutValidator_AddIn_menu_01_0007_menu" caption="菜单" keytip="M6">
-          <button refID="GisProRibbonLayoutValidator_AddIn_menu_01_0007_menu_item_1" />
-          <button refID="GisProRibbonLayoutValidator_AddIn_menu_01_0007_menu_item_2" />
-          <button refID="GisProRibbonLayoutValidator_AddIn_menu_01_0007_menu_item_3" />
+        <menu id="GisProRibbonLayoutValidator_AddIn_menu_01_0004_menu" caption="菜单" keytip="M3">
+          <button refID="GisProRibbonLayoutValidator_AddIn_menu_01_0004_menu_item_1" />
+          <button refID="GisProRibbonLayoutValidator_AddIn_menu_01_0004_menu_item_2" />
+          <button refID="GisProRibbonLayoutValidator_AddIn_menu_01_0004_menu_item_3" />
+        </menu>
+        <menu id="GisProRibbonLayoutValidator_AddIn_menu_01_0013_menu" caption="菜单" keytip="M14">
+          <button refID="GisProRibbonLayoutValidator_AddIn_menu_01_0013_menu_item_1" />
+          <button refID="GisProRibbonLayoutValidator_AddIn_menu_01_0013_menu_item_2" />
+          <button refID="GisProRibbonLayoutValidator_AddIn_menu_01_0013_menu_item_3" />
         </menu>
       </menus>
     </insertModule>

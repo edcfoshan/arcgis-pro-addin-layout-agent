@@ -53,6 +53,12 @@ import {
 import './NextRibbonDesigner.css';
 
 const STORAGE_KEY = 'gispro-ribbon-designer-next-doc';
+
+const PREVIEW_LABELS: Record<RibbonPreviewMode, string> = {
+  Large: '宽屏',
+  Medium: '标准',
+  Small: '紧凑',
+};
 const FIXED_DOWNLOAD_ENDPOINT = 'http://127.0.0.1:4174/write-file';
 const DOWNLOAD_CONFIG_ENDPOINT = 'http://127.0.0.1:4174/config';
 const DOWNLOAD_ADDON_PACKAGE_ENDPOINT = 'http://127.0.0.1:4174/package-addon';
@@ -280,6 +286,7 @@ export default function NextRibbonDesigner() {
   const [document, setDocument] = useState<RibbonDocument>(() => createInitialDocument());
   const [activeTabId, setActiveTabId] = useState(document.tabs[0]?.id ?? '');
   const [selectedControlId, setSelectedControlId] = useState<string | null>(null);
+  const [previewMode, setPreviewMode] = useState<RibbonPreviewMode>('Large');
   const [sidePanel, setSidePanel] = useState<SidePanelMode>('palette');
   const [activeLibraryItem, setActiveLibraryItem] = useState<{
     item: LibraryControlDefinition;
@@ -483,7 +490,7 @@ export default function NextRibbonDesigner() {
         const subgroup = control ? current.subgroups.find((item) => item.id === control.subgroupId) : null;
         if (!control || !subgroup) return current;
         const spec = getGridSpec(subgroup);
-        const layout = getSubgroupLayout(current, subgroup, 'Large').filter((item) => item.i !== control.id);
+        const layout = getSubgroupLayout(current, subgroup, previewMode).filter((item) => item.i !== control.id);
         const footprint = getFootprint(control.type, patch.size as RibbonControlSize);
         const currentLayout = control.layout ?? { x: 0, y: 0 };
         const candidate = {
@@ -641,7 +648,11 @@ export default function NextRibbonDesigner() {
           <button onClick={resetToBlank}>清空控件</button>
         </div>
         <div className="next-toolbar-right">
-          <span className="mode-pill">宽屏</span>
+          <div className="next-preview-toggle">
+            {(["Large", "Medium", "Small"] as const).map((mode) => (
+              <button key={mode} className={previewMode === mode ? " active" : ""} onClick={() => setPreviewMode(mode)}>{PREVIEW_LABELS[mode]}</button>
+            ))}
+          </div>
           <span className="draft-status">{lastSavedLabel}</span>
           <button onClick={saveCanvas}>
             <Save size={14} />
@@ -739,6 +750,7 @@ export default function NextRibbonDesigner() {
         </div>
       </section>
       <main className="next-workbench">
+        <div className="next-canvas-row">
         <section className="next-canvas">
           <div className="next-canvas-title">
             <strong>Ribbon 画布</strong>
@@ -773,44 +785,41 @@ export default function NextRibbonDesigner() {
         </section>
 
         <aside className="next-side">
-          <div className="next-side-tabs" role="tablist" aria-label="右侧工作区">
-            <button
-              type="button"
-              role="tab"
-              data-testid="next-side-tab-palette"
-              aria-selected={sidePanel === 'palette'}
-              className={sidePanel === 'palette' ? 'active' : ''}
-              onClick={() => setSidePanel('palette')}
-            >
-              控件库
-            </button>
-            <button
-              type="button"
-              role="tab"
-              data-testid="next-side-tab-inspector"
-              aria-selected={sidePanel === 'inspector'}
-              className={sidePanel === 'inspector' ? 'active' : ''}
-              onClick={() => setSidePanel('inspector')}
-            >
+          <div className="next-side-tabs">
+            <button type="button" role="tab" className="active">
               属性
             </button>
           </div>
           <div className="next-side-body">
-            {sidePanel === 'palette' ? (
-              <Palette
-                activeLibraryItem={activeLibraryItem}
-                onPick={setActiveLibraryItem}
-                onDragEnd={() => setActiveLibraryItem(null)}
-              />
-            ) : (
+            {selectedControl ? (
               <Inspector
                 control={selectedControl}
                 onUpdate={updateControl}
                 onDelete={deleteControl}
               />
+            ) : (
+              <div className="next-empty-inspector">
+                <span>请点击画布上的控件查看属性</span>
+              </div>
             )}
           </div>
         </aside>
+      </div>
+      <div className="next-bottom-palette">
+        {activeGroups.length === 0 ? (
+          <div className="next-palette-hint">
+            请在画布上新增分组后拖拽添加控件
+          </div>
+        ) : (
+          <div className="next-palette-strip">
+            <Palette
+              activeLibraryItem={activeLibraryItem}
+              onPick={setActiveLibraryItem}
+              onDragEnd={() => setActiveLibraryItem(null)}
+            />
+          </div>
+        )}
+      </div>
       </main>
 
       {importOpen ? (
@@ -845,6 +854,7 @@ export default function NextRibbonDesigner() {
 }
 
 function RibbonGroupView({
+    previewMode,
   document,
   group,
   canDelete,
@@ -919,6 +929,7 @@ function RibbonGroupView({
 }
 
 function RibbonGroupGrid({
+    previewMode,
   document,
   subgroup,
   selectedControlId,
@@ -945,7 +956,7 @@ function RibbonGroupGrid({
   const [preview, setPreview] = useState<LayoutItem | null>(null);
   const controls = getSubgroupControls(document, subgroup);
   const spec = getGridSpec(subgroup);
-  const layout = getSubgroupLayout(document, subgroup, 'Large').map((item) => ({
+  const layout = getSubgroupLayout(document, subgroup, previewMode).map((item) => ({
     ...item,
     minW: item.w,
     maxW: item.w,
@@ -1065,72 +1076,35 @@ function RibbonGroupGrid({
 }
 
 function Palette({
-  activeLibraryItem,
-  onPick,
-  onDragEnd,
-}: {
-  activeLibraryItem: { item: LibraryControlDefinition; size: RibbonControlSize } | null;
-  onPick: (value: { item: LibraryControlDefinition; size: RibbonControlSize }) => void;
-  onDragEnd: () => void;
-}) {
-  const [activeHelpType, setActiveHelpType] = useState<string | null>(null);
-
-  return (
-    <section className="next-panel next-palette-panel" data-testid="next-palette-panel">
-      <div className="next-panel-title">
-        <LayoutGrid size={15} />
-        <strong>控件库</strong>
-      </div>
-      {librarySections.map((section) => (
-        <div className="next-library-section" key={section.title}>
-          <h3>{section.title}</h3>
-          {section.items.map((item) => (
-            <div className="next-library-row" key={item.type}>
-              <div className="library-row-text">
-                <div className="library-row-heading">
-                  <strong>{item.label}</strong>
-                  <span className="library-help">
-                    <button
-                      type="button"
-                      className="library-help-button"
-                      aria-label={`${item.label} 使用说明`}
-                      onMouseEnter={() => setActiveHelpType(item.type)}
-                      onMouseLeave={() => setActiveHelpType((current) => (current === item.type ? null : current))}
-                      onFocus={() => setActiveHelpType(item.type)}
-                      onBlur={() => setActiveHelpType((current) => (current === item.type ? null : current))}
-                    >
-                      ?
-                    </button>
-                    <span
-                      className={`library-help-popover ${activeHelpType === item.type ? 'visible' : ''}`}
-                    >
-                      {getLibraryHelpText(item)}
-                    </span>
-                  </span>
-                </div>
-                <span>{item.shortDescription}</span>
-              </div>
-              <div className="next-library-sizes">
-                {item.supportedSizes.map((size) => (
-                  <PalettePreview
-                    key={`${item.type}-${size}`}
-                    item={item}
-                    size={size}
-                    active={activeLibraryItem?.item.type === item.type && activeLibraryItem.size === size}
-                    onPick={onPick}
-                    onDragEnd={onDragEnd}
-                  />
-                ))}
-              </div>
-            </div>
+    activeLibraryItem,
+    onPick,
+    onDragEnd,
+  }: {
+    activeLibraryItem: { item: LibraryControlDefinition; size: RibbonControlSize } | null;
+    onPick: (value: { item: LibraryControlDefinition; size: RibbonControlSize }) => void;
+    onDragEnd: () => void;
+  }) {
+    return librarySections.flatMap((section) => section.items).map((item) => (
+      <div className="next-palette-card" key={item.type}>
+        <div className="next-palette-card-head">
+          <ControlMock type={item.type} caption="" size="small" mode="library" />
+          <span>{item.label}</span>
+        </div>
+        <div className="next-palette-card-sizes">
+          {item.supportedSizes.map((size) => (
+            <PalettePreview
+              key={item.type + "-" + size}
+              item={item}
+              size={size}
+              active={activeLibraryItem?.item.type === item.type && activeLibraryItem.size === size}
+              onPick={onPick}
+              onDragEnd={onDragEnd}
+            />
           ))}
         </div>
-      ))}
-    </section>
-  );
-}
-
-function PalettePreview({
+      </div>
+    ));
+  }function PalettePreview({
   item,
   size,
   active,

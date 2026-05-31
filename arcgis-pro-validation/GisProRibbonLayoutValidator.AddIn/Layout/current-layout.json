@@ -1,10 +1,10 @@
 {
   "metadata": {
-    "id": "doc_01_0013",
+    "id": "doc_01_0024",
     "name": "随机 Ribbon 验证 01",
     "app": "gispro-ribbon-designer",
     "schemaVersion": "1.0",
-    "lastUpdated": "2026-04-28T15:05:41.335Z"
+    "lastUpdated": "2026-05-31T08:34:44.182Z"
   },
   "tabs": [
     {
@@ -12,7 +12,8 @@
       "caption": "随机验证 01",
       "keytip": "A",
       "groupIds": [
-        "group_01_0002"
+        "group_01_0002",
+        "group_01_0011"
       ]
     }
   ],
@@ -31,6 +32,21 @@
       "subgroupIds": [
         "subgroup_01_0003"
       ]
+    },
+    {
+      "id": "group_01_0011",
+      "tabId": "tab_01_0001",
+      "caption": "随机分组 1-2",
+      "keytip": "R2",
+      "launcherButton": false,
+      "sizePriorities": [
+        30,
+        80,
+        120
+      ],
+      "subgroupIds": [
+        "subgroup_01_0012"
+      ]
     }
   ],
   "subgroups": [
@@ -46,48 +62,71 @@
         "rows": 3
       },
       "controlIds": [
-        "tool_01_0004",
+        "menu_01_0004",
         "checkBox_01_0005",
-        "comboBox_01_0006",
-        "menu_01_0007",
-        "splitButton_01_0008",
-        "toolPalette_01_0009",
-        "gallery_01_0010",
-        "button_01_0011",
-        "button_01_0012"
+        "tool_01_0006",
+        "button_01_0007",
+        "comboBox_01_0008",
+        "splitButton_01_0009",
+        "editBox_01_0010"
+      ]
+    },
+    {
+      "id": "subgroup_01_0012",
+      "groupId": "group_01_0011",
+      "caption": "分组网格",
+      "sizeMode": "AlwaysLarge",
+      "verticalAlignment": "Top",
+      "layout": {
+        "row": 0,
+        "columns": 9,
+        "rows": 3
+      },
+      "controlIds": [
+        "menu_01_0013",
+        "tool_01_0014",
+        "button_01_0015",
+        "checkBox_01_0016",
+        "splitButton_01_0017",
+        "comboBox_01_0018",
+        "editBox_01_0019",
+        "toolPalette_01_0020",
+        "gallery_01_0021",
+        "button_01_0022",
+        "tool_01_0023"
       ]
     }
   ],
   "controls": [
     {
-      "id": "tool_01_0004",
+      "id": "menu_01_0004",
       "subgroupId": "subgroup_01_0003",
-      "type": "tool",
-      "caption": "交互工具",
-      "tooltip": "激活地图交互工具",
+      "type": "menu",
+      "caption": "菜单",
+      "tooltip": "展开菜单命令",
       "condition": "",
-      "size": "middle",
+      "size": "small",
       "supportedSizes": [
         "small",
         "middle",
         "large"
       ],
       "icon": {
-        "small": "tool16",
-        "large": "tool32"
+        "small": "menu16",
+        "large": "menu32"
       },
       "behavior": {
-        "commandType": "tool",
-        "className": "SelectTool",
-        "target": "map",
+        "commandType": "menu",
+        "className": "OptionsMenu",
+        "target": "menu",
         "arguments": {}
       },
       "eventBindings": [],
-      "aiNotes": "进入地图交互模式的工具。",
+      "aiNotes": "包含多条命令项的菜单。",
       "layout": {
         "x": 0,
         "y": 0,
-        "w": 2,
+        "w": 1,
         "h": 1
       }
     },
@@ -116,14 +155,78 @@
       "eventBindings": [],
       "aiNotes": "用于布尔开关选项。",
       "layout": {
-        "x": 2,
+        "x": 1,
         "y": 0,
         "w": 2,
         "h": 1
       }
     },
     {
-      "id": "comboBox_01_0006",
+      "id": "tool_01_0006",
+      "subgroupId": "subgroup_01_0003",
+      "type": "tool",
+      "caption": "交互工具",
+      "tooltip": "激活地图交互工具",
+      "condition": "",
+      "size": "small",
+      "supportedSizes": [
+        "small",
+        "middle",
+        "large"
+      ],
+      "icon": {
+        "small": "tool16",
+        "large": "tool32"
+      },
+      "behavior": {
+        "commandType": "tool",
+        "className": "SelectTool",
+        "target": "map",
+        "arguments": {}
+      },
+      "eventBindings": [],
+      "aiNotes": "进入地图交互模式的工具。",
+      "layout": {
+        "x": 3,
+        "y": 0,
+        "w": 1,
+        "h": 1
+      }
+    },
+    {
+      "id": "button_01_0007",
+      "subgroupId": "subgroup_01_0003",
+      "type": "button",
+      "caption": "按钮",
+      "tooltip": "执行按钮命令",
+      "condition": "",
+      "size": "large",
+      "supportedSizes": [
+        "small",
+        "middle",
+        "large"
+      ],
+      "icon": {
+        "small": "button16",
+        "large": "button32"
+      },
+      "behavior": {
+        "commandType": "button",
+        "className": "ExportCommand",
+        "target": "currentView",
+        "arguments": {}
+      },
+      "eventBindings": [],
+      "aiNotes": "单次触发的 Ribbon 按钮。",
+      "layout": {
+        "x": 4,
+        "y": 0,
+        "w": 2,
+        "h": 3
+      }
+    },
+    {
+      "id": "comboBox_01_0008",
       "subgroupId": "subgroup_01_0003",
       "type": "comboBox",
       "caption": "下拉框",
@@ -147,20 +250,82 @@
       "eventBindings": [],
       "aiNotes": "通过列表选择参数值的控件。",
       "layout": {
-        "x": 4,
-        "y": 0,
+        "x": 0,
+        "y": 1,
         "w": 3,
         "h": 1
       }
     },
     {
-      "id": "menu_01_0007",
+      "id": "splitButton_01_0009",
       "subgroupId": "subgroup_01_0003",
+      "type": "splitButton",
+      "caption": "分裂按钮",
+      "tooltip": "主命令与候选命令组合",
+      "condition": "",
+      "size": "middle",
+      "supportedSizes": [
+        "middle",
+        "large"
+      ],
+      "icon": {
+        "small": "split16",
+        "large": "split32"
+      },
+      "behavior": {
+        "commandType": "splitButton",
+        "className": "AddLayerSplitButton",
+        "target": "menu",
+        "arguments": {}
+      },
+      "eventBindings": [],
+      "aiNotes": "带主命令与下拉候选命令的组合按钮。",
+      "layout": {
+        "x": 6,
+        "y": 0,
+        "w": 2,
+        "h": 1
+      }
+    },
+    {
+      "id": "editBox_01_0010",
+      "subgroupId": "subgroup_01_0003",
+      "type": "editBox",
+      "caption": "输入框",
+      "tooltip": "录入参数值",
+      "condition": "",
+      "size": "large",
+      "supportedSizes": [
+        "middle",
+        "large"
+      ],
+      "icon": {
+        "small": "edit16",
+        "large": "edit32"
+      },
+      "behavior": {
+        "commandType": "editBox",
+        "className": "PathEditor",
+        "target": "form",
+        "arguments": {}
+      },
+      "eventBindings": [],
+      "aiNotes": "用于录入文本、数字或路径参数。",
+      "layout": {
+        "x": 0,
+        "y": 2,
+        "w": 4,
+        "h": 1
+      }
+    },
+    {
+      "id": "menu_01_0013",
+      "subgroupId": "subgroup_01_0012",
       "type": "menu",
       "caption": "菜单",
       "tooltip": "展开菜单命令",
       "condition": "",
-      "size": "middle",
+      "size": "small",
       "supportedSizes": [
         "small",
         "middle",
@@ -180,19 +345,114 @@
       "aiNotes": "包含多条命令项的菜单。",
       "layout": {
         "x": 0,
-        "y": 1,
+        "y": 0,
+        "w": 1,
+        "h": 1
+      }
+    },
+    {
+      "id": "tool_01_0014",
+      "subgroupId": "subgroup_01_0012",
+      "type": "tool",
+      "caption": "交互工具",
+      "tooltip": "激活地图交互工具",
+      "condition": "",
+      "size": "middle",
+      "supportedSizes": [
+        "small",
+        "middle",
+        "large"
+      ],
+      "icon": {
+        "small": "tool16",
+        "large": "tool32"
+      },
+      "behavior": {
+        "commandType": "tool",
+        "className": "SelectTool",
+        "target": "map",
+        "arguments": {}
+      },
+      "eventBindings": [],
+      "aiNotes": "进入地图交互模式的工具。",
+      "layout": {
+        "x": 1,
+        "y": 0,
         "w": 2,
         "h": 1
       }
     },
     {
-      "id": "splitButton_01_0008",
-      "subgroupId": "subgroup_01_0003",
+      "id": "button_01_0015",
+      "subgroupId": "subgroup_01_0012",
+      "type": "button",
+      "caption": "按钮",
+      "tooltip": "执行按钮命令",
+      "condition": "",
+      "size": "large",
+      "supportedSizes": [
+        "small",
+        "middle",
+        "large"
+      ],
+      "icon": {
+        "small": "button16",
+        "large": "button32"
+      },
+      "behavior": {
+        "commandType": "button",
+        "className": "ExportCommand",
+        "target": "currentView",
+        "arguments": {}
+      },
+      "eventBindings": [],
+      "aiNotes": "单次触发的 Ribbon 按钮。",
+      "layout": {
+        "x": 3,
+        "y": 0,
+        "w": 2,
+        "h": 3
+      }
+    },
+    {
+      "id": "checkBox_01_0016",
+      "subgroupId": "subgroup_01_0012",
+      "type": "checkBox",
+      "caption": "复选框",
+      "tooltip": "切换开关状态",
+      "condition": "",
+      "size": "middle",
+      "supportedSizes": [
+        "small",
+        "middle"
+      ],
+      "icon": {
+        "small": "check16",
+        "large": "check32"
+      },
+      "behavior": {
+        "commandType": "checkBox",
+        "className": "ToggleLabel",
+        "target": "settings",
+        "arguments": {}
+      },
+      "eventBindings": [],
+      "aiNotes": "用于布尔开关选项。",
+      "layout": {
+        "x": 5,
+        "y": 0,
+        "w": 2,
+        "h": 1
+      }
+    },
+    {
+      "id": "splitButton_01_0017",
+      "subgroupId": "subgroup_01_0012",
       "type": "splitButton",
       "caption": "分裂按钮",
       "tooltip": "主命令与候选命令组合",
       "condition": "",
-      "size": "large",
+      "size": "middle",
       "supportedSizes": [
         "middle",
         "large"
@@ -210,15 +470,77 @@
       "eventBindings": [],
       "aiNotes": "带主命令与下拉候选命令的组合按钮。",
       "layout": {
-        "x": 2,
-        "y": 1,
+        "x": 7,
+        "y": 0,
         "w": 2,
-        "h": 2
+        "h": 1
       }
     },
     {
-      "id": "toolPalette_01_0009",
-      "subgroupId": "subgroup_01_0003",
+      "id": "comboBox_01_0018",
+      "subgroupId": "subgroup_01_0012",
+      "type": "comboBox",
+      "caption": "下拉框",
+      "tooltip": "从列表中选择值",
+      "condition": "",
+      "size": "middle",
+      "supportedSizes": [
+        "middle",
+        "large"
+      ],
+      "icon": {
+        "small": "combo16",
+        "large": "combo32"
+      },
+      "behavior": {
+        "commandType": "comboBox",
+        "className": "AdminSelector",
+        "target": "selection",
+        "arguments": {}
+      },
+      "eventBindings": [],
+      "aiNotes": "通过列表选择参数值的控件。",
+      "layout": {
+        "x": 0,
+        "y": 1,
+        "w": 3,
+        "h": 1
+      }
+    },
+    {
+      "id": "editBox_01_0019",
+      "subgroupId": "subgroup_01_0012",
+      "type": "editBox",
+      "caption": "输入框",
+      "tooltip": "录入参数值",
+      "condition": "",
+      "size": "middle",
+      "supportedSizes": [
+        "middle",
+        "large"
+      ],
+      "icon": {
+        "small": "edit16",
+        "large": "edit32"
+      },
+      "behavior": {
+        "commandType": "editBox",
+        "className": "PathEditor",
+        "target": "form",
+        "arguments": {}
+      },
+      "eventBindings": [],
+      "aiNotes": "用于录入文本、数字或路径参数。",
+      "layout": {
+        "x": 5,
+        "y": 1,
+        "w": 3,
+        "h": 1
+      }
+    },
+    {
+      "id": "toolPalette_01_0020",
+      "subgroupId": "subgroup_01_0012",
       "type": "toolPalette",
       "caption": "工具板",
       "tooltip": "从一组工具中切换",
@@ -241,15 +563,15 @@
       "eventBindings": [],
       "aiNotes": "多个同类工具的集合入口。",
       "layout": {
-        "x": 4,
-        "y": 1,
+        "x": 0,
+        "y": 2,
         "w": 3,
         "h": 1
       }
     },
     {
-      "id": "gallery_01_0010",
-      "subgroupId": "subgroup_01_0003",
+      "id": "gallery_01_0021",
+      "subgroupId": "subgroup_01_0012",
       "type": "gallery",
       "caption": "画廊",
       "tooltip": "从图块中选择样式",
@@ -272,47 +594,15 @@
       "eventBindings": [],
       "aiNotes": "用于样式、模板或符号的可视化选择。",
       "layout": {
-        "x": 4,
+        "x": 5,
         "y": 2,
         "w": 3,
         "h": 1
       }
     },
     {
-      "id": "button_01_0011",
-      "subgroupId": "subgroup_01_0003",
-      "type": "button",
-      "caption": "按钮",
-      "tooltip": "执行按钮命令",
-      "condition": "",
-      "size": "middle",
-      "supportedSizes": [
-        "small",
-        "middle",
-        "large"
-      ],
-      "icon": {
-        "small": "button16",
-        "large": "button32"
-      },
-      "behavior": {
-        "commandType": "button",
-        "className": "ExportCommand",
-        "target": "currentView",
-        "arguments": {}
-      },
-      "eventBindings": [],
-      "aiNotes": "单次触发的 Ribbon 按钮。",
-      "layout": {
-        "x": 0,
-        "y": 2,
-        "w": 2,
-        "h": 1
-      }
-    },
-    {
-      "id": "button_01_0012",
-      "subgroupId": "subgroup_01_0003",
+      "id": "button_01_0022",
+      "subgroupId": "subgroup_01_0012",
       "type": "button",
       "caption": "按钮",
       "tooltip": "执行按钮命令",
@@ -336,8 +626,40 @@
       "eventBindings": [],
       "aiNotes": "单次触发的 Ribbon 按钮。",
       "layout": {
-        "x": 7,
-        "y": 0,
+        "x": 8,
+        "y": 1,
+        "w": 1,
+        "h": 1
+      }
+    },
+    {
+      "id": "tool_01_0023",
+      "subgroupId": "subgroup_01_0012",
+      "type": "tool",
+      "caption": "交互工具",
+      "tooltip": "激活地图交互工具",
+      "condition": "",
+      "size": "small",
+      "supportedSizes": [
+        "small",
+        "middle",
+        "large"
+      ],
+      "icon": {
+        "small": "tool16",
+        "large": "tool32"
+      },
+      "behavior": {
+        "commandType": "tool",
+        "className": "SelectTool",
+        "target": "map",
+        "arguments": {}
+      },
+      "eventBindings": [],
+      "aiNotes": "进入地图交互模式的工具。",
+      "layout": {
+        "x": 8,
+        "y": 2,
         "w": 1,
         "h": 1
       }
