@@ -953,3 +953,146 @@
     min-height: 420px;
   }
 }
+
+
+/* ===== Bottom Palette (horizontal, no scroll) ===== */
+.next-bottom-palette {
+  min-height: 0;
+  border-top: 1px solid #d4dbe4;
+  border-bottom: 1px solid #d4dbe4;
+  background: #fbfcfd;
+  overflow-x: auto;
+  padding: 8px 10px;
+}
+
+.next-bottom-palette .next-panel {
+  border: none;
+  background: transparent;
+}
+
+.next-bottom-palette .next-panel-title {
+  display: none;
+}
+
+.next-palette-strip {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.next-palette-card {
+  min-width: 144px;
+  border: 1px solid #dbe3ec;
+  border-radius: 4px;
+  background: #fff;
+  padding: 6px 8px;
+}
+
+.next-palette-card-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.next-palette-card-sizes {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.next-palette-size-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid #dbe3ec;
+  border-radius: 3px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 11px;
+  cursor: grab;
+}
+
+.next-palette-size-btn:hover,
+.next-palette-size-btn.active {
+  border-color: #2f77df;
+  background: #edf4ff;
+  color: #14437d;
+}
+
+.next-palette-size-btn:active {
+  cursor: grabbing;
+}
+
+.next-palette-hint {
+  padding: 12px 16px;
+  color: #66758a;
+  font-size: 12px;
+  text-align: center;
+}
+
+@media (max-width: 960px) {
+  .next-canvas-row {
+    flex: 1 1 0;
+    grid-template-columns: 1fr;
+  }
+}
+
+
+.next-empty-inspector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 120px;
+  color: #66758a;
+  font-size: 12px;
+  padding: 16px;
+}
+
+/* Hide palette panel title in bottom palette */
+.next-bottom-palette .next-panel-title {
+  display: none;
+}
+
+.next-bottom-palette .next-library-section h3 {
+  display: none;
+}
+
+.next-bottom-palette .next-library-section {
+  border: none;
+  background: none;
+}
+
+.next-bottom-palette .library-row-text {
+  display: none;
+}
+
+.next-bottom-palette .library-preview-item {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+/* Sidebar: make inspector fill available space */
+.next-side .next-side-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.next-side .next-inspector {
+  height: 100%;
+}
+
+.next-side .next-form {
+  max-height: 100%;
+  overflow-y: auto;
+}
