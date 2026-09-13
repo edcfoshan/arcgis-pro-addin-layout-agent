@@ -6,198 +6,247 @@ namespace GisProRibbonLayoutValidator.AddIn.Generated;
 
 
 
-internal sealed class OptionsMenuPlaceholdermenu_01_0004_menu_item_1 : LayoutButtonBase
+internal sealed class ExportCommandPlaceholderbutton_demo_001 : LayoutButtonBase
 {
-    public OptionsMenuPlaceholdermenu_01_0004_menu_item_1() : base("菜单第一项", "OptionsMenu", "menu")
+    public ExportCommandPlaceholderbutton_demo_001() : base("按钮·大", "ExportCommand", "currentView")
     {
     }
 }
 
-internal sealed class OptionsMenuPlaceholdermenu_01_0004_menu_item_2 : LayoutButtonBase
+internal sealed class SelectToolPlaceholdertool_demo_002 : LayoutToolBase
 {
-    public OptionsMenuPlaceholdermenu_01_0004_menu_item_2() : base("菜单第二项", "OptionsMenu", "menu")
+    public SelectToolPlaceholdertool_demo_002() : base("交互工具·大", "SelectTool", "map")
     {
     }
 }
 
-internal sealed class OptionsMenuPlaceholdermenu_01_0004_menu_item_3 : LayoutButtonBase
+internal sealed class OptionsMenuPlaceholdermenu_demo_003_menu_item_1 : LayoutButtonBase
 {
-    public OptionsMenuPlaceholdermenu_01_0004_menu_item_3() : base("菜单第三项", "OptionsMenu", "menu")
+    public OptionsMenuPlaceholdermenu_demo_003_menu_item_1() : base("菜单·大第一项", "OptionsMenu", "menu")
     {
     }
 }
 
-internal sealed class ToggleLabelPlaceholdercheckBox_01_0005 : LayoutCheckBoxBase
+internal sealed class OptionsMenuPlaceholdermenu_demo_003_menu_item_2 : LayoutButtonBase
 {
-    public ToggleLabelPlaceholdercheckBox_01_0005() : base("复选框", "ToggleLabel")
+    public OptionsMenuPlaceholdermenu_demo_003_menu_item_2() : base("菜单·大第二项", "OptionsMenu", "menu")
     {
     }
 }
 
-internal sealed class SelectToolPlaceholdertool_01_0006 : LayoutToolBase
+internal sealed class OptionsMenuPlaceholdermenu_demo_003_menu_item_3 : LayoutButtonBase
 {
-    public SelectToolPlaceholdertool_01_0006() : base("交互工具", "SelectTool", "map")
+    public OptionsMenuPlaceholdermenu_demo_003_menu_item_3() : base("菜单·大第三项", "OptionsMenu", "menu")
     {
     }
 }
 
-internal sealed class ExportCommandPlaceholderbutton_01_0007 : LayoutButtonBase
+internal sealed class AddLayerSplitButtonPlaceholdersplitButton_demo_004_primary : LayoutButtonBase
 {
-    public ExportCommandPlaceholderbutton_01_0007() : base("按钮", "ExportCommand", "currentView")
+    public AddLayerSplitButtonPlaceholdersplitButton_demo_004_primary() : base("分裂按钮·大", "AddLayerSplitButton", "menu")
     {
     }
 }
 
-internal sealed class AdminSelectorPlaceholdercomboBox_01_0008 : LayoutComboBoxBase
+internal sealed class AddLayerSplitButtonPlaceholdersplitButton_demo_004_split_item_1 : LayoutButtonBase
 {
-    public AdminSelectorPlaceholdercomboBox_01_0008() : base("下拉框", "AdminSelector", new[] { "下拉框 A", "下拉框 B", "下拉框 C" })
+    public AddLayerSplitButtonPlaceholdersplitButton_demo_004_split_item_1() : base("分裂按钮·大主选项", "AddLayerSplitButton", "menu")
     {
     }
 }
 
-internal sealed class AddLayerSplitButtonPlaceholdersplitButton_01_0009_primary : LayoutButtonBase
+internal sealed class AddLayerSplitButtonPlaceholdersplitButton_demo_004_split_item_2 : LayoutButtonBase
 {
-    public AddLayerSplitButtonPlaceholdersplitButton_01_0009_primary() : base("分裂按钮", "AddLayerSplitButton", "menu")
+    public AddLayerSplitButtonPlaceholdersplitButton_demo_004_split_item_2() : base("分裂按钮·大备选项", "AddLayerSplitButton", "menu")
     {
     }
 }
 
-internal sealed class AddLayerSplitButtonPlaceholdersplitButton_01_0009_split_item_1 : LayoutButtonBase
+internal sealed class ExportCommandPlaceholderbutton_demo_005 : LayoutButtonBase
 {
-    public AddLayerSplitButtonPlaceholdersplitButton_01_0009_split_item_1() : base("分裂按钮主选项", "AddLayerSplitButton", "menu")
+    public ExportCommandPlaceholderbutton_demo_005() : base("按钮·中", "ExportCommand", "currentView")
     {
     }
 }
 
-internal sealed class AddLayerSplitButtonPlaceholdersplitButton_01_0009_split_item_2 : LayoutButtonBase
+internal sealed class SelectToolPlaceholdertool_demo_006 : LayoutToolBase
 {
-    public AddLayerSplitButtonPlaceholdersplitButton_01_0009_split_item_2() : base("分裂按钮备选项", "AddLayerSplitButton", "menu")
+    public SelectToolPlaceholdertool_demo_006() : base("交互工具·中", "SelectTool", "map")
     {
     }
 }
 
-internal sealed class PathEditorPlaceholdereditBox_01_0010 : LayoutEditBoxBase
+internal sealed class OptionsMenuPlaceholdermenu_demo_007_menu_item_1 : LayoutButtonBase
 {
-    public PathEditorPlaceholdereditBox_01_0010() : base("输入框", "PathEditor", "输入框")
+    public OptionsMenuPlaceholdermenu_demo_007_menu_item_1() : base("菜单·中第一项", "OptionsMenu", "menu")
     {
     }
 }
 
-internal sealed class OptionsMenuPlaceholdermenu_01_0013_menu_item_1 : LayoutButtonBase
+internal sealed class OptionsMenuPlaceholdermenu_demo_007_menu_item_2 : LayoutButtonBase
 {
-    public OptionsMenuPlaceholdermenu_01_0013_menu_item_1() : base("菜单第一项", "OptionsMenu", "menu")
+    public OptionsMenuPlaceholdermenu_demo_007_menu_item_2() : base("菜单·中第二项", "OptionsMenu", "menu")
     {
     }
 }
 
-internal sealed class OptionsMenuPlaceholdermenu_01_0013_menu_item_2 : LayoutButtonBase
+internal sealed class OptionsMenuPlaceholdermenu_demo_007_menu_item_3 : LayoutButtonBase
 {
-    public OptionsMenuPlaceholdermenu_01_0013_menu_item_2() : base("菜单第二项", "OptionsMenu", "menu")
+    public OptionsMenuPlaceholdermenu_demo_007_menu_item_3() : base("菜单·中第三项", "OptionsMenu", "menu")
     {
     }
 }
 
-internal sealed class OptionsMenuPlaceholdermenu_01_0013_menu_item_3 : LayoutButtonBase
+internal sealed class AddLayerSplitButtonPlaceholdersplitButton_demo_008_primary : LayoutButtonBase
 {
-    public OptionsMenuPlaceholdermenu_01_0013_menu_item_3() : base("菜单第三项", "OptionsMenu", "menu")
+    public AddLayerSplitButtonPlaceholdersplitButton_demo_008_primary() : base("分裂按钮·中", "AddLayerSplitButton", "menu")
     {
     }
 }
 
-internal sealed class SelectToolPlaceholdertool_01_0014 : LayoutToolBase
+internal sealed class AddLayerSplitButtonPlaceholdersplitButton_demo_008_split_item_1 : LayoutButtonBase
 {
-    public SelectToolPlaceholdertool_01_0014() : base("交互工具", "SelectTool", "map")
+    public AddLayerSplitButtonPlaceholdersplitButton_demo_008_split_item_1() : base("分裂按钮·中主选项", "AddLayerSplitButton", "menu")
     {
     }
 }
 
-internal sealed class ExportCommandPlaceholderbutton_01_0015 : LayoutButtonBase
+internal sealed class AddLayerSplitButtonPlaceholdersplitButton_demo_008_split_item_2 : LayoutButtonBase
 {
-    public ExportCommandPlaceholderbutton_01_0015() : base("按钮", "ExportCommand", "currentView")
+    public AddLayerSplitButtonPlaceholdersplitButton_demo_008_split_item_2() : base("分裂按钮·中备选项", "AddLayerSplitButton", "menu")
     {
     }
 }
 
-internal sealed class ToggleLabelPlaceholdercheckBox_01_0016 : LayoutCheckBoxBase
+internal sealed class ExportCommandPlaceholderbutton_demo_009 : LayoutButtonBase
 {
-    public ToggleLabelPlaceholdercheckBox_01_0016() : base("复选框", "ToggleLabel")
+    public ExportCommandPlaceholderbutton_demo_009() : base("按钮·小", "ExportCommand", "currentView")
     {
     }
 }
 
-internal sealed class AddLayerSplitButtonPlaceholdersplitButton_01_0017_primary : LayoutButtonBase
+internal sealed class SelectToolPlaceholdertool_demo_010 : LayoutToolBase
 {
-    public AddLayerSplitButtonPlaceholdersplitButton_01_0017_primary() : base("分裂按钮", "AddLayerSplitButton", "menu")
+    public SelectToolPlaceholdertool_demo_010() : base("交互工具·小", "SelectTool", "map")
     {
     }
 }
 
-internal sealed class AddLayerSplitButtonPlaceholdersplitButton_01_0017_split_item_1 : LayoutButtonBase
+internal sealed class OptionsMenuPlaceholdermenu_demo_011_menu_item_1 : LayoutButtonBase
 {
-    public AddLayerSplitButtonPlaceholdersplitButton_01_0017_split_item_1() : base("分裂按钮主选项", "AddLayerSplitButton", "menu")
+    public OptionsMenuPlaceholdermenu_demo_011_menu_item_1() : base("菜单·小第一项", "OptionsMenu", "menu")
     {
     }
 }
 
-internal sealed class AddLayerSplitButtonPlaceholdersplitButton_01_0017_split_item_2 : LayoutButtonBase
+internal sealed class OptionsMenuPlaceholdermenu_demo_011_menu_item_2 : LayoutButtonBase
 {
-    public AddLayerSplitButtonPlaceholdersplitButton_01_0017_split_item_2() : base("分裂按钮备选项", "AddLayerSplitButton", "menu")
+    public OptionsMenuPlaceholdermenu_demo_011_menu_item_2() : base("菜单·小第二项", "OptionsMenu", "menu")
     {
     }
 }
 
-internal sealed class AdminSelectorPlaceholdercomboBox_01_0018 : LayoutComboBoxBase
+internal sealed class OptionsMenuPlaceholdermenu_demo_011_menu_item_3 : LayoutButtonBase
 {
-    public AdminSelectorPlaceholdercomboBox_01_0018() : base("下拉框", "AdminSelector", new[] { "下拉框 A", "下拉框 B", "下拉框 C" })
+    public OptionsMenuPlaceholdermenu_demo_011_menu_item_3() : base("菜单·小第三项", "OptionsMenu", "menu")
     {
     }
 }
 
-internal sealed class PathEditorPlaceholdereditBox_01_0019 : LayoutEditBoxBase
+internal sealed class DrawPalettePlaceholdertoolPalette_demo_012_palette_tool_1 : LayoutToolBase
 {
-    public PathEditorPlaceholdereditBox_01_0019() : base("输入框", "PathEditor", "输入框")
+    public DrawPalettePlaceholdertoolPalette_demo_012_palette_tool_1() : base("工具板·大浏览", "DrawPalette", "map")
     {
     }
 }
 
-internal sealed class DrawPalettePlaceholdertoolPalette_01_0020_palette_tool_1 : LayoutToolBase
+internal sealed class DrawPalettePlaceholdertoolPalette_demo_012_palette_tool_2 : LayoutToolBase
 {
-    public DrawPalettePlaceholdertoolPalette_01_0020_palette_tool_1() : base("工具板浏览", "DrawPalette", "map")
+    public DrawPalettePlaceholdertoolPalette_demo_012_palette_tool_2() : base("工具板·大拾取", "DrawPalette", "map")
     {
     }
 }
 
-internal sealed class DrawPalettePlaceholdertoolPalette_01_0020_palette_tool_2 : LayoutToolBase
+internal sealed class DrawPalettePlaceholdertoolPalette_demo_012_palette_tool_3 : LayoutToolBase
 {
-    public DrawPalettePlaceholdertoolPalette_01_0020_palette_tool_2() : base("工具板拾取", "DrawPalette", "map")
+    public DrawPalettePlaceholdertoolPalette_demo_012_palette_tool_3() : base("工具板·大绘制", "DrawPalette", "map")
     {
     }
 }
 
-internal sealed class DrawPalettePlaceholdertoolPalette_01_0020_palette_tool_3 : LayoutToolBase
+internal sealed class FillStyleGalleryPlaceholdergallery_demo_013 : LayoutGalleryBase
 {
-    public DrawPalettePlaceholdertoolPalette_01_0020_palette_tool_3() : base("工具板绘制", "DrawPalette", "map")
+    public FillStyleGalleryPlaceholdergallery_demo_013() : base("画廊·大", "FillStyleGallery", new[] { "画廊·大 方案 A", "画廊·大 方案 B", "画廊·大 方案 C", "画廊·大 方案 D" })
     {
     }
 }
 
-internal sealed class FillStyleGalleryPlaceholdergallery_01_0021 : LayoutGalleryBase
+internal sealed class DrawPalettePlaceholdertoolPalette_demo_014_palette_tool_1 : LayoutToolBase
 {
-    public FillStyleGalleryPlaceholdergallery_01_0021() : base("画廊", "FillStyleGallery", new[] { "画廊 方案 A", "画廊 方案 B", "画廊 方案 C", "画廊 方案 D" })
+    public DrawPalettePlaceholdertoolPalette_demo_014_palette_tool_1() : base("工具板·中浏览", "DrawPalette", "map")
     {
     }
 }
 
-internal sealed class ExportCommandPlaceholderbutton_01_0022 : LayoutButtonBase
+internal sealed class DrawPalettePlaceholdertoolPalette_demo_014_palette_tool_2 : LayoutToolBase
 {
-    public ExportCommandPlaceholderbutton_01_0022() : base("按钮", "ExportCommand", "currentView")
+    public DrawPalettePlaceholdertoolPalette_demo_014_palette_tool_2() : base("工具板·中拾取", "DrawPalette", "map")
     {
     }
 }
 
-internal sealed class SelectToolPlaceholdertool_01_0023 : LayoutToolBase
+internal sealed class DrawPalettePlaceholdertoolPalette_demo_014_palette_tool_3 : LayoutToolBase
 {
-    public SelectToolPlaceholdertool_01_0023() : base("交互工具", "SelectTool", "map")
+    public DrawPalettePlaceholdertoolPalette_demo_014_palette_tool_3() : base("工具板·中绘制", "DrawPalette", "map")
+    {
+    }
+}
+
+internal sealed class FillStyleGalleryPlaceholdergallery_demo_015 : LayoutGalleryBase
+{
+    public FillStyleGalleryPlaceholdergallery_demo_015() : base("画廊·中", "FillStyleGallery", new[] { "画廊·中 方案 A", "画廊·中 方案 B", "画廊·中 方案 C", "画廊·中 方案 D" })
+    {
+    }
+}
+
+internal sealed class AdminSelectorPlaceholdercomboBox_demo_016 : LayoutComboBoxBase
+{
+    public AdminSelectorPlaceholdercomboBox_demo_016() : base("下拉框·大", "AdminSelector", new[] { "下拉框·大 A", "下拉框·大 B", "下拉框·大 C" })
+    {
+    }
+}
+
+internal sealed class PathEditorPlaceholdereditBox_demo_017 : LayoutEditBoxBase
+{
+    public PathEditorPlaceholdereditBox_demo_017() : base("输入框·大", "PathEditor", "输入框·大")
+    {
+    }
+}
+
+internal sealed class AdminSelectorPlaceholdercomboBox_demo_018 : LayoutComboBoxBase
+{
+    public AdminSelectorPlaceholdercomboBox_demo_018() : base("下拉框·中", "AdminSelector", new[] { "下拉框·中 A", "下拉框·中 B", "下拉框·中 C" })
+    {
+    }
+}
+
+internal sealed class PathEditorPlaceholdereditBox_demo_019 : LayoutEditBoxBase
+{
+    public PathEditorPlaceholdereditBox_demo_019() : base("输入框·中", "PathEditor", "输入框·中")
+    {
+    }
+}
+
+internal sealed class ToggleLabelPlaceholdercheckBox_demo_020 : LayoutCheckBoxBase
+{
+    public ToggleLabelPlaceholdercheckBox_demo_020() : base("复选框·中", "ToggleLabel")
+    {
+    }
+}
+
+internal sealed class ToggleLabelPlaceholdercheckBox_demo_021 : LayoutCheckBoxBase
+{
+    public ToggleLabelPlaceholdercheckBox_demo_021() : base("复选框·小", "ToggleLabel")
     {
     }
 }
