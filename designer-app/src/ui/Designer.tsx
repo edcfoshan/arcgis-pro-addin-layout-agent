@@ -7,6 +7,7 @@ import {
   type CSSProperties,
 } from 'react';
 import {
+  Camera,
   Copy,
   Download,
   FileJson,
@@ -98,6 +99,19 @@ interface GhostPos {
   y: number;
 }
 
+interface ValidationReportJson {
+  capturedAt?: string;
+  proPid?: number;
+  screenshot?: string;
+}
+
+interface ValidationOutcome {
+  screenshotDataUrl: string;
+  reportJson: ValidationReportJson;
+  caseDir: string;
+  packagePath: string;
+}
+
 const librarySections = [
   {
     title: '命令控件',
@@ -145,6 +159,7 @@ export default function Designer() {
   );
   const [targetDirDraft, setTargetDirDraft] = useState(targetDir);
   const [busy, setBusy] = useState('');
+  const [validation, setValidation] = useState<ValidationOutcome | null>(null);
   const gridRefs = useRef(new Map<string, HTMLElement>());
   const dragRef = useRef<DragState>(null);
   const hoverRef = useRef<HoverTarget | null>(null);
@@ -597,6 +612,41 @@ export default function Designer() {
     }
   };
 
+  // 一键验算:打包 → 安装 → 启动/复用 Pro → 截图 → 弹出与画布的并排对比
+  const runValidation = async () => {
+    if (busy) {
+      showToast('已有任务进行中,请稍候');
+      return;
+    }
+    const dir = targetDir.trim();
+    if (!dir) {
+      showToast('请先设置导出目录');
+      return;
+    }
+    setBusy('正在验算:打包 → 安装 → 启动 Pro → 截图(约 1-2 分钟,请勿遮挡屏幕)');
+    try {
+      const artifacts: ArcGISProValidationArtifacts =
+        buildArcGISProValidationArtifacts(document);
+      const outcome = await invoke<ValidationOutcome>('validate_layout', {
+        payload: {
+          export: {
+            layout_snapshot: artifacts.layoutSnapshot,
+            package_file_name: artifacts.packageFileName,
+            target_dir: dir,
+            version: computeLayoutVersion(document),
+            icon_files: artifacts.iconFiles,
+          },
+          config_daml: artifacts.configDaml,
+        },
+      });
+      setValidation(outcome);
+    } catch (error) {
+      showToast(`验算失败：${String(error)}`);
+    } finally {
+      setBusy('');
+    }
+  };
+
   const applyIconSelection = (selection: IconSelection) => {
     if (iconPickerFor) {
       updateControl(iconPickerFor, {
@@ -813,6 +863,10 @@ export default function Designer() {
                 <Package size={14} />
                 打包 add-in
               </button>
+              <button onClick={() => void runValidation()}>
+                <Camera size={14} />
+                验算
+              </button>
             </div>
           </section>
 
@@ -995,6 +1049,48 @@ export default function Designer() {
               <button className="primary" onClick={importJson}>
                 应用导入
               </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {validation ? (
+        <div className="next-modal" onClick={() => setValidation(null)}>
+          <div
+            className="next-modal-card compare-card"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="next-modal-head">
+              <strong>验算结果对比</strong>
+              <button onClick={() => setValidation(null)}>
+                <X size={14} />
+              </button>
+            </div>
+            <div className="compare-body">
+              <div className="compare-pane">
+                <div className="compare-pane-title">
+                  设计器画布(当前页签:{activeTab?.caption ?? '—'})
+                </div>
+                <ValidationCanvas document={document} groups={activeGroups} />
+              </div>
+              <div className="compare-pane">
+                <div className="compare-pane-title">
+                  ArcGIS Pro 截图 · 摄于{' '}
+                  {validation.reportJson.capturedAt
+                    ? new Date(validation.reportJson.capturedAt).toLocaleTimeString()
+                    : '未知时间'}
+                </div>
+                <img
+                  className="compare-shot"
+                  src={validation.screenshotDataUrl}
+                  alt="ArcGIS Pro 截图"
+                />
+              </div>
+            </div>
+            <div className="compare-meta">
+              <div>安装包:{validation.packagePath}</div>
+              <div>用例目录:{validation.caseDir}</div>
+              <div>提示:截图为整屏捕获,可能包含桌面上的其他窗口。</div>
             </div>
           </div>
         </div>
@@ -1208,6 +1304,73 @@ function RibbonGroupGrid({
           </div>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+// 只读画布:验算对比视图左栏,复刻 RibbonGroupGrid 的渲染循环,不带编辑 chrome 与拖拽
+function ValidationCanvas({
+  document,
+  groups,
+}: {
+  document: RibbonDocument;
+  groups: RibbonGroup[];
+}) {
+  if (!groups.length) {
+    return <div className="next-empty-canvas">当前页签是空白。</div>;
+  }
+  return (
+    <div className="next-ribbon-area compare-canvas">
+      {groups.map((group) => {
+        const subgroup = document.subgroups.find((item) => item.id === group.subgroupIds[0]);
+        if (!subgroup) return null;
+        const spec = getGridSpec(subgroup);
+        const controls = getSubgroupControls(document, subgroup.id);
+        const layout = getSubgroupLayout(document, subgroup, 'Large');
+        const layoutIds = new Set(layout.map((item) => item.i));
+        const rendered = controls.filter((control) => layoutIds.has(control.id));
+        const hiddenCount = controls.length - rendered.length;
+        return (
+          <section className="next-group" key={group.id}>
+            <div className="next-group-footer">
+              <div className="next-group-caption">{group.caption}</div>
+            </div>
+            <div
+              className="next-subgroup"
+              style={{ '--group-cols': spec.cols, '--group-rows': spec.rows } as CSSProperties}
+            >
+              <div className="next-grid-board">
+                {rendered.map((control) => (
+                  <div
+                    key={control.id}
+                    className="next-ribbon-control"
+                    style={
+                      {
+                        left: (control.layout?.x ?? 0) * RIBBON_CELL,
+                        top: (control.layout?.y ?? 0) * RIBBON_CELL,
+                        width: (control.layout?.w ?? 1) * RIBBON_CELL,
+                        height: (control.layout?.h ?? 1) * RIBBON_CELL,
+                      } as CSSProperties
+                    }
+                  >
+                    <ControlMock
+                      type={control.type}
+                      caption={control.caption}
+                      size={control.size}
+                      iconFile={control.icon.small || undefined}
+                    />
+                  </div>
+                ))}
+                {hiddenCount > 0 ? (
+                  <div className="hidden-controls-warning">
+                    有 {hiddenCount} 个控件因无空位未显示
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </section>
+        );
+      })}
     </div>
   );
 }

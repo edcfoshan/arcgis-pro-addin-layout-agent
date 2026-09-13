@@ -25,6 +25,8 @@ npm run build                # tsc + vite build
 # Rust 后端测试(designer-app/src-tauri)
 cargo test --lib             # 单元测试(图标解析等,快)
 cargo test --test export_addin_test   # 导出打包集成测试,会真实调 dotnet build 编译 C# 插件
+cargo test --test validate_layout_test        # 验算管线测试(组 CaseDir/失败路径)
+cargo test --test validate_layout_test -- --ignored --nocapture   # 端到端:真启动/复用 Pro 截图
 
 # 旧 Web 设计器(仅维护时用)
 cd ribbon-designer
@@ -77,11 +79,11 @@ RibbonDocument (JSON)
 
 ## Rust 后端(designer-app/src-tauri)
 
-命令:`list_icons`、`search_icons`、`get_icon_data_url`、`write_text_file`、`export_addin`(薄壳,内部调 `pub fn run_export_addin` 便于集成测试直接调用)。依赖编译期常量 `REPO_ROOT`,可用环境变量 `ICON_CACHE_DIR` 覆盖图标目录。
+命令:`list_icons`、`search_icons`、`get_icon_data_url`、`write_text_file`、`get_default_target_dir`(下发 REPO_ROOT 派生的默认导出目录)、`export_addin`(薄壳,内部调 `pub fn run_export_addin` 便于集成测试直接调用)、`validate_layout`(一键验算:打包→组 CaseDir 到 `validation-runs/app`→跑 pro-ui-check→截图转 dataURL 回传,实逻辑在 `pub fn run_validate_layout`)。依赖编译期常量 `REPO_ROOT`,可用环境变量 `ICON_CACHE_DIR` 覆盖图标目录。
 
 ## 已知约束
 
 - 本机 ArcGIS Pro 实际版本 3.6.0,DAML 里 `desktopVersion` 仍写 3.5.0(最低版本语义,可运行)
-- 里程碑路线(Tauri 重构共识):M1 设计器+图标 ✅ → M2 一键验算(Pro 截图进应用对比)→ M3 命令事件+C# 模式库 → M4 Dockpane 模板 → M5 AI 视觉评审闭环(经 `claude -p`,结构化差异 JSON)
+- 里程碑路线(Tauri 重构共识):M1 设计器+图标 ✅ → M2 一键验算 ✅(应用内「验算」按钮,Pro 截图回传与画布并排对比)→ M3 命令事件+C# 模式库 → M4 Dockpane 模板 → M5 AI 视觉评审闭环(经 `claude -p`,结构化差异 JSON)
 - 导出目录默认指向验算插件的 `bin/Debug/net8.0-windows7.0`,安装包文件名带版本号以防 Pro 复用旧包
 - UI 文案、控件库、代码注释均为中文;与用户交流用中文

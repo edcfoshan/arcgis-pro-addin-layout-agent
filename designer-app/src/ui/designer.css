@@ -1407,3 +1407,52 @@ html, body, #root { height: 100%; margin: 0; }
   color: #64748b;
   font-size: 10px;
 }
+
+/* ===== 验算对比(M2)===== */
+.next-modal-card.compare-card {
+  width: min(1200px, 94vw);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.compare-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  overflow: auto;
+  padding: 12px;
+}
+
+.compare-pane {
+  border: 1px solid #cfd6de;
+  background: #fff;
+  padding: 8px;
+  overflow: auto;
+}
+
+.compare-pane-title {
+  font-size: 12px;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+
+.compare-shot {
+  width: 100%;
+  height: auto;
+  border: 1px solid #cfd6de;
+}
+
+.compare-canvas .next-ribbon-control {
+  pointer-events: none;
+  cursor: default;
+}
+
+.compare-meta {
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 11px;
+  color: #64748b;
+  word-break: break-all;
+  padding: 8px 12px;
+  border-top: 1px solid #e2e8f0;
+}

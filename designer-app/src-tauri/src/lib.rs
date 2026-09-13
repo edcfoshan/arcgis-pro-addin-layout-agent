@@ -287,6 +287,118 @@ pub fn run_export_addin(payload: ExportPayload) -> Result<String, String> {
     Ok(package_path.to_string_lossy().to_string())
 }
 
+fn pro_check_script() -> PathBuf {
+    PathBuf::from(REPO_ROOT).join("tools/pro-ui-check.ps1")
+}
+
+// 应用内一键验算的用例目录根(validation-runs 已被 gitignore)
+fn validation_runs_root() -> PathBuf {
+    PathBuf::from(REPO_ROOT).join("validation-runs/app")
+}
+
+#[derive(Deserialize)]
+pub struct ValidationPayload {
+    pub export: ExportPayload,
+    pub config_daml: String,
+    pub wait_seconds: Option<u32>,
+}
+
+#[derive(Serialize)]
+pub struct ValidationOutcome {
+    pub screenshot_data_url: String,
+    pub report_json: serde_json::Value,
+    pub case_dir: String,
+    pub package_path: String,
+}
+
+// 组装 pro-ui-check 需要的 CaseDir:安装包 + Config.daml + layout.json
+pub fn assemble_case_dir(
+    case_dir: &Path,
+    package_path: &Path,
+    config_daml: &str,
+    layout_snapshot: &str,
+) -> Result<(), String> {
+    fs::create_dir_all(case_dir).map_err(|e| e.to_string())?;
+    let package_name = package_path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or("package path has no file name")?;
+    fs::copy(package_path, case_dir.join(package_name))
+        .map_err(|e| format!("copy package: {e}"))?;
+    fs::write(case_dir.join("Config.daml"), config_daml).map_err(|e| e.to_string())?;
+    fs::write(case_dir.join("layout.json"), layout_snapshot).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+// 执行 pro-ui-check.ps1;用 output() 捕获 stdout/stderr,失败时报错可见
+pub fn run_pro_check(case_dir: &Path, wait_seconds: u32) -> Result<serde_json::Value, String> {
+    let output = Command::new("powershell.exe")
+        .args([
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            &pro_check_script().to_string_lossy(),
+            "-CaseDir",
+            &case_dir.to_string_lossy(),
+            "-WaitSeconds",
+            &wait_seconds.to_string(),
+        ])
+        .output()
+        .map_err(|e| format!("failed to launch pro-ui-check: {e}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "pro-ui-check failed with status {}: {}{}",
+            output.status,
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+    let report_path = case_dir.join("pro-ui-check.json");
+    let report = fs::read_to_string(&report_path)
+        .map_err(|e| format!("read {}: {e}", report_path.display()))?;
+    // PS5.1 写出的 UTF-8 可能带 BOM,serde_json 不接受,防御性剥掉
+    let report = report.trim_start_matches('\u{feff}');
+    serde_json::from_str(report).map_err(|e| format!("parse pro-ui-check.json: {e}"))
+}
+
+#[tauri::command]
+fn validate_layout(payload: ValidationPayload) -> Result<ValidationOutcome, String> {
+    run_validate_layout(payload)
+}
+
+// 一键验算:打包 → 组 CaseDir → pro-ui-check(安装、启动/复用 Pro、截图)→ 截图转 dataURL 回传
+pub fn run_validate_layout(payload: ValidationPayload) -> Result<ValidationOutcome, String> {
+    let layout_snapshot = payload.export.layout_snapshot.clone();
+    let package_path = run_export_addin(payload.export)?;
+
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|e| e.to_string())?
+        .as_secs();
+    let case_dir = validation_runs_root().join(format!("app-{secs}"));
+    assemble_case_dir(
+        &case_dir,
+        Path::new(&package_path),
+        &payload.config_daml,
+        &layout_snapshot,
+    )?;
+
+    let report = run_pro_check(&case_dir, payload.wait_seconds.unwrap_or(90))?;
+
+    let screenshot_path = case_dir.join("arcgis-pro-screen.png");
+    let bytes = fs::read(&screenshot_path)
+        .map_err(|e| format!("read screenshot {}: {e}", screenshot_path.display()))?;
+    let b64 = base64::engine::general_purpose::STANDARD.encode(bytes);
+
+    Ok(ValidationOutcome {
+        screenshot_data_url: format!("data:image/png;base64,{b64}"),
+        report_json: report,
+        case_dir: case_dir.to_string_lossy().to_string(),
+        package_path,
+    })
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -297,7 +409,8 @@ pub fn run() {
             get_icon_data_url,
             write_text_file,
             get_default_target_dir,
-            export_addin
+            export_addin,
+            validate_layout
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

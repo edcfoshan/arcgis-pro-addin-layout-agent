@@ -149,6 +149,7 @@ public static class ProWin32 {
 '
 $foregroundOk = $false
 $foregroundDeadline = (Get-Date).AddSeconds(10)
+$fgShell = New-Object -ComObject WScript.Shell
 while ((Get-Date) -lt $foregroundDeadline) {
     $pro.Refresh()
     $handle = $pro.MainWindowHandle
@@ -159,6 +160,8 @@ while ((Get-Date) -lt $foregroundDeadline) {
         [void][ProWin32]::ShowWindowAsync($handle, 9)  # SW_RESTORE
         Start-Sleep -Milliseconds 600
     }
+    # Windows 前台锁:后台进程直接 SetForegroundWindow 会被拒,先模拟一次 Alt 输入解锁
+    try { $fgShell.SendKeys('%') } catch { }
     [void][ProWin32]::SetForegroundWindow($handle)
     Start-Sleep -Milliseconds 400
     if ([ProWin32]::GetForegroundWindow() -eq $handle) { $foregroundOk = $true; break }
@@ -197,11 +200,13 @@ try {
     $bitmap.Dispose()
 }
 
-[pscustomobject]@{
+$reportJson = [pscustomobject]@{
     screenshot = $screenshotPath
     capturedAt = (Get-Date).ToString('o')
     proPid = $pro.Id
     windowReady = $true
-} | ConvertTo-Json | Set-Content -Path (Join-Path $caseDirPath 'pro-ui-check.json') -Encoding UTF8
+} | ConvertTo-Json
+# 用 WriteAllText 写 UTF-8 无 BOM:PS5.1 的 Set-Content -Encoding UTF8 会带 BOM,下游 serde_json 解析会失败
+[System.IO.File]::WriteAllText((Join-Path $caseDirPath 'pro-ui-check.json'), $reportJson)
 
 Write-Host "ArcGIS Pro screenshot saved: $screenshotPath"
