@@ -25,6 +25,16 @@ fn build_script() -> PathBuf {
     PathBuf::from(REPO_ROOT).join("tools/build-arcgis-pro-validation.ps1")
 }
 
+fn default_target_dir() -> PathBuf {
+    validator_project_dir().join("bin/Debug/net8.0-windows7.0")
+}
+
+// 默认导出目录随 REPO_ROOT 编译期定位,避免写死机器路径;前端首启或发现旧机器路径时来取
+#[tauri::command]
+fn get_default_target_dir() -> Result<String, String> {
+    Ok(default_target_dir().to_string_lossy().to_string())
+}
+
 #[derive(Serialize)]
 struct IconEntry {
     file: String,
@@ -286,6 +296,7 @@ pub fn run() {
             search_icons,
             get_icon_data_url,
             write_text_file,
+            get_default_target_dir,
             export_addin
         ])
         .run(tauri::generate_context!())

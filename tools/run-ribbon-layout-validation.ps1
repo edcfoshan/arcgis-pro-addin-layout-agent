@@ -1,4 +1,4 @@
-param(
+﻿param(
     [int]$Cases = 10,
     [int]$Seed = 0,
     [string]$OutputRoot = (Join-Path $PSScriptRoot '..\validation-runs'),
@@ -61,7 +61,7 @@ foreach ($case in $manifest.cases) {
         Copy-Item -Path $package.FullName -Destination (Join-Path $caseDir $package.Name) -Force
 
         if ($RunProUiCheck) {
-            & $proCheckScript -CaseDir $caseDir -WaitSeconds 12 *> (Join-Path $caseDir 'pro-ui-check.log')
+            & $proCheckScript -CaseDir $caseDir -WaitSeconds 90 *> (Join-Path $caseDir 'pro-ui-check.log')
         }
     } catch {
         $status = 'failed'

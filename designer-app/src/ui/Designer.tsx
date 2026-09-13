@@ -60,8 +60,6 @@ import './designer.css';
 
 const STORAGE_KEY = 'gispro-ribbon-designer-doc';
 const TARGET_DIR_STORAGE_KEY = 'gispro-ribbon-designer-target-dir';
-const DEFAULT_TARGET_DIR =
-  '~/arcgis-pro-addin-layout-agent\\arcgis-pro-validation\\GisProRibbonLayoutValidator.AddIn\\bin\\Debug\\net8.0-windows7.0';
 
 type DragState =
   | {
@@ -143,7 +141,7 @@ export default function Designer() {
   const [iconPickerFor, setIconPickerFor] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [targetDir, setTargetDir] = useState(
-    () => localStorage.getItem(TARGET_DIR_STORAGE_KEY) || DEFAULT_TARGET_DIR,
+    () => localStorage.getItem(TARGET_DIR_STORAGE_KEY) || '',
   );
   const [targetDirDraft, setTargetDirDraft] = useState(targetDir);
   const [busy, setBusy] = useState('');
@@ -171,6 +169,18 @@ export default function Designer() {
   useEffect(() => {
     localStorage.setItem(TARGET_DIR_STORAGE_KEY, targetDir);
   }, [targetDir]);
+
+  // 首启无存量目录、或存量是旧机器路径时,向 Rust 要 REPO_ROOT 派生的默认导出目录
+  useEffect(() => {
+    const stored = localStorage.getItem(TARGET_DIR_STORAGE_KEY);
+    if (stored && !stored.startsWith('C:\\Users\\13975')) return;
+    invoke<string>('get_default_target_dir')
+      .then((dir) => {
+        setTargetDir(dir);
+        setTargetDirDraft(dir);
+      })
+      .catch(() => undefined);
+  }, []);
 
   const activeTab = document.tabs.find((tab) => tab.id === activeTabId) ?? document.tabs[0];
   const activeGroups = useMemo(

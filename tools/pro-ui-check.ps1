@@ -1,6 +1,6 @@
-param(
+﻿param(
     [string]$CaseDir,
-    [int]$WaitSeconds = 12,
+    [int]$WaitSeconds = 60,
     [switch]$SkipLaunch,
     [switch]$SkipInstallAddin,
     [switch]$SkipSelectTab,
@@ -21,10 +21,28 @@ $addinPackage = $addinCandidates | Select-Object -First 1
 
 $proCandidates = @(
     "$env:ProgramFiles\ArcGIS\Pro\bin\ArcGISPro.exe",
-    "${env:ProgramFiles(x86)}\ArcGIS\Pro\bin\ArcGISPro.exe"
+    "${env:ProgramFiles(x86)}\ArcGIS\Pro\bin\ArcGISPro.exe",
+    "$env:LOCALAPPDATA\Programs\ArcGIS\Pro\bin\ArcGISPro.exe"
 )
 
 $proExe = $proCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+function Get-ReadyProProcess {
+    Get-Process -Name 'ArcGISPro' -ErrorAction SilentlyContinue |
+        Where-Object { $_.MainWindowHandle -ne [IntPtr]::Zero -and $_.Responding } |
+        Select-Object -First 1
+}
+
+# 轮询等待 Pro 主窗口就绪,超时返回 $null;替代盲等,避免窗口没起来就把桌面截下来
+function Wait-ProMainWindowReady([int]$TimeoutSeconds) {
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    while ((Get-Date) -lt $deadline) {
+        $proc = Get-ReadyProProcess
+        if ($proc) { return $proc }
+        Start-Sleep -Milliseconds 500
+    }
+    return $null
+}
 
 function Get-AddInInstallDir {
     $docs = [Environment]::GetFolderPath('MyDocuments')
@@ -100,15 +118,54 @@ if (-not $SkipInstallAddin) {
     Write-Host "Add-in installed to: $installedTo"
 }
 
-if (-not $SkipLaunch) {
+$existing = Get-ReadyProProcess
+if ($existing) {
+    Write-Host "复用已运行的 ArcGIS Pro (PID $($existing.Id)),不再启动新实例。"
+} elseif (-not $SkipLaunch) {
     if (-not $proExe) {
         throw 'ArcGISPro.exe was not found.'
     }
-
     Start-Process -FilePath $proExe | Out-Null
 }
 
-Start-Sleep -Seconds $WaitSeconds
+$pro = Wait-ProMainWindowReady -TimeoutSeconds $WaitSeconds
+if (-not $pro) {
+    throw "ArcGIS Pro 主窗口在 ${WaitSeconds}s 内未就绪,已取消截图。"
+}
+Write-Host "ArcGIS Pro 主窗口就绪 (PID $($pro.Id))。"
+Start-Sleep -Seconds 3
+
+# 截图/切页签前把 Pro 拉到前台:还原最小化 + SetForegroundWindow,并验证前台句柄确实是 Pro
+# (AppActivate 对最小化窗口不可靠,曾经导致截屏拍到桌面造成假阳性)
+Add-Type '
+using System;
+using System.Runtime.InteropServices;
+public static class ProWin32 {
+    [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr hWnd);
+    [DllImport("user32.dll")] public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
+    [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+    [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+}
+'
+$foregroundOk = $false
+$foregroundDeadline = (Get-Date).AddSeconds(10)
+while ((Get-Date) -lt $foregroundDeadline) {
+    $pro.Refresh()
+    $handle = $pro.MainWindowHandle
+    if ($handle -eq [IntPtr]::Zero) {
+        throw 'ArcGIS Pro 主窗口句柄丢失,已取消截图。'
+    }
+    if ([ProWin32]::IsIconic($handle)) {
+        [void][ProWin32]::ShowWindowAsync($handle, 9)  # SW_RESTORE
+        Start-Sleep -Milliseconds 600
+    }
+    [void][ProWin32]::SetForegroundWindow($handle)
+    Start-Sleep -Milliseconds 400
+    if ([ProWin32]::GetForegroundWindow() -eq $handle) { $foregroundOk = $true; break }
+}
+if (-not $foregroundOk) {
+    throw '无法把 ArcGIS Pro 置于前台,已取消截图(前台窗口不是 Pro,截屏会拍到桌面)。'
+}
 
 if (-not $SkipSelectTab) {
     $keyTip = Resolve-TabKeyTip -Explicit $TabKeyTip -ConfigDamlPath $configPath
@@ -143,6 +200,8 @@ try {
 [pscustomobject]@{
     screenshot = $screenshotPath
     capturedAt = (Get-Date).ToString('o')
+    proPid = $pro.Id
+    windowReady = $true
 } | ConvertTo-Json | Set-Content -Path (Join-Path $caseDirPath 'pro-ui-check.json') -Encoding UTF8
 
 Write-Host "ArcGIS Pro screenshot saved: $screenshotPath"
