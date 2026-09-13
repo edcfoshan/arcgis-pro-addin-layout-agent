@@ -35,6 +35,8 @@ interface GeneratedLeafControl {
   caption: string;
   tooltip: string;
   keytip: string;
+  smallImage?: string;
+  largeImage?: string;
   className: string;
   suggestedClassName: string;
   target: string;
@@ -50,6 +52,8 @@ interface GeneratedMenu {
   caption: string;
   tooltip: string;
   keytip: string;
+  smallImage?: string;
+  largeImage?: string;
   size: RibbonControlSize;
   childIds: string[];
 }
@@ -229,6 +233,8 @@ const createLeafControl = (
     target: control.behavior.target,
     aiNotes: control.aiNotes,
     size: control.size,
+    smallImage: control.icon?.small?.endsWith('.png') ? control.icon.small : undefined,
+    largeImage: control.icon?.large?.endsWith('.png') ? control.icon.large : undefined,
     comboItems: type === 'comboBox' ? buildComboItems(control) : undefined,
     editHint: type === 'editBox' ? control.caption || control.tooltip || '输入内容' : undefined,
     galleryItems: type === 'gallery' ? buildGalleryItems(control) : undefined,
@@ -317,6 +323,8 @@ const buildArtifactsModel = (document: RibbonDocument, options: Required<ArcGISP
           tooltip: buildTooltipText(control),
           keytip: `M${order}`,
           size: control.size,
+          smallImage: control.icon?.small?.endsWith('.png') ? control.icon.small : undefined,
+          largeImage: control.icon?.large?.endsWith('.png') ? control.icon.large : undefined,
           childIds,
         });
         leafByControlId.set(control.id, { kind: 'menu', refId: menuId, size: control.size });
@@ -416,8 +424,14 @@ const renderTooltip = (caption: string, tooltip: string) => {
   return `<tooltip heading="${xmlEscape(caption)}">${xmlEscape(normalized)}</tooltip>`;
 };
 
+// 图标属性:模型层已保证只有 .png 完整文件名会进来(随机生成器的逻辑名如 tool16 被守卫跳过)
+const iconAttrs = (control: { smallImage?: string; largeImage?: string }) =>
+  (control.smallImage ? ` smallImage="Images\\${xmlEscape(control.smallImage)}"` : '') +
+  (control.largeImage ? ` largeImage="Images\\${xmlEscape(control.largeImage)}"` : '');
+
 const renderLeafControl = (control: GeneratedLeafControl) => {
   const tooltip = renderTooltip(control.caption, control.tooltip);
+  const icons = iconAttrs(control);
   const className = xmlEscape(control.className);
   const caption = xmlEscape(control.caption);
   const keytip = xmlEscape(control.keytip);
@@ -425,7 +439,7 @@ const renderLeafControl = (control: GeneratedLeafControl) => {
     case 'button':
     case 'tool':
       return [
-        `<${control.type} id="${control.id}" caption="${caption}" className="${className}" loadOnClick="true" keytip="${keytip}">`,
+        `<${control.type} id="${control.id}" caption="${caption}" className="${className}" loadOnClick="true" keytip="${keytip}"${icons}>`,
         tooltip ? indent(1, tooltip) : '',
         `</${control.type}>`,
       ]
@@ -433,7 +447,7 @@ const renderLeafControl = (control: GeneratedLeafControl) => {
         .join('\n');
     case 'comboBox':
       return [
-        `<comboBox id="${control.id}" caption="${caption}" className="${className}" keytip="${keytip}" isEditable="false" isReadOnly="true" sizeString="${xmlEscape(control.caption)}">`,
+        `<comboBox id="${control.id}" caption="${caption}" className="${className}" keytip="${keytip}"${icons} isEditable="false" isReadOnly="true" sizeString="${xmlEscape(control.caption)}">`,
         tooltip ? indent(1, tooltip) : '',
         `</comboBox>`,
       ]
@@ -441,7 +455,7 @@ const renderLeafControl = (control: GeneratedLeafControl) => {
         .join('\n');
     case 'editBox':
       return [
-        `<editBox id="${control.id}" caption="${caption}" className="${className}" keytip="${keytip}" sizeString="${xmlEscape(control.editHint || control.caption)}" editHint="${xmlEscape(control.editHint || control.caption)}">`,
+        `<editBox id="${control.id}" caption="${caption}" className="${className}" keytip="${keytip}"${icons} sizeString="${xmlEscape(control.editHint || control.caption)}" editHint="${xmlEscape(control.editHint || control.caption)}">`,
         tooltip ? indent(1, tooltip) : '',
         `</editBox>`,
       ]
@@ -449,7 +463,7 @@ const renderLeafControl = (control: GeneratedLeafControl) => {
         .join('\n');
     case 'checkBox':
       return [
-        `<checkBox id="${control.id}" caption="${caption}" className="${className}" keytip="${keytip}">`,
+        `<checkBox id="${control.id}" caption="${caption}" className="${className}" keytip="${keytip}"${icons}>`,
         tooltip ? indent(1, tooltip) : '',
         `</checkBox>`,
       ]
@@ -457,7 +471,7 @@ const renderLeafControl = (control: GeneratedLeafControl) => {
         .join('\n');
     case 'gallery':
       return [
-        `<gallery id="${control.id}" caption="${caption}" className="${className}" itemsInRow="3" showItemCaption="true" itemWidth="96">`,
+        `<gallery id="${control.id}" caption="${caption}" className="${className}"${icons} itemsInRow="3" showItemCaption="true" itemWidth="96">`,
         tooltip ? indent(1, tooltip) : '',
         `</gallery>`,
       ]
@@ -544,7 +558,7 @@ const renderConfigDaml = (
   const menus = model.menus
     .map((menu) =>
       [
-        `<menu id="${menu.id}" caption="${xmlEscape(menu.caption)}" keytip="${xmlEscape(menu.keytip)}">`,
+        `<menu id="${menu.id}" caption="${xmlEscape(menu.caption)}" keytip="${xmlEscape(menu.keytip)}"${iconAttrs(menu)}>`,
         ...menu.childIds.map((childId) => indent(1, `<button refID="${childId}" />`)),
         `</menu>`,
       ].join('\n'),

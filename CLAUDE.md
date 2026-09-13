@@ -54,6 +54,9 @@ RibbonDocument (JSON)
       → tools/build-arcgis-pro-validation.ps1
           → tools/sync-arcgis-pro-validation.ps1 (node --experimental-strip-types 跑 generate-*.mts,重新生成 DAML/g.cs)
           → dotnet build (优先;VS BuildTools 的 MSBuild.exe 缺 .NET SDK 不可用,仅作后备)
+          注意:Esri SDK 的打包目标(CodeTaskFactory)在 dotnet Core MSBuild 下不可用且被
+          csproj 排除,dotnet 只编译 DLL;build 脚本里的 Stage-AddInArchive 自行铺
+          temp_archive(Config.daml + Install/{dll,deps.json,pdb,Layout})并 Compress-Archive 出 bin 包
       → 暂存 obj/Debug/net8.0-windows7.0/temp_archive (Config.daml + Install/)
       → zip 打包成 .esriAddInX,选中图标注入 Images/
   → tools/pro-ui-check.ps1:解压安装到 Pro → 启动 Pro → KeyTip 切到目标 Tab → 全屏截图

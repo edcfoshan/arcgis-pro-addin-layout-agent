@@ -10,3 +10,4 @@ tools/icon-extract/obj/
 
 # 正式版设计器 exe(从 target/release 复制,见 CLAUDE.md 常用命令)
 /designer-app.exe
+/00测试包/
