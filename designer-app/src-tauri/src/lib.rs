@@ -88,6 +88,7 @@ fn list_icons() -> Result<Vec<IconEntry>, String> {
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")] // Tauri 只对入参做 camelCase 转换,返回值需手动 rename 才能匹配前端 hit.dataUrl
 struct IconResult {
     file: String,
     data_url: String,
@@ -304,6 +305,7 @@ pub struct ValidationPayload {
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")] // 同 IconResult:返回值字段名需手动转 camelCase 匹配前端
 pub struct ValidationOutcome {
     pub screenshot_data_url: String,
     pub report_json: serde_json::Value,
