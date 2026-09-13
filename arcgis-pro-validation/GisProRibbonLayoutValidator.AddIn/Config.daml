@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ArcGIS defaultAssembly="GisProRibbonLayoutValidator.AddIn.dll" defaultNamespace="GisProRibbonLayoutValidator.AddIn" xmlns="http://schemas.esri.com/DADF/Registry" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <AddInInfo id="{30f08b52-ab5a-4d7a-8150-079f538536a4}" version="1.151.1001" desktopVersion="3.5.0">
+  <AddInInfo id="{30f08b52-ab5a-4d7a-8150-079f538536a4}" version="1.0.0" desktopVersion="3.5.0">
     <Name>随机 Ribbon 验证 01</Name>
     <Description>Generated from the Ribbon designer to validate ArcGIS Pro 3.5 ribbon layout.</Description>
     <Author>Codex</Author>

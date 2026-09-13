@@ -1,3 +1,10 @@
 validation-runs/
 arcgis-pro-validation/**/bin/
 arcgis-pro-validation/**/obj/
+
+# Tauri designer / tooling artifacts
+designer-app/src-tauri/target/
+tools/icon-cache/
+tools/icon-extract/bin/
+tools/icon-extract/obj/
+.playwright-mcp/
