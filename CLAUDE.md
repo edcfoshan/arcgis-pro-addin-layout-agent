@@ -101,6 +101,16 @@ RibbonDocument (JSON)
 
 给打包链手写 layout JSON 的硬契约:每控件必填 `tooltip`(字符串)、`aiNotes`(字符串)、`behavior{className,target,arguments:{}}`;`metadata.lastUpdated` 必须是可 `Date.parse` 的 ISO 串;group 的 `subgroupIds` 必须含其全部控件的 `subgroupId`;生成器不校验网格容量/重叠,合法性自己保证(参考 `tools/generate-all-controls-demo.mts` 的装箱写法)。
 
+## UI 设计系统(2026-09-15 重写后)
+
+designer.css 已全量 token 化(`:root` 约 40 个语义 token:背景 5 层级/边框 4 档/文字 4 级/主色蓝系/危险系/间距 4px 栅格/圆角/动效/阴影 3 档/z-index),基准是**还原 ArcGIS Pro 本体观感(浅色 Fluent 风)**。铁律:
+
+- **`:root` 之外不允许出现裸 hex/rgb**,改 UI 一律引用 token;要新颜色先加 token
+- 全局 2px 圆角、按钮高 26px、文字 12px 基准/11px 次要;激活语言只有两种:侧栏条目=左 2px 竖条+白底,按钮/控件=浅蓝填充+accent 边框
+- 控件 mock 的 Pro 还原度规则写在 CSS 07 节注释里(复选框画布白底未勾选/库内演示蓝勾、splitButton/menu 箭头贴右下 8px、兜底图标统一单色深灰蓝、控件面不透明浅渐变)
+- `--cell` 恒为 32px,与 `core/ribbonLayout.ts` 的 `RIBBON_CELL` 及 inline px 定位算式联动,不可改
+- UI 自检套路:`npm run dev` 后前端可在**普通浏览器**直接渲染(Tauri invoke 会失败但布局/样式全真),用 Playwright 开 localhost:1420 + `evaluate` 读计算样式/布局指标做机械验收
+
 ## 图标系统
 
 - 图标源:Pro 的功能区图标内嵌在 `ArcGIS.Desktop.Resources.dll`(约 2.1 万张 PNG),由 `tools/icon-extract`(可用的 .NET 8 小工具,用 ResourceReader 枚举 `.g.resources`)提取到 `tools/icon-cache/`(已 vendored,见上)
