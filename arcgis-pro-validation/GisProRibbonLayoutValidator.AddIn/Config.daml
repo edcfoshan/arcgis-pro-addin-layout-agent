@@ -1,306 +1,44 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ArcGIS defaultAssembly="GisProRibbonLayoutValidator.AddIn.dll" defaultNamespace="GisProRibbonLayoutValidator.AddIn" xmlns="http://schemas.esri.com/DADF/Registry" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <AddInInfo id="{49502f5e-9210-4fe6-ae49-5463bba32988}" version="1.0.1" desktopVersion="3.5.0">
-    <Name>全控件演示</Name>
+  <AddInInfo id="{0ecfe623-6dbc-44b7-a60a-391a14d1a8dd}" version="1.20710.29554" desktopVersion="3.5.0">
+    <Name>空白 Ribbon</Name>
     <Description>Generated from the Ribbon designer to validate ArcGIS Pro 3.5 ribbon layout.</Description>
     <Author>Codex</Author>
     <Company>OpenAI</Company>
-    <Date>2026-09-13</Date>
+    <Date>2026-09-14</Date>
     <Subject>Ribbon layout validation</Subject>
   </AddInInfo>
   <modules>
-    <insertModule id="GisProRibbonLayoutValidator_AddIn_Module" className="AddInModule" autoLoad="false" caption="全控件演示">
+    <insertModule id="GisProRibbonLayoutValidator_AddIn_Module" className="AddInModule" autoLoad="false" caption="空白 Ribbon">
       <tabs>
-        <tab id="GisProRibbonLayoutValidator_AddIn_tab_all_controls_demo" caption="全控件演示" keytip="Z">
-          <group refID="GisProRibbonLayoutValidator_AddIn_group_demo_01" />
-          <group refID="GisProRibbonLayoutValidator_AddIn_group_demo_02" />
-          <group refID="GisProRibbonLayoutValidator_AddIn_group_demo_03" />
+        <tab id="GisProRibbonLayoutValidator_AddIn_tab_24235e9e" caption="自定义工具箱" keytip="A">
+          <group refID="GisProRibbonLayoutValidator_AddIn_group_480d244b" />
+        </tab>
+        <tab id="GisProRibbonLayoutValidator_AddIn_tab_2881f3a1" caption="新页签 2" keytip="T2">
         </tab>
       </tabs>
       <groups>
-        <group id="GisProRibbonLayoutValidator_AddIn_group_demo_01" caption="命令按钮类" keytip="G1">
-          <button refID="GisProRibbonLayoutValidator_AddIn_button_demo_001" size="large" />
-          <tool refID="GisProRibbonLayoutValidator_AddIn_tool_demo_002" size="large" />
-          <menu refID="GisProRibbonLayoutValidator_AddIn_menu_demo_003_menu" size="large" />
-          <splitButton refID="GisProRibbonLayoutValidator_AddIn_splitButton_demo_004_split" size="large" />
-          <button refID="GisProRibbonLayoutValidator_AddIn_button_demo_005" size="middle" />
-          <button refID="GisProRibbonLayoutValidator_AddIn_button_demo_009" size="small" />
-          <tool refID="GisProRibbonLayoutValidator_AddIn_tool_demo_006" size="middle" />
-          <tool refID="GisProRibbonLayoutValidator_AddIn_tool_demo_010" size="small" />
-          <menu refID="GisProRibbonLayoutValidator_AddIn_menu_demo_007_menu" size="middle" />
-          <splitButton refID="GisProRibbonLayoutValidator_AddIn_splitButton_demo_008_split" size="middle" />
-          <menu refID="GisProRibbonLayoutValidator_AddIn_menu_demo_011_menu" size="small" />
-        </group>
-        <group id="GisProRibbonLayoutValidator_AddIn_group_demo_02" caption="面板与画廊" keytip="G2">
-          <toolPalette refID="GisProRibbonLayoutValidator_AddIn_toolPalette_demo_012_palette" size="large" />
-          <gallery refID="GisProRibbonLayoutValidator_AddIn_gallery_demo_013" size="large" />
-          <toolPalette refID="GisProRibbonLayoutValidator_AddIn_toolPalette_demo_014_palette" size="middle" />
-          <gallery refID="GisProRibbonLayoutValidator_AddIn_gallery_demo_015" size="middle" />
-        </group>
-        <group id="GisProRibbonLayoutValidator_AddIn_group_demo_03" caption="输入与选择" keytip="G3">
-          <comboBox refID="GisProRibbonLayoutValidator_AddIn_comboBox_demo_016" size="large" />
-          <editBox refID="GisProRibbonLayoutValidator_AddIn_editBox_demo_017" size="large" />
-          <comboBox refID="GisProRibbonLayoutValidator_AddIn_comboBox_demo_018" size="middle" />
-          <editBox refID="GisProRibbonLayoutValidator_AddIn_editBox_demo_019" size="middle" />
-          <checkBox refID="GisProRibbonLayoutValidator_AddIn_checkBox_demo_020" size="middle" />
-          <checkBox refID="GisProRibbonLayoutValidator_AddIn_checkBox_demo_021" size="small" />
+        <group id="GisProRibbonLayoutValidator_AddIn_group_480d244b" caption="新分组 1" keytip="G1">
+          <tool refID="GisProRibbonLayoutValidator_AddIn_tool_7f407240" size="middle" />
+          <gallery refID="GisProRibbonLayoutValidator_AddIn_gallery_942761dd" size="middle" />
         </group>
       </groups>
       <controls>
-        <button id="GisProRibbonLayoutValidator_AddIn_button_demo_001" caption="按钮·大" className="Generated.ExportCommandPlaceholderbutton_demo_001" loadOnClick="true" keytip="C1" smallImage="Images\images_addarea16.png" largeImage="Images\images_addarea32.png">
-          <tooltip heading="按钮·大">演示控件:按钮·大(类型 button,尺寸 large)
-          全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。
-          Suggested handler: ExportCommand
-          Target: currentView</tooltip>
-        </button>
-        <tool id="GisProRibbonLayoutValidator_AddIn_tool_demo_002" caption="交互工具·大" className="Generated.SelectToolPlaceholdertool_demo_002" loadOnClick="true" keytip="C2" smallImage="Images\images_addfilter16.png" largeImage="Images\images_addfilter32.png">
-          <tooltip heading="交互工具·大">演示控件:交互工具·大(类型 tool,尺寸 large)
-          全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。
+        <tool id="GisProRibbonLayoutValidator_AddIn_tool_7f407240" caption="交互工具" className="Generated.SelectToolPlaceholdertool_7f407240" loadOnClick="true" keytip="C1">
+          <tooltip heading="交互工具">激活地图交互工具
+          进入地图交互模式的工具。
           Suggested handler: SelectTool
           Target: map</tooltip>
         </tool>
-        <button id="GisProRibbonLayoutValidator_AddIn_menu_demo_003_menu_item_1" caption="菜单·大第一项" className="Generated.OptionsMenuPlaceholdermenu_demo_003_menu_item_1" loadOnClick="true" keytip="C3" smallImage="Images\images_addin16.png" largeImage="Images\images_addin32.png">
-          <tooltip heading="菜单·大第一项">演示控件:菜单·大(类型 menu,尺寸 large) 1
-          全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。
-          Suggested handler: OptionsMenu
-          Target: menu</tooltip>
-        </button>
-        <button id="GisProRibbonLayoutValidator_AddIn_menu_demo_003_menu_item_2" caption="菜单·大第二项" className="Generated.OptionsMenuPlaceholdermenu_demo_003_menu_item_2" loadOnClick="true" keytip="C4" smallImage="Images\images_addin16.png" largeImage="Images\images_addin32.png">
-          <tooltip heading="菜单·大第二项">演示控件:菜单·大(类型 menu,尺寸 large) 2
-          全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。
-          Suggested handler: OptionsMenu
-          Target: menu</tooltip>
-        </button>
-        <button id="GisProRibbonLayoutValidator_AddIn_menu_demo_003_menu_item_3" caption="菜单·大第三项" className="Generated.OptionsMenuPlaceholdermenu_demo_003_menu_item_3" loadOnClick="true" keytip="C5" smallImage="Images\images_addin16.png" largeImage="Images\images_addin32.png">
-          <tooltip heading="菜单·大第三项">演示控件:菜单·大(类型 menu,尺寸 large) 3
-          全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。
-          Suggested handler: OptionsMenu
-          Target: menu</tooltip>
-        </button>
-        <button id="GisProRibbonLayoutValidator_AddIn_splitButton_demo_004_primary" caption="分裂按钮·大" className="Generated.AddLayerSplitButtonPlaceholdersplitButton_demo_004_primary" loadOnClick="true" keytip="C6" smallImage="Images\images_addlist16.png" largeImage="Images\images_addlist32.png">
-          <tooltip heading="分裂按钮·大">演示控件:分裂按钮·大(类型 splitButton,尺寸 large)
-          全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。
-          Suggested handler: AddLayerSplitButton
-          Target: menu</tooltip>
-        </button>
-        <button id="GisProRibbonLayoutValidator_AddIn_splitButton_demo_004_split_item_1" caption="分裂按钮·大主选项" className="Generated.AddLayerSplitButtonPlaceholdersplitButton_demo_004_split_item_1" loadOnClick="true" keytip="C7" smallImage="Images\images_addlist16.png" largeImage="Images\images_addlist32.png">
-          <tooltip heading="分裂按钮·大主选项">演示控件:分裂按钮·大(类型 splitButton,尺寸 large) 1
-          全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。
-          Suggested handler: AddLayerSplitButton
-          Target: menu</tooltip>
-        </button>
-        <button id="GisProRibbonLayoutValidator_AddIn_splitButton_demo_004_split_item_2" caption="分裂按钮·大备选项" className="Generated.AddLayerSplitButtonPlaceholdersplitButton_demo_004_split_item_2" loadOnClick="true" keytip="C8" smallImage="Images\images_addlist16.png" largeImage="Images\images_addlist32.png">
-          <tooltip heading="分裂按钮·大备选项">演示控件:分裂按钮·大(类型 splitButton,尺寸 large) 2
-          全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。
-          Suggested handler: AddLayerSplitButton
-          Target: menu</tooltip>
-        </button>
-        <button id="GisProRibbonLayoutValidator_AddIn_button_demo_005" caption="按钮·中" className="Generated.ExportCommandPlaceholderbutton_demo_005" loadOnClick="true" keytip="C9" smallImage="Images\images_addline16.png" largeImage="Images\images_addline32.png">
-          <tooltip heading="按钮·中">演示控件:按钮·中(类型 button,尺寸 middle)
-          全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。
-          Suggested handler: ExportCommand
-          Target: currentView</tooltip>
-        </button>
-        <tool id="GisProRibbonLayoutValidator_AddIn_tool_demo_006" caption="交互工具·中" className="Generated.SelectToolPlaceholdertool_demo_006" loadOnClick="true" keytip="C10" smallImage="Images\images_addquery16.png" largeImage="Images\images_addquery32.png">
-          <tooltip heading="交互工具·中">演示控件:交互工具·中(类型 tool,尺寸 middle)
-          全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。
-          Suggested handler: SelectTool
-          Target: map</tooltip>
-        </tool>
-        <button id="GisProRibbonLayoutValidator_AddIn_menu_demo_007_menu_item_1" caption="菜单·中第一项" className="Generated.OptionsMenuPlaceholdermenu_demo_007_menu_item_1" loadOnClick="true" keytip="C11" smallImage="Images\images_addnotebook16.png" largeImage="Images\images_addnotebook32.png">
-          <tooltip heading="菜单·中第一项">演示控件:菜单·中(类型 menu,尺寸 middle) 1
-          全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。
-          Suggested handler: OptionsMenu
-          Target: menu</tooltip>
-        </button>
-        <button id="GisProRibbonLayoutValidator_AddIn_menu_demo_007_menu_item_2" caption="菜单·中第二项" className="Generated.OptionsMenuPlaceholdermenu_demo_007_menu_item_2" loadOnClick="true" keytip="C12" smallImage="Images\images_addnotebook16.png" largeImage="Images\images_addnotebook32.png">
-          <tooltip heading="菜单·中第二项">演示控件:菜单·中(类型 menu,尺寸 middle) 2
-          全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。
-          Suggested handler: OptionsMenu
-          Target: menu</tooltip>
-        </button>
-        <button id="GisProRibbonLayoutValidator_AddIn_menu_demo_007_menu_item_3" caption="菜单·中第三项" className="Generated.OptionsMenuPlaceholdermenu_demo_007_menu_item_3" loadOnClick="true" keytip="C13" smallImage="Images\images_addnotebook16.png" largeImage="Images\images_addnotebook32.png">
-          <tooltip heading="菜单·中第三项">演示控件:菜单·中(类型 menu,尺寸 middle) 3
-          全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。
-          Suggested handler: OptionsMenu
-          Target: menu</tooltip>
-        </button>
-        <button id="GisProRibbonLayoutValidator_AddIn_splitButton_demo_008_primary" caption="分裂按钮·中" className="Generated.AddLayerSplitButtonPlaceholdersplitButton_demo_008_primary" loadOnClick="true" keytip="C14" smallImage="Images\images_addsearch16.png" largeImage="Images\images_addsearch32.png">
-          <tooltip heading="分裂按钮·中">演示控件:分裂按钮·中(类型 splitButton,尺寸 middle)
-          全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。
-          Suggested handler: AddLayerSplitButton
-          Target: menu</tooltip>
-        </button>
-        <button id="GisProRibbonLayoutValidator_AddIn_splitButton_demo_008_split_item_1" caption="分裂按钮·中主选项" className="Generated.AddLayerSplitButtonPlaceholdersplitButton_demo_008_split_item_1" loadOnClick="true" keytip="C15" smallImage="Images\images_addsearch16.png" largeImage="Images\images_addsearch32.png">
-          <tooltip heading="分裂按钮·中主选项">演示控件:分裂按钮·中(类型 splitButton,尺寸 middle) 1
-          全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。
-          Suggested handler: AddLayerSplitButton
-          Target: menu</tooltip>
-        </button>
-        <button id="GisProRibbonLayoutValidator_AddIn_splitButton_demo_008_split_item_2" caption="分裂按钮·中备选项" className="Generated.AddLayerSplitButtonPlaceholdersplitButton_demo_008_split_item_2" loadOnClick="true" keytip="C16" smallImage="Images\images_addsearch16.png" largeImage="Images\images_addsearch32.png">
-          <tooltip heading="分裂按钮·中备选项">演示控件:分裂按钮·中(类型 splitButton,尺寸 middle) 2
-          全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。
-          Suggested handler: AddLayerSplitButton
-          Target: menu</tooltip>
-        </button>
-        <button id="GisProRibbonLayoutValidator_AddIn_button_demo_009" caption="按钮·小" className="Generated.ExportCommandPlaceholderbutton_demo_009" loadOnClick="true" keytip="C17" smallImage="Images\images_addpoint16.png" largeImage="Images\images_addpoint32.png">
-          <tooltip heading="按钮·小">演示控件:按钮·小(类型 button,尺寸 small)
-          全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。
-          Suggested handler: ExportCommand
-          Target: currentView</tooltip>
-        </button>
-        <tool id="GisProRibbonLayoutValidator_AddIn_tool_demo_010" caption="交互工具·小" className="Generated.SelectToolPlaceholdertool_demo_010" loadOnClick="true" keytip="C18" smallImage="Images\images_addraster16.png" largeImage="Images\images_addraster32.png">
-          <tooltip heading="交互工具·小">演示控件:交互工具·小(类型 tool,尺寸 small)
-          全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。
-          Suggested handler: SelectTool
-          Target: map</tooltip>
-        </tool>
-        <button id="GisProRibbonLayoutValidator_AddIn_menu_demo_011_menu_item_1" caption="菜单·小第一项" className="Generated.OptionsMenuPlaceholdermenu_demo_011_menu_item_1" loadOnClick="true" keytip="C19" smallImage="Images\images_addcamera16.png" largeImage="Images\images_addcamera32.png">
-          <tooltip heading="菜单·小第一项">演示控件:菜单·小(类型 menu,尺寸 small) 1
-          全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。
-          Suggested handler: OptionsMenu
-          Target: menu</tooltip>
-        </button>
-        <button id="GisProRibbonLayoutValidator_AddIn_menu_demo_011_menu_item_2" caption="菜单·小第二项" className="Generated.OptionsMenuPlaceholdermenu_demo_011_menu_item_2" loadOnClick="true" keytip="C20" smallImage="Images\images_addcamera16.png" largeImage="Images\images_addcamera32.png">
-          <tooltip heading="菜单·小第二项">演示控件:菜单·小(类型 menu,尺寸 small) 2
-          全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。
-          Suggested handler: OptionsMenu
-          Target: menu</tooltip>
-        </button>
-        <button id="GisProRibbonLayoutValidator_AddIn_menu_demo_011_menu_item_3" caption="菜单·小第三项" className="Generated.OptionsMenuPlaceholdermenu_demo_011_menu_item_3" loadOnClick="true" keytip="C21" smallImage="Images\images_addcamera16.png" largeImage="Images\images_addcamera32.png">
-          <tooltip heading="菜单·小第三项">演示控件:菜单·小(类型 menu,尺寸 small) 3
-          全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。
-          Suggested handler: OptionsMenu
-          Target: menu</tooltip>
-        </button>
-        <tool id="GisProRibbonLayoutValidator_AddIn_toolPalette_demo_012_palette_tool_1" caption="工具板·大浏览" className="Generated.DrawPalettePlaceholdertoolPalette_demo_012_palette_tool_1" loadOnClick="true" keytip="C22" smallImage="Images\images_addguides16.png" largeImage="Images\images_addguides32.png">
-          <tooltip heading="工具板·大浏览">演示控件:工具板·大(类型 toolPalette,尺寸 large) 1
-          全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。
-          Suggested handler: DrawPalette
-          Target: map</tooltip>
-        </tool>
-        <tool id="GisProRibbonLayoutValidator_AddIn_toolPalette_demo_012_palette_tool_2" caption="工具板·大拾取" className="Generated.DrawPalettePlaceholdertoolPalette_demo_012_palette_tool_2" loadOnClick="true" keytip="C23" smallImage="Images\images_addguides16.png" largeImage="Images\images_addguides32.png">
-          <tooltip heading="工具板·大拾取">演示控件:工具板·大(类型 toolPalette,尺寸 large) 2
-          全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。
-          Suggested handler: DrawPalette
-          Target: map</tooltip>
-        </tool>
-        <tool id="GisProRibbonLayoutValidator_AddIn_toolPalette_demo_012_palette_tool_3" caption="工具板·大绘制" className="Generated.DrawPalettePlaceholdertoolPalette_demo_012_palette_tool_3" loadOnClick="true" keytip="C24" smallImage="Images\images_addguides16.png" largeImage="Images\images_addguides32.png">
-          <tooltip heading="工具板·大绘制">演示控件:工具板·大(类型 toolPalette,尺寸 large) 3
-          全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。
-          Suggested handler: DrawPalette
-          Target: map</tooltip>
-        </tool>
-        <tool id="GisProRibbonLayoutValidator_AddIn_toolPalette_demo_014_palette_tool_1" caption="工具板·中浏览" className="Generated.DrawPalettePlaceholdertoolPalette_demo_014_palette_tool_1" loadOnClick="true" keytip="C26" smallImage="Images\images_addvoxel16.png" largeImage="Images\images_addvoxel32.png">
-          <tooltip heading="工具板·中浏览">演示控件:工具板·中(类型 toolPalette,尺寸 middle) 1
-          全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。
-          Suggested handler: DrawPalette
-          Target: map</tooltip>
-        </tool>
-        <tool id="GisProRibbonLayoutValidator_AddIn_toolPalette_demo_014_palette_tool_2" caption="工具板·中拾取" className="Generated.DrawPalettePlaceholdertoolPalette_demo_014_palette_tool_2" loadOnClick="true" keytip="C27" smallImage="Images\images_addvoxel16.png" largeImage="Images\images_addvoxel32.png">
-          <tooltip heading="工具板·中拾取">演示控件:工具板·中(类型 toolPalette,尺寸 middle) 2
-          全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。
-          Suggested handler: DrawPalette
-          Target: map</tooltip>
-        </tool>
-        <tool id="GisProRibbonLayoutValidator_AddIn_toolPalette_demo_014_palette_tool_3" caption="工具板·中绘制" className="Generated.DrawPalettePlaceholdertoolPalette_demo_014_palette_tool_3" loadOnClick="true" keytip="C28" smallImage="Images\images_addvoxel16.png" largeImage="Images\images_addvoxel32.png">
-          <tooltip heading="工具板·中绘制">演示控件:工具板·中(类型 toolPalette,尺寸 middle) 3
-          全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。
-          Suggested handler: DrawPalette
-          Target: map</tooltip>
-        </tool>
-        <comboBox id="GisProRibbonLayoutValidator_AddIn_comboBox_demo_016" caption="下拉框·大" className="Generated.AdminSelectorPlaceholdercomboBox_demo_016" keytip="C30" smallImage="Images\images_addallvalues16.png" largeImage="Images\images_addallvalues32.png" isEditable="false" isReadOnly="true" sizeString="下拉框·大">
-          <tooltip heading="下拉框·大">演示控件:下拉框·大(类型 comboBox,尺寸 large)
-          全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。
-          Suggested handler: AdminSelector
-          Target: selection</tooltip>
-        </comboBox>
-        <editBox id="GisProRibbonLayoutValidator_AddIn_editBox_demo_017" caption="输入框·大" className="Generated.PathEditorPlaceholdereditBox_demo_017" keytip="C31" smallImage="Images\images_addquerylayer16.png" largeImage="Images\images_addquerylayer32.png" sizeString="输入框·大" editHint="输入框·大">
-          <tooltip heading="输入框·大">演示控件:输入框·大(类型 editBox,尺寸 large)
-          全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。
-          Suggested handler: PathEditor
-          Target: form</tooltip>
-        </editBox>
-        <comboBox id="GisProRibbonLayoutValidator_AddIn_comboBox_demo_018" caption="下拉框·中" className="Generated.AdminSelectorPlaceholdercomboBox_demo_018" keytip="C32" smallImage="Images\images_addattachments16.png" largeImage="Images\images_addattachments32.png" isEditable="false" isReadOnly="true" sizeString="下拉框·中">
-          <tooltip heading="下拉框·中">演示控件:下拉框·中(类型 comboBox,尺寸 middle)
-          全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。
-          Suggested handler: AdminSelector
-          Target: selection</tooltip>
-        </comboBox>
-        <editBox id="GisProRibbonLayoutValidator_AddIn_editBox_demo_019" caption="输入框·中" className="Generated.PathEditorPlaceholdereditBox_demo_019" keytip="C33" smallImage="Images\images_addlayerfrompath16.png" largeImage="Images\images_addlayerfrompath32.png" sizeString="输入框·中" editHint="输入框·中">
-          <tooltip heading="输入框·中">演示控件:输入框·中(类型 editBox,尺寸 middle)
-          全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。
-          Suggested handler: PathEditor
-          Target: form</tooltip>
-        </editBox>
-        <checkBox id="GisProRibbonLayoutValidator_AddIn_checkBox_demo_020" caption="复选框·中" className="Generated.ToggleLabelPlaceholdercheckBox_demo_020" keytip="C34" smallImage="Images\images_addsimplelayer16.png" largeImage="Images\images_addsimplelayer32.png">
-          <tooltip heading="复选框·中">演示控件:复选框·中(类型 checkBox,尺寸 middle)
-          全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。
-          Suggested handler: ToggleLabel
-          Target: settings</tooltip>
-        </checkBox>
-        <checkBox id="GisProRibbonLayoutValidator_AddIn_checkBox_demo_021" caption="复选框·小" className="Generated.ToggleLabelPlaceholdercheckBox_demo_021" keytip="C35" smallImage="Images\images_addxyevent16.png" largeImage="Images\images_addxyevent32.png">
-          <tooltip heading="复选框·小">演示控件:复选框·小(类型 checkBox,尺寸 small)
-          全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。
-          Suggested handler: ToggleLabel
-          Target: settings</tooltip>
-        </checkBox>
       </controls>
       <galleries>
-        <gallery id="GisProRibbonLayoutValidator_AddIn_gallery_demo_013" caption="画廊·大" className="Generated.FillStyleGalleryPlaceholdergallery_demo_013" smallImage="Images\images_addcomments16.png" largeImage="Images\images_addcomments32.png" itemsInRow="3" showItemCaption="true" itemWidth="96">
-          <tooltip heading="画廊·大">演示控件:画廊·大(类型 gallery,尺寸 large)
-          全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。
-          Suggested handler: FillStyleGallery
-          Target: selection</tooltip>
-        </gallery>
-        <gallery id="GisProRibbonLayoutValidator_AddIn_gallery_demo_015" caption="画廊·中" className="Generated.FillStyleGalleryPlaceholdergallery_demo_015" smallImage="Images\images_addcontent16.png" largeImage="Images\images_addcontent32.png" itemsInRow="3" showItemCaption="true" itemWidth="96">
-          <tooltip heading="画廊·中">演示控件:画廊·中(类型 gallery,尺寸 middle)
-          全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。
+        <gallery id="GisProRibbonLayoutValidator_AddIn_gallery_942761dd" caption="画廊" className="Generated.FillStyleGalleryPlaceholdergallery_942761dd" itemsInRow="3" showItemCaption="true" itemWidth="96">
+          <tooltip heading="画廊">从图块中选择样式
+          用于样式、模板或符号的可视化选择。
           Suggested handler: FillStyleGallery
           Target: selection</tooltip>
         </gallery>
       </galleries>
-      <splitButtons>
-        <splitButton id="GisProRibbonLayoutValidator_AddIn_splitButton_demo_004_split">
-          <button refID="GisProRibbonLayoutValidator_AddIn_splitButton_demo_004_primary" />
-          <button refID="GisProRibbonLayoutValidator_AddIn_splitButton_demo_004_split_item_1" />
-          <button refID="GisProRibbonLayoutValidator_AddIn_splitButton_demo_004_split_item_2" />
-        </splitButton>
-        <splitButton id="GisProRibbonLayoutValidator_AddIn_splitButton_demo_008_split">
-          <button refID="GisProRibbonLayoutValidator_AddIn_splitButton_demo_008_primary" />
-          <button refID="GisProRibbonLayoutValidator_AddIn_splitButton_demo_008_split_item_1" />
-          <button refID="GisProRibbonLayoutValidator_AddIn_splitButton_demo_008_split_item_2" />
-        </splitButton>
-      </splitButtons>
-      <palettes>
-        <toolPalette id="GisProRibbonLayoutValidator_AddIn_toolPalette_demo_012_palette" caption="工具板·大" showItemCaption="true" itemWidth="96" itemHeight="64" itemsInRow="2">
-          <tool refID="GisProRibbonLayoutValidator_AddIn_toolPalette_demo_012_palette_tool_1" />
-          <tool refID="GisProRibbonLayoutValidator_AddIn_toolPalette_demo_012_palette_tool_2" />
-          <tool refID="GisProRibbonLayoutValidator_AddIn_toolPalette_demo_012_palette_tool_3" />
-        </toolPalette>
-        <toolPalette id="GisProRibbonLayoutValidator_AddIn_toolPalette_demo_014_palette" caption="工具板·中" showItemCaption="true" itemWidth="96" itemHeight="64" itemsInRow="2">
-          <tool refID="GisProRibbonLayoutValidator_AddIn_toolPalette_demo_014_palette_tool_1" />
-          <tool refID="GisProRibbonLayoutValidator_AddIn_toolPalette_demo_014_palette_tool_2" />
-          <tool refID="GisProRibbonLayoutValidator_AddIn_toolPalette_demo_014_palette_tool_3" />
-        </toolPalette>
-      </palettes>
-      <menus>
-        <menu id="GisProRibbonLayoutValidator_AddIn_menu_demo_003_menu" caption="菜单·大" keytip="M5" smallImage="Images\images_addin16.png" largeImage="Images\images_addin32.png">
-          <button refID="GisProRibbonLayoutValidator_AddIn_menu_demo_003_menu_item_1" />
-          <button refID="GisProRibbonLayoutValidator_AddIn_menu_demo_003_menu_item_2" />
-          <button refID="GisProRibbonLayoutValidator_AddIn_menu_demo_003_menu_item_3" />
-        </menu>
-        <menu id="GisProRibbonLayoutValidator_AddIn_menu_demo_007_menu" caption="菜单·中" keytip="M13" smallImage="Images\images_addnotebook16.png" largeImage="Images\images_addnotebook32.png">
-          <button refID="GisProRibbonLayoutValidator_AddIn_menu_demo_007_menu_item_1" />
-          <button refID="GisProRibbonLayoutValidator_AddIn_menu_demo_007_menu_item_2" />
-          <button refID="GisProRibbonLayoutValidator_AddIn_menu_demo_007_menu_item_3" />
-        </menu>
-        <menu id="GisProRibbonLayoutValidator_AddIn_menu_demo_011_menu" caption="菜单·小" keytip="M21" smallImage="Images\images_addcamera16.png" largeImage="Images\images_addcamera32.png">
-          <button refID="GisProRibbonLayoutValidator_AddIn_menu_demo_011_menu_item_1" />
-          <button refID="GisProRibbonLayoutValidator_AddIn_menu_demo_011_menu_item_2" />
-          <button refID="GisProRibbonLayoutValidator_AddIn_menu_demo_011_menu_item_3" />
-        </menu>
-      </menus>
     </insertModule>
   </modules>
 </ArcGIS>
