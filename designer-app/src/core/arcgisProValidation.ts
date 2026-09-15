@@ -1,4 +1,5 @@
 import type {
+  ControlChild,
   ControlType,
   RibbonControl,
   RibbonControlSize,
@@ -48,6 +49,12 @@ interface GeneratedLeafControl {
   largeImage?: string;
 }
 
+// 容器子项引用:tag 决定 DAML 容器体内 refID 行的标签
+interface GeneratedChildRef {
+  id: string;
+  tag: 'button' | 'tool' | 'menu' | 'splitButton' | 'toolPalette';
+}
+
 interface GeneratedMenu {
   id: string;
   caption: string;
@@ -56,14 +63,14 @@ interface GeneratedMenu {
   smallImage?: string;
   largeImage?: string;
   size: RibbonControlSize;
-  childIds: string[];
+  childRefs: GeneratedChildRef[];
 }
 
 interface GeneratedSplitButton {
   id: string;
   size: RibbonControlSize;
   primaryId: string;
-  childIds: string[];
+  childRefs: GeneratedChildRef[];
 }
 
 interface GeneratedToolPalette {
@@ -71,13 +78,15 @@ interface GeneratedToolPalette {
   caption: string;
   tooltip: string;
   size: RibbonControlSize;
-  childIds: string[];
+  menuStyle: boolean;
+  childRefs: GeneratedChildRef[];
 }
 
 interface GeneratedGroupItem {
   kind: 'button' | 'tool' | 'menu' | 'splitButton' | 'comboBox' | 'editBox' | 'checkBox' | 'gallery' | 'toolPalette';
   refId: string;
   size?: RibbonControlSize;
+  variant?: RibbonControl['variant'];
 }
 
 interface GeneratedGroup {
@@ -270,6 +279,86 @@ const buildArtifactsModel = (document: RibbonDocument, options: Required<ArcGISP
     return leaf;
   };
 
+  // 子项转控件形状(仅 leaf 注册所需字段;aiNotes 无子项级语义置空)
+  const childAsControl = (base: RibbonControl, child: ControlChild): RibbonControl => ({
+    ...base,
+    id: child.id,
+    type: child.type,
+    caption: child.caption,
+    tooltip: child.tooltip || child.caption,
+    icon: child.icon,
+    behavior: child.behavior,
+    children: undefined,
+  });
+
+  // 递归注册子项树:叶子注册为 leaf,容器子项再生为容器声明(任意嵌套深度)
+  const registerChildTree = (
+    base: RibbonControl,
+    child: ControlChild,
+    path: string,
+  ): GeneratedChildRef => {
+    const childControl = childAsControl(base, child);
+    if (
+      child.type === 'menu' ||
+      child.type === 'splitButton' ||
+      child.type === 'toolPalette'
+    ) {
+      const grandChildRefs = child.children?.length
+        ? child.children.map((grandChild, index) =>
+            registerChildTree(childControl, grandChild, `${path}_${index + 1}`),
+          )
+        : [];
+      if (child.type === 'menu') {
+        const menuId = createRefId(projectToken, `${path}_menu`);
+        menus.push({
+          id: menuId,
+          caption: child.caption || fallbackCaptionByType.menu,
+          tooltip: buildTooltipText(childControl),
+          keytip: `M${order}`,
+          size: childControl.size,
+          smallImage: child.icon.small?.endsWith('.png') ? child.icon.small : undefined,
+          largeImage: child.icon.large?.endsWith('.png') ? child.icon.large : undefined,
+          childRefs: grandChildRefs,
+        });
+        return { id: menuId, tag: 'menu' };
+      }
+      if (child.type === 'splitButton') {
+        const splitId = createRefId(projectToken, `${path}_split`);
+        const primaryRef = grandChildRefs.find((ref) => ref.tag === 'button');
+        const primaryId =
+          primaryRef?.id ??
+          registerLeaf(
+            {
+              ...childControl,
+              id: `${path}_primary`,
+              type: 'button',
+              caption: child.caption || fallbackCaptionByType.splitButton,
+            },
+            'button',
+          ).id;
+        splitButtons.push({
+          id: splitId,
+          size: childControl.size,
+          primaryId,
+          childRefs: grandChildRefs.filter((ref) => ref.id !== primaryId),
+        });
+        return { id: splitId, tag: 'splitButton' };
+      }
+      const paletteId = createRefId(projectToken, `${path}_palette`);
+      toolPalettes.push({
+        id: paletteId,
+        caption: child.caption || fallbackCaptionByType.toolPalette,
+        tooltip: buildTooltipText(childControl),
+        size: childControl.size,
+        menuStyle: false,
+        childRefs: grandChildRefs,
+      });
+      return { id: paletteId, tag: 'toolPalette' };
+    }
+    const leaf = registerLeaf(childControl, child.type === 'tool' ? 'tool' : 'button');
+    return { id: leaf.id, tag: child.type === 'tool' ? 'tool' : 'button' };
+  };
+
   document.controls.forEach((control) => {
     switch (control.type) {
       case 'button': {
@@ -304,21 +393,25 @@ const buildArtifactsModel = (document: RibbonDocument, options: Required<ArcGISP
       }
       case 'menu': {
         const menuId = createRefId(projectToken, `${control.id}_menu`);
-        const childIds = ['第一项', '第二项', '第三项'].map((caption, index) => {
-          const child = registerLeaf(
-            {
-              ...control,
-              id: `${control.id}_menu_item_${index + 1}`,
-              type: 'button',
-              caption: `${control.caption || fallbackCaptionByType.menu}${caption}`,
-              tooltip: `${control.tooltip || '菜单项'} ${index + 1}`,
-              aiNotes: control.aiNotes,
-              behavior: control.behavior,
-            },
-            'button',
-          );
-          return child.id;
-        });
+        const childRefs = control.children?.length
+          ? control.children.map((child, index) =>
+              registerChildTree(control, child, `${control.id}_c${index + 1}`),
+            )
+          : ['第一项', '第二项', '第三项'].map((caption, index) => {
+              const child = registerLeaf(
+                {
+                  ...control,
+                  id: `${control.id}_menu_item_${index + 1}`,
+                  type: 'button',
+                  caption: `${control.caption || fallbackCaptionByType.menu}${caption}`,
+                  tooltip: `${control.tooltip || '菜单项'} ${index + 1}`,
+                  aiNotes: control.aiNotes,
+                  behavior: control.behavior,
+                },
+                'button',
+              );
+              return { id: child.id, tag: 'button' as const };
+            });
         menus.push({
           id: menuId,
           caption: control.caption || fallbackCaptionByType.menu,
@@ -327,67 +420,100 @@ const buildArtifactsModel = (document: RibbonDocument, options: Required<ArcGISP
           size: control.size,
           smallImage: control.icon?.small?.endsWith('.png') ? control.icon.small : undefined,
           largeImage: control.icon?.large?.endsWith('.png') ? control.icon.large : undefined,
-          childIds,
+          childRefs,
         });
         leafByControlId.set(control.id, { kind: 'menu', refId: menuId, size: control.size });
         break;
       }
       case 'splitButton': {
         const splitId = createRefId(projectToken, `${control.id}_split`);
-        const primary = registerLeaf(
-          {
-            ...control,
-            id: `${control.id}_primary`,
-            type: 'button',
-            caption: control.caption || fallbackCaptionByType.splitButton,
-          },
-          'button',
-        );
-        const childIds = ['主选项', '备选项'].map((caption, index) => {
-          const child = registerLeaf(
+        let primaryId: string;
+        let childRefs: GeneratedChildRef[];
+        if (control.children?.length) {
+          childRefs = control.children.map((child, index) =>
+            registerChildTree(control, child, `${control.id}_c${index + 1}`),
+          );
+          const primaryRef = childRefs.find((ref) => ref.tag === 'button');
+          if (primaryRef) {
+            primaryId = primaryRef.id;
+            childRefs = childRefs.filter((ref) => ref.id !== primaryId);
+          } else {
+            primaryId = registerLeaf(
+              {
+                ...control,
+                id: `${control.id}_primary`,
+                type: 'button',
+                caption: control.caption || fallbackCaptionByType.splitButton,
+              },
+              'button',
+            ).id;
+          }
+        } else {
+          primaryId = registerLeaf(
             {
               ...control,
-              id: `${control.id}_split_item_${index + 1}`,
+              id: `${control.id}_primary`,
               type: 'button',
-              caption: `${control.caption || fallbackCaptionByType.splitButton}${caption}`,
-              tooltip: `${control.tooltip || '分裂按钮项'} ${index + 1}`,
+              caption: control.caption || fallbackCaptionByType.splitButton,
             },
             'button',
-          );
-          return child.id;
-        });
+          ).id;
+          childRefs = ['主选项', '备选项'].map((caption, index) => {
+            const child = registerLeaf(
+              {
+                ...control,
+                id: `${control.id}_split_item_${index + 1}`,
+                type: 'button',
+                caption: `${control.caption || fallbackCaptionByType.splitButton}${caption}`,
+                tooltip: `${control.tooltip || '分裂按钮项'} ${index + 1}`,
+              },
+              'button',
+            );
+            return { id: child.id, tag: 'button' as const };
+          });
+        }
         splitButtons.push({
           id: splitId,
           size: control.size,
-          primaryId: primary.id,
-          childIds,
+          primaryId,
+          childRefs,
         });
         leafByControlId.set(control.id, { kind: 'splitButton', refId: splitId, size: control.size });
         break;
       }
       case 'toolPalette': {
         const paletteId = createRefId(projectToken, `${control.id}_palette`);
-        const childIds = ['浏览', '拾取', '绘制'].map((caption, index) => {
-          const child = registerLeaf(
-            {
-              ...control,
-              id: `${control.id}_palette_tool_${index + 1}`,
-              type: 'tool',
-              caption: `${control.caption || fallbackCaptionByType.toolPalette}${caption}`,
-              tooltip: `${control.tooltip || '工具板子工具'} ${index + 1}`,
-            },
-            'tool',
-          );
-          return child.id;
-        });
+        const childRefs = control.children?.length
+          ? control.children.map((child, index) =>
+              registerChildTree(control, child, `${control.id}_c${index + 1}`),
+            )
+          : ['浏览', '拾取', '绘制'].map((caption, index) => {
+              const child = registerLeaf(
+                {
+                  ...control,
+                  id: `${control.id}_palette_tool_${index + 1}`,
+                  type: 'tool',
+                  caption: `${control.caption || fallbackCaptionByType.toolPalette}${caption}`,
+                  tooltip: `${control.tooltip || '工具板子工具'} ${index + 1}`,
+                },
+                'tool',
+              );
+              return { id: child.id, tag: 'tool' as const };
+            });
         toolPalettes.push({
           id: paletteId,
           caption: control.caption || fallbackCaptionByType.toolPalette,
           tooltip: buildTooltipText(control),
           size: control.size,
-          childIds,
+          menuStyle: control.variant === 'menuStyle',
+          childRefs,
         });
-        leafByControlId.set(control.id, { kind: 'toolPalette', refId: paletteId, size: control.size });
+        leafByControlId.set(control.id, {
+          kind: 'toolPalette',
+          refId: paletteId,
+          size: control.size,
+          variant: control.variant,
+        });
         break;
       }
       default:
@@ -503,7 +629,9 @@ const renderGroupItem = (item: GeneratedGroupItem) => {
     case 'gallery':
       return `<gallery refID="${item.refId}"${sizeAttr} />`;
     case 'toolPalette':
-      return `<toolPalette refID="${item.refId}"${sizeAttr} />`;
+      return item.variant === 'menuStyle'
+        ? `<buttonPalette refID="${item.refId}"${sizeAttr} />`
+        : `<toolPalette refID="${item.refId}"${sizeAttr} />`;
     default:
       return '';
   }
@@ -561,7 +689,7 @@ const renderConfigDaml = (
       [
         `<menu id="${menu.id}" caption="${xmlEscape(menu.caption)}" keytip="${xmlEscape(menu.keytip)}"${menu.smallImage ? ` smallImage="Images\\${xmlEscape(menu.smallImage)}"` : ''}${menu.largeImage ? ` largeImage="Images\\${xmlEscape(menu.largeImage)}"` : ''}>`,
         menu.tooltip ? indent(1, renderTooltip(menu.caption, menu.tooltip)) : '',
-        ...menu.childIds.map((childId) => indent(1, `<button refID="${childId}" />`)),
+        ...menu.childRefs.map((ref) => indent(1, `<${ref.tag} refID="${ref.id}" />`)),
         `</menu>`,
       ].join('\n'),
     )
@@ -572,7 +700,7 @@ const renderConfigDaml = (
       [
         `<splitButton id="${splitButton.id}">`,
         indent(1, `<button refID="${splitButton.primaryId}" />`),
-        ...splitButton.childIds.map((childId) => indent(1, `<button refID="${childId}" />`)),
+        ...splitButton.childRefs.map((ref) => indent(1, `<${ref.tag} refID="${ref.id}" />`)),
         `</splitButton>`,
       ].join('\n'),
     )
@@ -581,10 +709,12 @@ const renderConfigDaml = (
   const palettes = model.toolPalettes
     .map((palette) =>
       [
-        `<toolPalette id="${palette.id}" caption="${xmlEscape(palette.caption)}" showItemCaption="true" itemWidth="96" itemHeight="64" itemsInRow="2">`,
+        palette.menuStyle
+          ? `<buttonPalette id="${palette.id}" caption="${xmlEscape(palette.caption)}" dropDown="false" menuStyle="true">`
+          : `<toolPalette id="${palette.id}" caption="${xmlEscape(palette.caption)}" showItemCaption="true" itemWidth="96" itemHeight="64" itemsInRow="2">`,
         palette.tooltip ? indent(1, renderTooltip(palette.caption, palette.tooltip)) : '',
-        ...palette.childIds.map((childId) => indent(1, `<tool refID="${childId}" />`)),
-        `</toolPalette>`,
+        ...palette.childRefs.map((ref) => indent(1, `<${ref.tag} refID="${ref.id}" />`)),
+        palette.menuStyle ? `</buttonPalette>` : `</toolPalette>`,
       ].join('\n'),
     )
     .join('\n');

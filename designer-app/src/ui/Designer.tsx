@@ -30,6 +30,7 @@ import {
   type ArcGISProValidationArtifacts,
 } from '../core/arcgisProValidation';
 import type {
+  ControlChild,
   LibraryControlDefinition,
   RibbonControl,
   RibbonControlSize,
@@ -164,7 +165,10 @@ export default function Designer() {
     x: number;
     y: number;
   } | null>(null);
-  const [iconPickerFor, setIconPickerFor] = useState<string | null>(null);
+  const [iconPickerFor, setIconPickerFor] = useState<{
+    controlId: string;
+    childId?: string;
+  } | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [busy, setBusy] = useState('');
   const [lastExportDir, setLastExportDir] = useState(
@@ -725,14 +729,74 @@ export default function Designer() {
     }
   };
 
+  // 子项树内不可变更新/删除;mapChildTree 遍历任意嵌套深度
+  const mapChildTree = (
+    children: ControlChild[],
+    fn: (child: ControlChild) => ControlChild,
+  ): ControlChild[] =>
+    children.map((child) => {
+      const next = fn(child);
+      return next.children?.length ? { ...next, children: mapChildTree(next.children, fn) } : next;
+    });
+
+  const findChild = (children: ControlChild[] | undefined, childId: string): ControlChild | undefined =>
+    children?.find((child) => child.id === childId) ??
+    children?.reduce<ControlChild | undefined>(
+      (found, child) => found ?? findChild(child.children, childId),
+      undefined,
+    );
+
   const applyIconSelection = (selection: IconSelection) => {
-    if (iconPickerFor) {
-      updateControl(iconPickerFor, {
-        icon: { small: selection.small, large: selection.large },
+    if (!iconPickerFor) return;
+    const icon = { small: selection.small, large: selection.large };
+    if (iconPickerFor.childId) {
+      const target = iconPickerFor.controlId;
+      const childId = iconPickerFor.childId;
+      updateControl(target, {
+        children: mapChildTree(
+          document.controls.find((control) => control.id === target)?.children ?? [],
+          (child) => (child.id === childId ? { ...child, icon } : child),
+        ),
       });
-      showToast(`已绑定图标 ${selection.small.replace(/^(dark)?images_/, '')}`);
+    } else {
+      updateControl(iconPickerFor.controlId, { icon });
     }
+    showToast(`已绑定图标 ${selection.small.replace(/^(dark|imp_)?(images_)?/, '')}`);
     setIconPickerFor(null);
+  };
+
+  const updateChild = (controlId: string, childId: string, patch: Partial<ControlChild>) => {
+    updateControl(controlId, {
+      children: mapChildTree(
+        document.controls.find((control) => control.id === controlId)?.children ?? [],
+        (child) => (child.id === childId ? { ...child, ...patch } : child),
+      ),
+    });
+  };
+
+  const addChild = (controlId: string) => {
+    const control = document.controls.find((item) => item.id === controlId);
+    if (!control) return;
+    const child: ControlChild = {
+      id: createId('child'),
+      type: 'button',
+      caption: `新子项 ${(control.children?.length ?? 0) + 1}`,
+      tooltip: '',
+      icon: { small: '', large: '' },
+      behavior: { commandType: 'button', className: '', target: '', arguments: {} },
+      children: [],
+    };
+    updateControl(controlId, { children: [...(control.children ?? []), child] });
+  };
+
+  const removeChild = (controlId: string, childId: string) => {
+    const strip = (children: ControlChild[]): ControlChild[] =>
+      children
+        .filter((child) => child.id !== childId)
+        .map((child) => (child.children?.length ? { ...child, children: strip(child.children) } : child));
+    updateControl(controlId, {
+      children: strip(document.controls.find((control) => control.id === controlId)?.children ?? []),
+    });
   };
 
   const startDrag = useCallback((event: React.PointerEvent, state: Exclude<DragState, null>) => {
@@ -1018,7 +1082,16 @@ export default function Designer() {
                   control={selectedControl}
                   onUpdate={updateControl}
                   onDelete={deleteControl}
-                  onOpenIcons={() => setIconPickerFor(selectedControl.id)}
+                  onOpenIcons={(childId) =>
+                    setIconPickerFor(
+                      childId
+                        ? { controlId: selectedControl.id, childId }
+                        : { controlId: selectedControl.id },
+                    )
+                  }
+                  onUpdateChild={(childId, patch) => updateChild(selectedControl.id, childId, patch)}
+                  onAddChild={() => addChild(selectedControl.id)}
+                  onRemoveChild={(childId) => removeChild(selectedControl.id, childId)}
                 />
               ) : (
                 <div className="next-empty-inspector">
@@ -1089,7 +1162,8 @@ export default function Designer() {
             setContextMenu(null);
             if (!menu) return;
             if (action === 'delete-control' && menu.controlId) deleteControl(menu.controlId);
-            if (action === 'icons' && menu.controlId) setIconPickerFor(menu.controlId);
+            if (action === 'icons' && menu.controlId)
+              setIconPickerFor({ controlId: menu.controlId });
             if (action === 'duplicate-group' && menu.groupId) duplicateGroup(menu.groupId);
             if (action === 'delete-group' && menu.groupId) deleteGroup(menu.groupId);
           }}
@@ -1100,8 +1174,13 @@ export default function Designer() {
         open={Boolean(iconPickerFor)}
         currentSmall={
           iconPickerFor
-            ? document.controls.find((control) => control.id === iconPickerFor)?.icon.small ??
-              undefined
+            ? (iconPickerFor.childId
+                ? findChild(
+                    document.controls.find((control) => control.id === iconPickerFor.controlId)?.children,
+                    iconPickerFor.childId,
+                  )?.icon.small
+                : document.controls.find((control) => control.id === iconPickerFor.controlId)?.icon
+                    .small) ?? undefined
             : undefined
         }
         onClose={() => setIconPickerFor(null)}
@@ -1423,12 +1502,20 @@ function Inspector({
   onUpdate,
   onDelete,
   onOpenIcons,
+  onUpdateChild,
+  onAddChild,
+  onRemoveChild,
 }: {
   control: RibbonControl;
   onUpdate: (controlId: string, patch: Partial<RibbonControl>) => void;
   onDelete: (controlId: string) => void;
-  onOpenIcons: () => void;
+  onOpenIcons: (childId?: string) => void;
+  onUpdateChild: (childId: string, patch: Partial<ControlChild>) => void;
+  onAddChild: () => void;
+  onRemoveChild: (childId: string) => void;
 }) {
+  const isContainer =
+    control.type === 'splitButton' || control.type === 'menu' || control.type === 'toolPalette';
   return (
     <section className="next-panel next-inspector">
       <div className="next-panel-title">
@@ -1459,7 +1546,7 @@ function Inspector({
         </label>
         <div className="icon-bindings">
           <span>图标</span>
-          <button className="icon-slot" onClick={onOpenIcons} title="打开图标选择器">
+          <button className="icon-slot" onClick={() => onOpenIcons()} title="打开图标选择器">
             <ImageIcon size={13} />
             <span className="icon-slot-name">
               {control.icon.small
@@ -1477,6 +1564,55 @@ function Inspector({
             </button>
           ) : null}
         </div>
+        {isContainer ? (
+          <div className="child-list">
+            <span>子项({control.children?.length ?? 0})</span>
+            {(control.children ?? []).map((child) => (
+              <div className="child-row" key={child.id}>
+                <button
+                  className="icon-slot"
+                  onClick={() => onOpenIcons(child.id)}
+                  title="选择子项图标"
+                >
+                  <ImageIcon size={13} />
+                  <span className="icon-slot-name">
+                    {child.icon.small
+                      ? child.icon.small.replace(/^(dark|imp_)?(images_)?/, '')
+                      : '选择图标'}
+                  </span>
+                </button>
+                <input
+                  className="child-caption"
+                  value={child.caption}
+                  placeholder="子项标题"
+                  onChange={(event) => onUpdateChild(child.id, { caption: event.target.value })}
+                />
+                <input
+                  className="child-behavior"
+                  value={child.behavior.className}
+                  placeholder="行为类名(可选)"
+                  spellCheck={false}
+                  onChange={(event) =>
+                    onUpdateChild(child.id, {
+                      behavior: { ...child.behavior, className: event.target.value },
+                    })
+                  }
+                />
+                <button
+                  className="icon-clear"
+                  title="删除子项"
+                  onClick={() => onRemoveChild(child.id)}
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            ))}
+            <button className="child-add" onClick={onAddChild}>
+              <Plus size={13} />
+              添加子项
+            </button>
+          </div>
+        ) : null}
         <label>
           提示
           <input

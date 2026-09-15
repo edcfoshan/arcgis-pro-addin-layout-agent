@@ -42,6 +42,20 @@ export interface ControlBehavior {
   arguments: Record<string, string>;
 }
 
+// 容器控件(splitButton/menu/toolPalette)的子项:递归结构,不进网格布局,仅展示与导出再生
+export interface ControlChild {
+  id: string;
+  type: ControlType;
+  caption: string;
+  tooltip: string;
+  icon: {
+    small: string;
+    large: string;
+  };
+  behavior: ControlBehavior;
+  children?: ControlChild[];
+}
+
 export interface RibbonControl {
   id: string;
   subgroupId: string;
@@ -51,6 +65,9 @@ export interface RibbonControl {
   condition: string;
   size: RibbonControlSize;
   supportedSizes: RibbonControlSize[];
+  /** menuStyle 按钮板(buttonPalette menuStyle)等 Pro 变体:占 1 列×3 行的窄竖条 */
+  variant?: 'menuStyle';
+  children?: ControlChild[];
   icon: {
     small: string;
     large: string;

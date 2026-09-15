@@ -896,6 +896,52 @@ body,
   background: var(--bg-sunken);
 }
 
+/* Inspector 子项编辑列表 */
+.child-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.child-list > span {
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+}
+
+.child-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--sp-1);
+  padding: var(--sp-2);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  background: var(--bg-surface);
+}
+
+.child-row .child-caption,
+.child-row .child-behavior {
+  grid-column: 1 / -1;
+  height: 22px;
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-canvas);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--fs-sm);
+}
+
+.child-row .child-caption:focus,
+.child-row .child-behavior:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-focus);
+}
+
+.child-add {
+  justify-content: center;
+}
+
 /* ============ 08 拖拽反馈 ============ */
 .next-drop-preview {
   position: absolute;
