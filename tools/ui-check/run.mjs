@@ -32,9 +32,13 @@ await page.addInitScript(() => {
 
 let failed = 0;
 for (const file of targets) {
-  const mod = await import(pathToFileURL(path.join(DIR, file)).href);
-  const label = mod.name ?? file;
+  // import 与 name 也必须在 try 内：某个检查文件顶层抛错（比如 import 了不存在的模块）时，
+  // 冲出循环会让后续检查全不跑、browser.close() 被跳过，留下僵尸浏览器进程。
+  // label 先给文件名兜底，取到 mod.name 再覆盖 —— catch 里也就能报出是哪个文件。
+  let label = file;
   try {
+    const mod = await import(pathToFileURL(path.join(DIR, file)).href);
+    label = mod.name ?? file;
     // 视口也是「确定性初始状态」的一部分：所有检查复用同一个 page，
     // 前一个检查改过的视口会泄漏给后一个（曾因此制造静默假通过）。
     // 每轮回到默认视口，将来某个检查忘记复位也不会污染别人。

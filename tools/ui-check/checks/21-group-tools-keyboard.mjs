@@ -1,6 +1,8 @@
 import { eq, ok } from '../assert.mjs';
 
-export const name = 'P3-2 分组编辑条键盘可达且拖拽时不闪现';
+// 标题不再自称覆盖「拖拽时不闪现」：本文件除 group.focus() 外没有任何拖拽动作，
+// 那条验收标准（A7）的自动覆盖在 41-drag-ghost.mjs —— 借它已有的真实拖拽手势断言。
+export const name = 'P3-2 分组编辑条键盘可达（拖拽中不闪现见 41-drag-ghost）';
 
 export default async function (page) {
   // 空文档没有分组，先新增一个，编辑条才有承载者。
