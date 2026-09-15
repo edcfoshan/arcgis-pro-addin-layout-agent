@@ -38,20 +38,5 @@ jobs:
           releaseDraft: true
           prerelease: false
 
-      # jsdelivr 更新镜像:把 Release 里的 latest.json 提交回 master 根目录
-      - name: 同步 latest.json 到仓库根(供 jsdelivr 镜像)
-        run: |
-          $tag = "${{ github.ref_name }}"
-          $tmp = New-TemporaryFile
-          curl -sL -o $tmp "https://github.com/${{ github.repository }}/releases/download/$tag/latest.json"
-          if ((Get-Item $tmp).Length -gt 100) {
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git checkout master 2>$null; git checkout main 2>$null
-            git pull origin $env:GITHUB_REF_NAME_PROTECTED 2>$null
-            Move-Item $tmp latest.json -Force
-            git add latest.json
-            git commit -m "chore: 同步 updater latest.json ($tag)" || exit 0
-            git push origin HEAD:main 2>$null || git push origin HEAD:master
-          }
-        shell: pwsh
+      # latest.json 回写仓库根见 sync-latest-json.yml:草稿 Release 的资产下载不到,
+      # 必须等 Release 正式发布后再同步
