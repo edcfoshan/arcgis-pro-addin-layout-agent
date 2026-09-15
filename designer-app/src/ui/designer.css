@@ -1394,6 +1394,14 @@ body,
   font-weight: 600;
 }
 
+/* 分组行是结构标签，不是选择目标——分组级操作（改名/±列/复制/删除/批量尺寸）都在画布的
+   悬浮编辑条上。这一行没有任何点击行为，光标就不能承诺可点击性：手型是在骗人。
+   （.next-outline-label.muted 已写了 default，但行首的缩进占位 .next-outline-spacer
+   会从行上继承 pointer，故在行这一级压住。） */
+.next-shell .next-outline-group {
+  cursor: default;
+}
+
 .next-shell .next-outline-toggle {
   position: relative;
   display: grid;
