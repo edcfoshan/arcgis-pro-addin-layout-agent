@@ -528,7 +528,8 @@ export default function Designer() {
     siblings?.[nextIndex]?.focus();
   };
 
-  // 结构树点控件 → 选中它，并滚动定位到画布上对应的位置（spec §4 P4；验收 A8 的「点击定位」）。  // 顺序不能反：activateProject 会清空 selectedControlId（换了页签就是换了选中对象），
+  // 结构树点控件 → 选中它，并滚动定位到画布上对应的位置（spec §4 P4；验收 A8 的「点击定位」）。
+  // 顺序不能反：activateProject 会清空 selectedControlId（换了页签就是换了选中对象），
   // 先选中会被那次清空吞掉。
   const revealControl = (controlId: string) => {
     const ownerTabId = ownerTabOfControl(document, controlId);
