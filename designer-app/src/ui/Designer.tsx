@@ -300,11 +300,27 @@ const computeLayoutVersion = (document: RibbonDocument) => {
   return `1.${minor}.${patch}`;
 };
 
+// 控件 → 它所属页签的 id。结构树是全量铺开的（document.tabs 全渲染），画布却只渲染激活
+// 页签，所以从树里点一个控件时得先知道它在哪个页签：不属于激活页签就得先切过去，否则
+// 右栏换成了属性表单、画布上却什么都没有。控件自带的 subgroupId 直连到分组、再到页签，
+// 不用遍历：control.subgroupId → subgroup.groupId → group.tabId。
+const ownerTabOfControl = (document: RibbonDocument, controlId: string): string | null => {
+  const subgroupId = document.controls.find((control) => control.id === controlId)?.subgroupId;
+  const groupId = document.subgroups.find((subgroup) => subgroup.id === subgroupId)?.groupId;
+  return document.groups.find((group) => group.id === groupId)?.tabId ?? null;
+};
+
 export default function Designer() {
   const [initialSession] = useState(loadInitialSession);
   const [projects, setProjects] = useState<ProjectEntry[]>(initialSession.projects);
   const [activeProjectId, setActiveProjectId] = useState(initialSession.activeProjectId);
   const [selectedControlId, setSelectedControlId] = useState<string | null>(null);
+  // 结构树点击引发的「滚动定位到画布」请求。带 nonce 而不是只存 controlId：用户把画布
+  // 滚走后再点一次树里同一条，定位要再生效，而只存 id 时状态没变化、effect 不会重跑。
+  const [revealRequest, setRevealRequest] = useState<{ controlId: string; nonce: number } | null>(
+    null,
+  );
+  const revealNonceRef = useRef(0);
   const [drag, setDrag] = useState<DragState>(null);
   const [ghostPos, setGhostPos] = useState<GhostPos>({ x: 0, y: 0 });
   const [hover, setHover] = useState<HoverTarget | null>(null);
@@ -461,6 +477,31 @@ export default function Designer() {
     setSelectedControlId(null);
     if (tabId !== undefined) updateProject(projectId, { activeTabId: tabId });
   };
+
+  // 结构树点控件 → 选中它，并滚动定位到画布上对应的位置（spec §4 P4；验收 A8 的「点击定位」）。
+  // 顺序不能反：activateProject 会清空 selectedControlId（换了页签就是换了选中对象），
+  // 先选中会被那次清空吞掉。
+  const revealControl = (controlId: string) => {
+    const ownerTabId = ownerTabOfControl(document, controlId);
+    if (ownerTabId && ownerTabId !== activeTabId) activateProject(activeProject.id, ownerTabId);
+    setSelectedControlId(controlId);
+    revealNonceRef.current += 1;
+    setRevealRequest({ controlId, nonce: revealNonceRef.current });
+  };
+
+  // 滚动发生在渲染之后：跨页签时目标控件要等这一次渲染才出现在画布上。滚动容器有两个
+  // （.next-canvas 纵向、.next-ribbon-area 横向），交给 scrollIntoView 自己找最近的可滚祖先。
+  // 元素从 gridRefs 里按分组取，不全局查 DOM —— 画布上只有激活页签的网格在册。
+  useEffect(() => {
+    if (!revealRequest) return;
+    const subgroupId = documentRef.current.controls.find(
+      (control) => control.id === revealRequest.controlId,
+    )?.subgroupId;
+    const grid = subgroupId ? gridRefs.current.get(subgroupId) : undefined;
+    grid
+      ?.querySelector<HTMLElement>(`[data-testid="control-${revealRequest.controlId}"]`)
+      ?.scrollIntoView({ block: 'nearest' });
+  }, [revealRequest]);
 
   // 新增项目条目并激活;doc 缺省 = 空白布局
   const addProject = (
@@ -1992,7 +2033,7 @@ export default function Designer() {
                   activeTabId={activeTabId}
                   selectedControlId={selectedControlId}
                   onSelectTab={(tabId) => activateProject(activeProject.id, tabId)}
-                  onSelectControl={(controlId) => setSelectedControlId(controlId)}
+                  onSelectControl={revealControl}
                 />
               )}
             </aside>

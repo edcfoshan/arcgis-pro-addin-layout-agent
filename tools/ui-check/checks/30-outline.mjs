@@ -88,6 +88,76 @@ export default async function (page) {
   await page.waitForTimeout(200);
   ok((await page.locator('.next-outline').count()) === 1, '取消选中后应回到结构树');
 
+  // ===== 跨页签定位：树是全量铺开的，画布只渲染激活页签 =====
+  // 控件留在第一个页签、人站在第二个页签上时点它，必须先把人带回它所在的页签 ——
+  // 否则右栏换成属性表单、画布上却什么都没有（实测过的空态：
+  // selectedOnCanvas 0 / ribbonControls 0 / inspector 1）。
+  const activeTabIndex = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll('.next-canvas-tab')].findIndex((el) =>
+        el.classList.contains('active'),
+      ),
+    );
+
+  await canvasTabs.first().click();
+  await page.waitForTimeout(250);
+  eq(
+    await page.locator('.next-ribbon-control').count(),
+    0,
+    '前提不成立：第一个页签上不该有控件（控件在第二个页签）',
+  );
+
+  await page.locator('.next-outline-control').first().click();
+  await page.waitForTimeout(300);
+  eq(
+    await activeTabIndex(),
+    (await canvasTabs.count()) - 1,
+    '点树里非激活页签的控件应把激活页签切回它所在的页签',
+  );
+  ok(
+    (await page.locator('.next-ribbon-control.selected').count()) >= 1,
+    '切回页签后画布上对应控件应呈选中态',
+  );
+
+  // ===== 滚动定位：控件被滚出画布视野时，点树里那一条要把它找回来 =====
+  // 「控件在视野内」在没溢出时恒真、断言等于没写，故先把画布横向撑开：再加 7 个分组，
+  // 然后把 ribbon 条带滚到最右 —— 第一个分组连同它的控件就出了视野。
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(200);
+  for (let i = 0; i < 7; i += 1) {
+    await page.getByRole('button', { name: '新增分组' }).first().click();
+    await page.waitForTimeout(120);
+  }
+  await page.waitForTimeout(250);
+
+  const controlInRibbonView = () =>
+    page.evaluate(() => {
+      const area = document.querySelector('.next-ribbon-area').getBoundingClientRect();
+      const control =
+        document.querySelector('.next-ribbon-control.selected') ??
+        document.querySelector('.next-ribbon-control');
+      if (!control) return false;
+      const box = control.getBoundingClientRect();
+      return box.left >= area.left - 0.5 && box.right <= area.right + 0.5;
+    });
+
+  await page.evaluate(() => {
+    const area = document.querySelector('.next-ribbon-area');
+    area.scrollLeft = area.scrollWidth;
+  });
+  await page.waitForTimeout(250);
+  ok(!(await controlInRibbonView()), '前提不成立：控件仍停在视野内，先滚出去才测得到定位');
+
+  await page.locator('.next-outline-control').first().click();
+  await page.waitForTimeout(350);
+  ok(
+    await controlInRibbonView(),
+    '点结构树里的控件应滚动定位到画布上对应位置（spec §4 P4 / 验收 A8）',
+  );
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(200);
+  ok((await page.locator('.next-outline').count()) === 1, '取消选中后应回到结构树');
+
   // 超长标题必须真的画出省略号。
   // ⚠️ 只断言 scrollWidth > clientWidth 是不够的：那只证明「溢出了」，证明不了省略号被绘制 ——
   // 文字一旦成为匿名 flex item（标签按钮 display:flex/inline-flex），text-overflow 就失效，
