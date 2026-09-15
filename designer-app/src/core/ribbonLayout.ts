@@ -11,7 +11,7 @@ export const RIBBON_CELL = 32;
 export const DEFAULT_GROUP_COLS = 8;
 export const DEFAULT_GROUP_ROWS = 3;
 export const MIN_GROUP_COLS = 3;
-export const MAX_GROUP_COLS = 18;
+export const MAX_GROUP_COLS = 30;
 export const FIXED_GROUP_ROWS = 3;
 
 export interface Footprint {

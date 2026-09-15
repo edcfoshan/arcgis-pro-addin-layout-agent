@@ -97,7 +97,7 @@ RibbonDocument (JSON)
 
 ## 数据模型与布局规则
 
-`RibbonDocument → tabs → groups → subgroups → controls`。subgroup 是内部兼容层,每个 group 只有一个网格;控件位置存 `control.layout {x,y,w,h}`,网格单位 `RIBBON_CELL = 32px`,分组高度固定 3 行、只能横向扩列(3–18 列)。
+`RibbonDocument → tabs → groups → subgroups → controls`。subgroup 是内部兼容层,每个 group 只有一个网格;控件位置存 `control.layout {x,y,w,h}`,网格单位 `RIBBON_CELL = 32px`,分组高度固定 3 行、只能横向扩列(3–30 列,2026-09-15 由 18 放宽;组宽随列数真实变宽,画布横向滚动)。
 
 控件占格由 `getFootprint(type, size, variant)` 决定(如 button large = 2x3,comboBox large = 4x1),`variant='menuStyle'`(buttonPalette menuStyle 按钮板)在 Pro 实测渲染为带下拉箭头的大按钮(2026-09-15 用户实机观察纠正,勿再改成竖条形态),占格同 button:large 2×3 / middle 2×1;尺寸概念对应 DAML 官方语义:large = 32x32 图标+文字,middle/small = 16x16。容器控件(splitButton/menu/toolPalette)可带递归 `children`(ControlChild:标题/图标/行为引用/嵌套),不进网格布局,仅用于 mock 展示与导出 DAML 再生(Inspector 提供子项增删改);导入侧 buttonPalette/dynamicMenu 等变体会解析出真实子项,导出时优先用真实子项、无子项时退回序号占位。
 
