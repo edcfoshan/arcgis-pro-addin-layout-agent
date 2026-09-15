@@ -2055,36 +2055,45 @@ export default function Designer() {
                     <p className="library-compact-desc">{item.shortDescription}</p>
                     <div className="library-compact-sizes">
                       {item.supportedSizes.map((candidate) => (
-                        <button
-                          key={candidate}
-                          className={candidate === size ? 'active' : ''}
-                          title={`${item.label} · ${SIZE_LABELS[candidate]} · ${footprintLabel(item.type, candidate)}`}
-                          aria-label={`${item.label} ${SIZE_LABELS[candidate]} 尺寸，占 ${footprintLabel(item.type, candidate)} 格`}
-                          onClick={() => setLibSize((current) => ({ ...current, [item.type]: candidate }))}
-                          onPointerDown={(event) =>
-                            startDrag(event, {
-                              kind: 'new',
-                              definition: item,
-                              size: candidate,
-                            })
-                          }
-                        >
-                          {SIZE_LABELS[candidate]}
-                          <small>
-                            {/* 占格用等比方块图示表达：1×1 是方格、2×1 是横条、2×3 是竖矩形 */}
-                            <span
-                              className="footprint-chip"
-                              data-footprint={footprintLabel(item.type, candidate)}
-                              style={
-                                {
-                                  '--fw': getFootprint(item.type, candidate).w,
-                                  '--fh': getFootprint(item.type, candidate).h,
-                                } as CSSProperties
-                              }
-                              aria-hidden
+                        <div key={candidate} className="library-mock-cell" data-size={candidate}>
+                          <div className="library-mock-stage" aria-hidden>
+                            <ControlMock
+                              type={item.type}
+                              caption={item.label}
+                              size={candidate}
+                              mode="library"
                             />
-                          </small>
-                        </button>
+                          </div>
+                          <button
+                            type="button"
+                            className={candidate === size ? 'active' : ''}
+                            title={`${item.label} · ${SIZE_LABELS[candidate]} · ${footprintLabel(item.type, candidate)}`}
+                            aria-label={`${item.label} ${SIZE_LABELS[candidate]} 尺寸，占 ${footprintLabel(item.type, candidate)} 格`}
+                            onClick={() => setLibSize((current) => ({ ...current, [item.type]: candidate }))}
+                            onPointerDown={(event) =>
+                              startDrag(event, {
+                                kind: 'new',
+                                definition: item,
+                                size: candidate,
+                              })
+                            }
+                          >
+                            {SIZE_LABELS[candidate]}
+                            <small>
+                              <span
+                                className="footprint-chip"
+                                data-footprint={footprintLabel(item.type, candidate)}
+                                style={
+                                  {
+                                    '--fw': getFootprint(item.type, candidate).w,
+                                    '--fh': getFootprint(item.type, candidate).h,
+                                  } as CSSProperties
+                                }
+                                aria-hidden
+                              />
+                            </small>
+                          </button>
+                        </div>
                       ))}
                     </div>
                   </div>

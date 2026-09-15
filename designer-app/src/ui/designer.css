@@ -1560,7 +1560,7 @@ body,
   min-width: var(--h-ctl);
 }
 
-/* ============ 10 底部控件库(紧凑卡:全量类型一次显示,不再渲染 mock 实体) ============ */
+/* ============ 10 底部控件库(紧凑卡:每类型一卡,三尺寸各带真实 mock 预览) ============ */
 .next-bottom-palette {
   /* flex-shrink 必须为 1：窗口不够高时由它把「画布地板之外放不下的部分」吃回来，
      用户偏好（内联 height）不被改写，只是这一屏渲染得更矮。 */
@@ -1645,10 +1645,11 @@ body,
   font-weight: 600;
 }
 
-/* 卡上常显的类型说明(原来只有悬停 title 才见) */
+/* 卡上常显的类型说明(原来只有悬停 title 才见)。
+   卡片加了 mock 会变宽，故上限从 180px 放宽到 260px，描述行不再被截断。 */
 .library-compact-desc {
   margin: 0;
-  max-width: 180px;
+  max-width: 260px;
   color: var(--ink-3);
   font-size: var(--fs-sm);
   line-height: 1.4;
@@ -1670,9 +1671,37 @@ body,
   background: var(--border-strong);
 }
 
+/* 三个尺寸横向摊开，每格：上为真实 mock、下为可点/可拖的尺寸徽章。
+   点击或拖出任一格即产出该尺寸的控件。 */
 .library-compact-sizes {
   display: flex;
+  gap: var(--sp-4);
+  align-items: flex-end;
+}
+
+.library-mock-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: var(--sp-2);
+}
+
+/* 舞台固定高度，保证三个尺寸的徽章底部对齐、卡片高度一致 */
+.library-mock-stage {
+  display: grid;
+  place-items: center;
+  min-height: calc(var(--cell) * 3);
+  min-width: calc(var(--cell) * 2);
+}
+
+/* 控件库预览里的 mock 按自身内容尺寸渲染，不撑满舞台。
+   基础规则里 .next-control-mock 是 width/height:100%（画布上要填满格子），
+   若沿用，三个尺寸会被舞台高度拉成一样高，看不出真实大小差异。
+   只作用于舞台内：拖拽幽灵也用 mode-library，但它必须保持 .drag-ghost 的 96×96，
+   若写成 .next-control-mock.mode-library，同特异性下本文件靠后会连幽灵一起改掉。 */
+.library-mock-stage .next-control-mock {
+  width: auto;
+  height: auto;
 }
 
 /* 尺寸徽章里的占格图示：一个网格单位固定 6px，故不同占格之间可直接目视比较大小。
@@ -1687,7 +1716,10 @@ body,
   width: calc(var(--fw, 1) * 6px);
   height: calc(var(--fh, 1) * 6px);
   max-width: 100%;
-  border: 1px solid var(--border-strong);
+  /* 边框必须自证形状：--border-strong 对图示底色只有 2.00:1（浅）/2.25:1（暗），
+     达不到 WCAG 1.4.11 对非文字内容要求的 3:1，且底色与徽章按钮同 token 无从区分。
+     改用 --ink-3：对图示底色浅 5.65:1 / 暗 6.14:1（axe 检测不到这个维度，靠 40 号检查算）。 */
+  border: 1px solid var(--ink-3);
   border-radius: 1px;
   background: var(--bg-ctl);
 }
