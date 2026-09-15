@@ -450,6 +450,10 @@ Expected: FAIL，信息含 `找不到占格为 1x1 的图示`。
 .footprint-chip {
   display: block;
   margin: 0 auto;
+  /* 必须显式 border-box：本仓库没有全局 box-sizing 重置，默认是 content-box，
+     1px 边框会把盒子撑成 (w*6+2)×(h*6+2)。那样 2×1 会渲染成 14×8=1.75 而非 2，
+     Task 3 的宽高比断言（容差 0.1）会假失败。 */
+  box-sizing: border-box;
   width: calc(var(--fw, 1) * 6px);
   height: calc(var(--fh, 1) * 6px);
   max-width: 100%;
@@ -897,8 +901,9 @@ const makeDoc = (lastUpdated: string): RibbonDocument =>
         children: [],
       },
     ],
-    // 若 RibbonDocument 还有别的必填字段，tsc 会在这里报出来，照提示补齐即可
-  }) as unknown as RibbonDocument;
+    // 返回类型标注已是 RibbonDocument，tsc 会在此校验字段完整性——
+    // 若报缺字段，照提示补齐。不要用 as 强转绕过去（那会屏蔽掉这个校验）。
+  });
 
 const extractAddInId = (daml: string): string => {
   const match = daml.match(/<AddInInfo[^>]*\bid="([^"]+)"/i);
@@ -1521,12 +1526,12 @@ Expected: FAIL，信息含 `应存在分隔条`。
 
 ```ts
   const PALETTE_MIN = 120;
-  const PALETTE_MAX = 420;
+  const PALETTE_MAX = 460;
   const PALETTE_KEY = 'gispro-ribbon-designer-palette-height';
 
   const [paletteHeight, setPaletteHeight] = useState<number>(() => {
     const raw = Number(localStorage.getItem(PALETTE_KEY));
-    return Number.isFinite(raw) && raw >= PALETTE_MIN && raw <= PALETTE_MAX ? raw : 260;
+    return Number.isFinite(raw) && raw >= PALETTE_MIN && raw <= PALETTE_MAX ? raw : 320;
   });
 
   useEffect(() => {
@@ -1630,7 +1635,7 @@ Expected: 全部 PASS（含 Task 2 的 palette 检查——它断言 `overflow-y
 
 打开 `http://localhost:1420`：
 
-- 把分隔条往上拖到顶 → 控件库到 420px 就停住，画布仍留有可用高度
+- 把分隔条往上拖到顶 → 控件库到 460px 就停住，画布仍留有可用高度（若画布被压到 ribbon 条带放不下，把 `PALETTE_MAX` 调小）
 - 往下拖到底 → 控件库到 120px 停住，不会拖成 0
 - 缩放窗口到 1100×700 → 布局不破，控件库仍可滚
 
@@ -1660,7 +1665,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 - Test: `tools/ui-check/checks/30-outline.mjs`
 
 **Interfaces:**
-- Consumes: `document: RibbonDocument`（tabs/groups/controls）；`activeTabId`；`activateProject(projectId, tabId)`（既有的页签切换入口，`Designer.tsx:381`）；`selectedControlId`；`setSelectedControlId(id)`；`projectTitle(project) => string`（Task 4 产出）
+- Consumes: `document: RibbonDocument`（tabs/groups/controls）；`activeTabId`；`activateProject(projectId, tabId)`（既有的页签切换入口，`Designer.tsx:381`）；`selectedControlId`；`setSelectedControlId(id)`
 - Produces: `DocumentOutline` 组件，props 形状见下
 
 - [ ] **Step 1: 写失败的检查**
