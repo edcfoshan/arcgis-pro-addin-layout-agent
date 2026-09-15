@@ -9,11 +9,17 @@ import {
 import {
   ChevronDown,
   Copy,
+  FilePlus,
   FolderOpen,
   Image as ImageIcon,
+  Info,
   Package,
   Plus,
+  Redo2,
+  Save,
+  Settings,
   Trash2,
+  Undo2,
   X,
 } from 'lucide-react';
 import { CONTROL_LIBRARY, SIZE_LABELS, TYPE_LABELS } from '../core/library';
@@ -45,7 +51,10 @@ import { open as openFileDialog, save as saveDialog } from '@tauri-apps/plugin-d
 import { parseDamlToDocument } from '../core/damlImport';
 import { ControlMock } from './ControlMock';
 import { IconPicker, type IconSelection } from './IconPicker';
-import { invalidateIconList } from './iconsClient';
+import { getIconUrl, invalidateIconList } from './iconsClient';
+import { Welcome } from './Welcome';
+import { AboutDialog } from './AboutDialog';
+import { createDemoDocument } from '../core/demoLayout';
 import {
   DEFAULT_GROUP_COLS,
   FIXED_GROUP_ROWS,
@@ -64,6 +73,26 @@ import './designer.css';
 
 const STORAGE_KEY = 'gispro-ribbon-designer-doc';
 const LAST_EXPORT_DIR_STORAGE_KEY = 'gispro-ribbon-designer-last-export-dir';
+const LAST_DOC_DIR_STORAGE_KEY = 'gispro-ribbon-designer-last-doc-dir';
+const RECENT_FILES_STORAGE_KEY = 'gispro-ribbon-designer-recent-files';
+const THEME_STORAGE_KEY = 'gispro-ribbon-designer-theme';
+const AUTO_UPDATE_STORAGE_KEY = 'gispro-ribbon-designer-auto-update';
+const WELCOME_SEEN_STORAGE_KEY = 'gispro-ribbon-designer-welcome-seen';
+
+const HISTORY_LIMIT = 50;
+
+// 控件库紧凑卡的类型代表图标(Tabler 稳定名,缺失时显示占位色块)
+const LIBRARY_ICON: Record<string, string> = {
+  button: 'images_arrow-right16.png',
+  tool: 'images_crosshair16.png',
+  splitButton: 'images_stack16.png',
+  toolPalette: 'images_pencil16.png',
+  menu: 'images_dots16.png',
+  gallery: 'images_palette16.png',
+  comboBox: 'images_list16.png',
+  editBox: 'images_edit16.png',
+  checkBox: 'images_circle-check16.png',
+};
 
 // 无边框窗口的自定义标题栏句柄;浏览器直渲(Playwright 自检)时无 Tauri internals,置 null 防崩
 const appWindow =
@@ -122,6 +151,11 @@ interface ImportedPackage {
   icons: ImportedIcon[];
 }
 
+interface RecentFile {
+  path: string;
+  name: string;
+}
+
 const librarySections = [
   {
     title: '命令控件',
@@ -161,7 +195,7 @@ export default function Designer() {
   const [hover, setHover] = useState<HoverTarget | null>(null);
   const [toast, setToast] = useState('');
   const [dropdown, setDropdown] = useState<{
-    kind: 'import' | 'export';
+    kind: 'import' | 'export' | 'file' | 'settings';
     x: number;
     y: number;
   } | null>(null);
@@ -174,6 +208,29 @@ export default function Designer() {
   const [lastExportDir, setLastExportDir] = useState(
     () => localStorage.getItem(LAST_EXPORT_DIR_STORAGE_KEY) || '',
   );
+  const [currentFile, setCurrentFile] = useState<string | null>(null);
+  const [fileDirty, setFileDirty] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<'clear' | 'new' | null>(null);
+  const [showWelcome, setShowWelcome] = useState(
+    () => !localStorage.getItem(WELCOME_SEEN_STORAGE_KEY),
+  );
+  const [showAbout, setShowAbout] = useState(false);
+  const [theme, setTheme] = useState<'light' | 'dark'>(
+    () => (localStorage.getItem(THEME_STORAGE_KEY) === 'dark' ? 'dark' : 'light'),
+  );
+  const [autoUpdate, setAutoUpdate] = useState(
+    () => localStorage.getItem(AUTO_UPDATE_STORAGE_KEY) !== 'off',
+  );
+  const [recentFiles, setRecentFiles] = useState<RecentFile[]>(() => {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(RECENT_FILES_STORAGE_KEY) || '[]');
+      return Array.isArray(parsed) ? parsed.slice(0, 8) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [libSize, setLibSize] = useState<Record<string, RibbonControlSize>>({});
+  const [updateBanner, setUpdateBanner] = useState<{ version: string } | null>(null);
   const gridRefs = useRef(new Map<string, HTMLElement>());
   const dragRef = useRef<DragState>(null);
   const hoverRef = useRef<HoverTarget | null>(null);
@@ -185,10 +242,54 @@ export default function Designer() {
     window.setTimeout(() => setToast(''), 2400);
   }, []);
 
-  const commit = useCallback((recipe: (current: RibbonDocument) => RibbonDocument) => {
-    setDocument((current) =>
-      normalizeDocumentLayouts(cloneDocumentWithTimestamp(recipe(current)), 'Large'),
+  // ===== 撤销/重做:双栈 ref + tick 触发重渲染(避免在 setState updater 里做副作用) =====
+  const pastRef = useRef<RibbonDocument[]>([]);
+  const futureRef = useRef<RibbonDocument[]>([]);
+  const [, setHistoryTick] = useState(0);
+  const syncHistory = () => setHistoryTick((t) => t + 1);
+
+  const pushHistory = (prev: RibbonDocument) => {
+    pastRef.current = [...pastRef.current.slice(-(HISTORY_LIMIT - 1)), prev];
+    futureRef.current = [];
+  };
+
+  const restoreDocument = (next: RibbonDocument) => {
+    documentRef.current = next;
+    setDocument(next);
+    setActiveTabId((current) =>
+      next.tabs.some((tab) => tab.id === current) ? current : next.tabs[0]?.id ?? '',
     );
+    setFileDirty(true);
+  };
+
+  const undo = () => {
+    const past = pastRef.current;
+    if (!past.length) return;
+    const prev = past[past.length - 1];
+    futureRef.current = [documentRef.current, ...futureRef.current].slice(0, HISTORY_LIMIT);
+    pastRef.current = past.slice(0, -1);
+    restoreDocument(prev);
+    syncHistory();
+  };
+
+  const redo = () => {
+    const future = futureRef.current;
+    if (!future.length) return;
+    const next = future[0];
+    pastRef.current = [...pastRef.current.slice(-(HISTORY_LIMIT - 1)), documentRef.current];
+    futureRef.current = future.slice(1);
+    restoreDocument(next);
+    syncHistory();
+  };
+
+  const commit = useCallback((recipe: (current: RibbonDocument) => RibbonDocument) => {
+    const current = documentRef.current;
+    const next = normalizeDocumentLayouts(cloneDocumentWithTimestamp(recipe(current)), 'Large');
+    pushHistory(current);
+    documentRef.current = next;
+    setDocument(next);
+    setFileDirty(true);
+    syncHistory();
   }, []);
 
   useEffect(() => {
@@ -198,6 +299,19 @@ export default function Designer() {
   useEffect(() => {
     localStorage.setItem(LAST_EXPORT_DIR_STORAGE_KEY, lastExportDir);
   }, [lastExportDir]);
+
+  useEffect(() => {
+    globalThis.document.documentElement.dataset.theme = theme;
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
+  }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem(AUTO_UPDATE_STORAGE_KEY, autoUpdate ? 'on' : 'off');
+  }, [autoUpdate]);
+
+  useEffect(() => {
+    localStorage.setItem(RECENT_FILES_STORAGE_KEY, JSON.stringify(recentFiles));
+  }, [recentFiles]);
 
   const activeTab = document.tabs.find((tab) => tab.id === activeTabId) ?? document.tabs[0];
   const activeGroups = useMemo(
@@ -540,11 +654,146 @@ export default function Designer() {
   };
 
   // ===== 文件导入(菜单「打开文件…」与窗口拖放的统一入口) =====
-  const applyImportedDocument = (next: RibbonDocument, message: string) => {
+  const applyImportedDocument = (
+    next: RibbonDocument,
+    message: string,
+    filePath?: string,
+  ) => {
+    pushHistory(documentRef.current);
+    documentRef.current = next;
     setDocument(normalizeDocumentLayouts(next, 'Large'));
     setActiveTabId(next.tabs[0]?.id ?? '');
     setSelectedControlId(null);
+    setFileDirty(!filePath);
+    setCurrentFile(filePath ?? null);
+    if (filePath) rememberRecentFile(filePath);
     showToast(message);
+  };
+
+  // ===== 单文档文件菜单:新建/打开/保存/另存为/最近文件 =====
+  const rememberRecentFile = (path: string) => {
+    const name = path.split(/[\\/]/).pop() ?? path;
+    setRecentFiles((current) =>
+      [{ path, name }, ...current.filter((item) => item.path !== path)].slice(0, 8),
+    );
+  };
+
+  const documentHasContent = () =>
+    documentRef.current.controls.length > 0 || documentRef.current.tabs.length > 1;
+
+  const loadDocumentFromPath = async (path: string) => {
+    if (!path) return;
+    const text = await invoke<string>('read_text_file', { path }).catch((error) => {
+      showToast(`读取失败:${String(error)}`);
+      return '';
+    });
+    if (!text) return;
+    const parsed = parseImportedDocument(text);
+    if (!parsed) {
+      showToast('打开失败:JSON 结构不符合当前 schema');
+      return;
+    }
+    applyImportedDocument(
+      parsed,
+      `已打开 ${parsed.tabs.length} 个页签的布局`,
+      path,
+    );
+  };
+
+  const openDocDialog = async () => {
+    if (!appWindow) {
+      showToast('请在桌面应用中使用文件选择');
+      return;
+    }
+    const picked = await openFileDialog({
+      multiple: false,
+      filters: [{ name: '布局 JSON', extensions: ['json'] }],
+    }).catch(() => null);
+    if (typeof picked === 'string' && picked) {
+      await loadDocumentFromPath(picked);
+    }
+  };
+
+  const saveDocAs = async () => {
+    if (!appWindow) {
+      showToast('请在桌面应用中保存文件');
+      return;
+    }
+    const fallbackDir =
+      localStorage.getItem(LAST_DOC_DIR_STORAGE_KEY) ||
+      (await invoke<string>('get_default_target_dir').catch(() => ''));
+    const picked = await saveDialog({
+      filters: [{ name: '布局 JSON', extensions: ['json'] }],
+      defaultPath: fallbackDir
+        ? `${fallbackDir}\\${documentRef.current.metadata.name || '布局'}.json`
+        : `${documentRef.current.metadata.name || '布局'}.json`,
+    }).catch(() => null);
+    if (typeof picked !== 'string' || !picked) return;
+    const { dir, name } = splitPath(picked);
+    const saved = await invoke<string>('write_text_file', {
+      dir,
+      filename: name,
+      content: JSON.stringify(documentRef.current, null, 2),
+    }).catch((error) => {
+      showToast(`保存失败:${String(error)}`);
+      return '';
+    });
+    if (!saved) return;
+    localStorage.setItem(LAST_DOC_DIR_STORAGE_KEY, dir);
+    setCurrentFile(saved);
+    setFileDirty(false);
+    rememberRecentFile(saved);
+    showToast(`已保存到 ${name}`);
+  };
+
+  const saveDoc = async () => {
+    if (!currentFile) {
+      await saveDocAs();
+      return;
+    }
+    const { dir, name } = splitPath(currentFile);
+    const saved = await invoke<string>('write_text_file', {
+      dir,
+      filename: name,
+      content: JSON.stringify(documentRef.current, null, 2),
+    }).catch((error) => {
+      showToast(`保存失败:${String(error)}`);
+      return '';
+    });
+    if (!saved) return;
+    setFileDirty(false);
+    rememberRecentFile(saved);
+    showToast(`已保存到 ${name}`);
+  };
+
+  const openDemoLayout = () => {
+    applyImportedDocument(createDemoDocument(), '已载入示例布局,可自由修改');
+  };
+
+  const dismissWelcome = () => {
+    localStorage.setItem(WELCOME_SEEN_STORAGE_KEY, '1');
+    setShowWelcome(false);
+  };
+
+  const requestNewDocument = () => {
+    if (documentHasContent()) {
+      setConfirmAction('new');
+      return;
+    }
+    resetDocument(false);
+  };
+
+  const resetDocument = (keepFile: boolean) => {
+    pushHistory(documentRef.current);
+    const next = createEmptyDocument();
+    documentRef.current = next;
+    setDocument(next);
+    setActiveTabId(next.tabs[0]?.id ?? '');
+    setSelectedControlId(null);
+    setFileDirty(true);
+    if (!keepFile) setCurrentFile(null);
+    setConfirmAction(null);
+    showToast('已重置为空白 Ribbon(可撤销)');
   };
 
   const importFromPath = async (path: string) => {
@@ -567,7 +816,7 @@ export default function Designer() {
           showToast('导入失败:JSON 结构不符合当前 schema');
           return;
         }
-        applyImportedDocument(parsed, `已导入 JSON:${parsed.tabs.length} 个页签`);
+        applyImportedDocument(parsed, `已导入 JSON:${parsed.tabs.length} 个页签`, path);
         return;
       }
       const iconMap = Object.fromEntries(pkg.icons.map((icon) => [icon.damlName, icon.file]));
@@ -700,8 +949,9 @@ export default function Designer() {
     );
 
   const exportPackage = async () => {
+    // 免编译导出:DAML 指向预编译占位 DLL,用户机器无需 .NET SDK
     const artifacts: ArcGISProValidationArtifacts =
-      buildArcGISProValidationArtifacts(document);
+      buildArcGISProValidationArtifacts(document, { placeholderBehaviors: true });
     const path = await saveExportPath(
       'esriAddInX',
       'ArcGIS Pro Add-in 安装包',
@@ -709,7 +959,7 @@ export default function Designer() {
     );
     if (!path) return;
     const { dir, name } = splitPath(path);
-    setBusy('正在打包 add-in（编译 C# + 生成安装包）');
+    setBusy('正在打包 add-in 安装包');
     try {
       const written = await invoke<string>('export_addin', {
         payload: {
@@ -718,10 +968,11 @@ export default function Designer() {
           target_dir: dir,
           version: computeLayoutVersion(document),
           icon_files: artifacts.iconFiles,
+          daml: artifacts.configDaml,
         },
       });
       setLastExportDir(dir);
-      showToast(`安装包已生成 ${written}`);
+      showToast(`安装包已生成 ${written}（控件行为为占位实现）`);
     } catch (error) {
       showToast(`打包失败：${String(error)}`);
     } finally {
@@ -919,6 +1170,66 @@ export default function Designer() {
     };
   }, [contextMenu, dropdown]);
 
+  // ===== 全局快捷键(输入控件聚焦时不拦截) =====
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      const ctrl = event.ctrlKey || event.metaKey;
+      const key = event.key.toLowerCase();
+      if (ctrl && key === 'z' && !event.shiftKey) {
+        event.preventDefault();
+        undo();
+      } else if (ctrl && (key === 'y' || (key === 'z' && event.shiftKey))) {
+        event.preventDefault();
+        redo();
+      } else if (ctrl && key === 's') {
+        event.preventDefault();
+        void saveDoc();
+      } else if (ctrl && key === 'o') {
+        event.preventDefault();
+        void openDocDialog();
+      } else if (ctrl && key === 'n') {
+        event.preventDefault();
+        requestNewDocument();
+      } else if (event.key === 'Delete') {
+        if (selectedControlId) deleteControl(selectedControlId);
+      } else if (event.key === 'Escape') {
+        if (dropdown) setDropdown(null);
+        else if (contextMenu) setContextMenu(null);
+        else if (iconPickerFor) setIconPickerFor(null);
+        else if (confirmAction) setConfirmAction(null);
+        else if (selectedControlId) setSelectedControlId(null);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+
+  // 启动静默检查更新(可在设置关闭;仅提示不自动安装)
+  useEffect(() => {
+    if (!appWindow || !autoUpdate) return;
+    let cancelled = false;
+    void import('@tauri-apps/plugin-updater')
+      .then(({ check }) => check())
+      .then((update) => {
+        if (!cancelled && update) setUpdateBanner({ version: update.version });
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className="next-shell">
       <header
@@ -927,17 +1238,68 @@ export default function Designer() {
         onDoubleClick={() => void appWindow?.toggleMaximize()}
       >
         <div className="window-handle" data-tauri-drag-region>
-          ArcGIS Pro
+          极思G
         </div>
+        <button
+          className="titlebar-menu-btn"
+          onClick={(event) => {
+            event.stopPropagation();
+            const rect = event.currentTarget.getBoundingClientRect();
+            setDropdown({ kind: 'file', x: rect.left, y: rect.bottom + 4 });
+          }}
+        >
+          文件
+          <ChevronDown size={12} />
+        </button>
         <div className="window-title" data-tauri-drag-region>
-          Add-In Ribbon 布局设计器
+          {currentFile ? splitPath(currentFile).name : '未保存布局'}
+          {fileDirty ? <span className="dirty-dot" title="有未保存到文件的修改" /> : null}
         </div>
+        <button
+          className="titlebar-icon-btn"
+          title="设置"
+          onClick={(event) => {
+            event.stopPropagation();
+            const rect = event.currentTarget.getBoundingClientRect();
+            setDropdown({ kind: 'settings', x: rect.right - 220, y: rect.bottom + 4 });
+          }}
+        >
+          <Settings size={14} />
+        </button>
+        <button
+          className="titlebar-icon-btn"
+          title="关于与检查更新"
+          onClick={(event) => {
+            event.stopPropagation();
+            setShowAbout(true);
+          }}
+        >
+          <Info size={14} />
+        </button>
         <div className="window-buttons" onDoubleClick={(event) => event.stopPropagation()}>
           <span title="最小化" onClick={() => void appWindow?.minimize()} />
           <span title="最大化/还原" onClick={() => void appWindow?.toggleMaximize()} />
           <span title="关闭" onClick={() => void appWindow?.close()} />
         </div>
       </header>
+
+      {updateBanner ? (
+        <div className="update-banner">
+          <span>发现新版本 v{updateBanner.version}</span>
+          <button
+            className="primary"
+            onClick={() => {
+              setUpdateBanner(null);
+              setShowAbout(true);
+            }}
+          >
+            立即查看
+          </button>
+          <button className="ghost" onClick={() => setUpdateBanner(null)}>
+            稍后再说
+          </button>
+        </div>
+      ) : null}
 
       <div className="next-workbench">
         <aside className="next-tab-sidebar">
@@ -982,24 +1344,51 @@ export default function Designer() {
         <div className="next-center">
           <section className="next-toolbar">
             <div className="next-toolbar-left">
+              <button
+                onClick={undo}
+                disabled={!pastRef.current.length}
+                title="撤销 (Ctrl+Z)"
+              >
+                <Undo2 size={14} />
+              </button>
+              <button
+                onClick={redo}
+                disabled={!futureRef.current.length}
+                title="重做 (Ctrl+Y)"
+              >
+                <Redo2 size={14} />
+              </button>
               <button onClick={addGroup}>
                 <Plus size={14} />
                 新增分组
               </button>
               <button
+                className="danger"
                 onClick={() => {
-                  const next = createEmptyDocument();
-                  setDocument(next);
-                  setActiveTabId(next.tabs[0]?.id ?? '');
-                  setSelectedControlId(null);
-                  showToast('已重置为空白 Ribbon');
+                  if (documentHasContent()) setConfirmAction('clear');
+                  else resetDocument(true);
                 }}
               >
+                <Trash2 size={14} />
                 清空
               </button>
             </div>
             <div className="next-toolbar-right">
               <span className="draft-status">{busy || '本地草稿自动保存'}</span>
+              <button
+                title="新建布局 (Ctrl+N)"
+                onClick={() => requestNewDocument()}
+              >
+                <FilePlus size={14} />
+                新建
+              </button>
+              <button
+                title={currentFile ? `保存 ${splitPath(currentFile).name} (Ctrl+S)` : '另存为… (Ctrl+S)'}
+                onClick={() => void saveDoc()}
+              >
+                <Save size={14} />
+                {currentFile && !fileDirty ? '已保存' : '保存'}
+              </button>
               <button
                 onClick={(event) => {
                   event.stopPropagation();
@@ -1102,29 +1491,46 @@ export default function Designer() {
           </main>
 
           <div className="next-bottom-palette">
-            <div className="next-palette-strip">
-              {librarySections.flatMap((section) =>
-                section.items.map((item) => (
-                  <div className="next-palette-card" key={item.type}>
-                    <div className="next-palette-card-head">
-                      <ControlMock type={item.type} caption="" size="small" mode="library" />
+            <div className="next-palette-cards">
+              {librarySections.flatMap((section) => section.items).map((item) => {
+                const size =
+                  libSize[item.type] ??
+                  (item.supportedSizes.includes('large')
+                    ? 'large'
+                    : item.supportedSizes[item.supportedSizes.length - 1]);
+                return (
+                  <div
+                    className="library-compact-card"
+                    key={item.type}
+                    title={`${item.label} — ${item.shortDescription}`}
+                  >
+                    <div className="library-compact-head">
+                      <LibraryIconThumb type={item.type} />
                       <span>{item.label}</span>
                     </div>
-                    <div className="next-palette-card-sizes">
-                      {item.supportedSizes.map((size) => (
-                        <PalettePreview
-                          key={item.type + '-' + size}
-                          item={item}
-                          size={size}
-                          onDragStart={(event) =>
-                            startDrag(event, { kind: 'new', definition: item, size })
+                    <div className="library-compact-sizes">
+                      {item.supportedSizes.map((candidate) => (
+                        <button
+                          key={candidate}
+                          className={candidate === size ? 'active' : ''}
+                          title={`${item.label} · ${SIZE_LABELS[candidate]} · ${footprintLabel(item.type, candidate)}`}
+                          onClick={() => setLibSize((current) => ({ ...current, [item.type]: candidate }))}
+                          onPointerDown={(event) =>
+                            startDrag(event, {
+                              kind: 'new',
+                              definition: item,
+                              size: candidate,
+                            })
                           }
-                        />
+                        >
+                          {SIZE_LABELS[candidate]}
+                          <small>{footprintLabel(item.type, candidate)}</small>
+                        </button>
                       ))}
                     </div>
                   </div>
-                )),
-              )}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -1189,65 +1595,176 @@ export default function Designer() {
 
       {dropdown ? (
         <div className="context-menu" style={{ left: dropdown.x, top: dropdown.y }}>
-          <div className="context-menu-title">
-            {dropdown.kind === 'import' ? '导入' : '导出'}
-          </div>
-          {dropdown.kind === 'import' ? (
+          {dropdown.kind === 'file' ? (
             <>
-              <button
-                onClick={() => {
-                  setDropdown(null);
-                  void pickImportFile('esriAddInX');
-                }}
-              >
-                导入 add-in 安装包(.esriAddInX)…
+              <div className="context-menu-title">文件</div>
+              <button onClick={() => void requestNewDocument()}>
+                新建布局<span className="menu-hint">Ctrl+N</span>
+              </button>
+              <button onClick={() => void openDocDialog()}>
+                打开…<span className="menu-hint">Ctrl+O</span>
               </button>
               <button
-                onClick={() => {
-                  setDropdown(null);
-                  void pickImportFile('daml');
-                }}
+                onClick={() =>
+                  void saveDoc().then(() => undefined)
+                }
               >
-                导入 DAML(.daml)…
+                {currentFile ? `保存 ${splitPath(currentFile).name}` : '保存'}
+                <span className="menu-hint">Ctrl+S</span>
               </button>
-              <button
-                onClick={() => {
-                  setDropdown(null);
-                  void pickImportFile('json');
-                }}
-              >
-                导入布局 JSON(.json)…
-              </button>
+              <button onClick={() => void saveDocAs()}>另存为…</button>
+              <div className="context-menu-sep" />
+              <div className="context-menu-title">最近文件</div>
+              {recentFiles.length ? (
+                recentFiles.map((file) => (
+                  <button
+                    key={file.path}
+                    title={file.path}
+                    onClick={() => void loadDocumentFromPath(file.path)}
+                  >
+                    {file.name}
+                  </button>
+                ))
+              ) : (
+                <div className="menu-empty">暂无最近文件</div>
+              )}
+              <div className="context-menu-sep" />
+              <button onClick={() => openDemoLayout()}>打开示例布局</button>
+              <button onClick={() => setShowAbout(true)}>关于…</button>
+            </>
+          ) : dropdown.kind === 'settings' ? (
+            <>
+              <div className="context-menu-title">设置</div>
+              <div className="settings-row">
+                <span>界面主题</span>
+                <div className="settings-seg">
+                  <button
+                    className={theme === 'light' ? 'active' : ''}
+                    onClick={() => setTheme('light')}
+                  >
+                    浅色
+                  </button>
+                  <button
+                    className={theme === 'dark' ? 'active' : ''}
+                    onClick={() => setTheme('dark')}
+                  >
+                    暗色
+                  </button>
+                </div>
+              </div>
+              <div className="settings-row">
+                <span>启动时自动检查更新</span>
+                <label className="settings-toggle">
+                  <input
+                    type="checkbox"
+                    checked={autoUpdate}
+                    onChange={(event) => setAutoUpdate(event.target.checked)}
+                  />
+                  <span />
+                </label>
+              </div>
+              <div className="menu-empty">窗口大小与位置会自动记忆</div>
             </>
           ) : (
             <>
-              <button
-                onClick={() => {
-                  setDropdown(null);
-                  void exportPackage();
-                }}
-              >
-                导出 add-in 安装包(.esriAddInX)
-              </button>
-              <button
-                onClick={() => {
-                  setDropdown(null);
-                  exportDaml();
-                }}
-              >
-                导出 Config.daml
-              </button>
-              <button
-                onClick={() => {
-                  setDropdown(null);
-                  exportJson();
-                }}
-              >
-                导出布局 JSON
-              </button>
+              <div className="context-menu-title">
+                {dropdown.kind === 'import' ? '导入' : '导出'}
+              </div>
+              {dropdown.kind === 'import' ? (
+                <>
+                  <button
+                    onClick={() => {
+                      setDropdown(null);
+                      void pickImportFile('esriAddInX');
+                    }}
+                  >
+                    导入 add-in 安装包(.esriAddInX)…
+                  </button>
+                  <button
+                    onClick={() => {
+                      setDropdown(null);
+                      void pickImportFile('daml');
+                    }}
+                  >
+                    导入 DAML(.daml)…
+                  </button>
+                  <button
+                    onClick={() => {
+                      setDropdown(null);
+                      void pickImportFile('json');
+                    }}
+                  >
+                    导入布局 JSON(.json)…
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => {
+                      setDropdown(null);
+                      void exportPackage();
+                    }}
+                  >
+                    导出 add-in 安装包(.esriAddInX)
+                  </button>
+                  <button
+                    onClick={() => {
+                      setDropdown(null);
+                      exportDaml();
+                    }}
+                  >
+                    导出 Config.daml
+                  </button>
+                  <button
+                    onClick={() => {
+                      setDropdown(null);
+                      exportJson();
+                    }}
+                  >
+                    导出布局 JSON
+                  </button>
+                </>
+              )}
             </>
           )}
         </div>
+      ) : null}
+
+      {confirmAction ? (
+        <div className="next-modal" onClick={() => setConfirmAction(null)}>
+          <div className="next-modal-card confirm-card" onClick={(event) => event.stopPropagation()}>
+            <div className="next-modal-head">
+              <strong>{confirmAction === 'clear' ? '清空画布' : '新建布局'}</strong>
+            </div>
+            <p className="confirm-body">
+              将丢弃当前 {documentRef.current.tabs.length} 个页签、{documentRef.current.controls.length}{' '}
+              个控件的布局。{confirmAction === 'new' ? '当前文件不会被删除。' : ''}
+              此操作可通过 Ctrl+Z 撤销。
+            </p>
+            <div className="confirm-actions">
+              <button
+                className="danger"
+                onClick={() => resetDocument(confirmAction === 'clear')}
+              >
+                确认清空
+              </button>
+              <button onClick={() => setConfirmAction(null)}>取消</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      <AboutDialog open={showAbout} onClose={() => setShowAbout(false)} />
+
+      {showWelcome ? (
+        <Welcome
+          onOpenDemo={() => {
+            openDemoLayout();
+            dismissWelcome();
+          }}
+          onStartBlank={dismissWelcome}
+          onClose={dismissWelcome}
+        />
       ) : null}
 
       {toast ? <div className="next-toast">{toast}</div> : null}
@@ -1465,36 +1982,26 @@ function RibbonGroupGrid({
   );
 }
 
-function PalettePreview({
-  item,
-  size,
-  onDragStart,
-}: {
-  item: LibraryControlDefinition;
-  size: RibbonControlSize;
-  onDragStart: (event: React.PointerEvent) => void;
-}) {
-  const footprint = getFootprint(item.type, size);
-  return (
-    <div className="library-preview-item">
-      <button
-        data-testid={`palette-${item.type}-${size}`}
-        className={`library-ribbon-preview size-${size} type-${item.type}`}
-        style={
-          {
-            '--preview-cols': footprint.w,
-            '--preview-rows': footprint.h,
-          } as CSSProperties
-        }
-        title={`${item.label} / ${SIZE_LABELS[size]} / ${footprintLabel(item.type, size)}`}
-        onPointerDown={onDragStart}
-      >
-        <ControlMock type={item.type} caption={item.label} size={size} mode="library" />
-      </button>
-      <span className="library-size-caption">
-        {SIZE_LABELS[size]} · {footprintLabel(item.type, size)}
-      </span>
-    </div>
+// 控件库紧凑卡的类型代表图标(异步加载 PNG;缺失时显示占位色块)
+function LibraryIconThumb({ type }: { type: string }) {
+  const [url, setUrl] = useState('');
+  useEffect(() => {
+    let cancelled = false;
+    const file = LIBRARY_ICON[type];
+    if (!file) return;
+    getIconUrl(file)
+      .then((next) => {
+        if (!cancelled) setUrl(next);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [type]);
+  return url ? (
+    <img className="library-compact-icon" src={url} alt="" draggable={false} />
+  ) : (
+    <span className="library-compact-icon fallback" />
   );
 }
 

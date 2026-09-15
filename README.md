@@ -1,163 +1,134 @@
-# ArcGIS Pro Add-in Ribbon 布局设计器原型
+# 极思G GISpro 插件设计器
 
-这是一个用于设计 ArcGIS Pro Add-in 功能区的前端原型。当前版本以 Esri 官方 SDK 文档为准：Ribbon 控件主要按 `large / middle / small` 三种显示状态理解，其中 large 使用 32x32 图标加文字，middle 使用 16x16 图标加文字，small 使用 16x16 图标；Add-in Ribbon 的组织方式围绕 Tab、Group、Command/Control 展开。
+面向测绘 / 国土行业 GIS 从业者与二开者的 **ArcGIS Pro Add-in 功能区可视化设计器**。
 
-## 当前目标
+拖出 Ribbon 布局，**免编译一键导出 `.esriAddInX` 安装包** —— 不需要装 Visual Studio、不需要 .NET SDK、不需要 Esri Pro SDK。
 
-- 默认从空白 Ribbon 开始，而不是预置 “Add-In 工具箱” 或 “地图风格”。
-- 只做宽屏功能区预览；标准、紧凑、折叠暂不显示。
-- 功能区高度固定，不允许用户增加行数。
-- 画布以最小按钮空间作为 `1x1` 单位，控件按整数格吸附。
-- 右侧控件库使用真实占格预览：拖 `小 1x1` 就落成 `1x1`，拖 `大 2x3` 才落成 `2x3`。
-- 不允许不同控件相互覆盖。
-- 分组只允许横向扩列或减列，用来表达功能区可用宽度。
-- JSON 导出继续保留 AI 后续补命令、事件和 DAML 转换所需字段。
+> 验收标准只有一条：**设计器里拖成什么样，ArcGIS Pro 里就是什么样。**
 
-## 官方规则对齐
+## 下载安装
 
-已按官方文档做出的调整：
+到 [Releases](../../releases/latest) 下载 `极思G GISpro 插件设计器_x.y.z_x64-setup.exe`，双击安装即可。
 
-- 控件尺寸保留 `large / middle / small` 概念。
-- 只使用宽屏 Ribbon 画布作为当前可编辑状态。
-- 分组高度固定为 3 个最小按钮格，不提供加行按钮。
-- 拖入、移动、改尺寸都做碰撞检测，空间不足时拒绝放置。
-- `subgroups` 字段仅作为内部兼容层保留，界面上只展示一个 Group 网格。
+- 仅支持 Windows，按当前用户安装（无需管理员权限）
+- 装好后自带更新：应用内「关于 → 检查更新」可一键升级
 
-## 界面结构
+## 三步上手
 
-- 顶部模拟 ArcGIS Pro 窗口标题、功能区页签和工具条。
-- 左侧是 Ribbon 画布，默认空白。
-- 点击“新增分组”后生成一个固定 3 行高的分组网格。
-- 分组顶部可编辑分组名称，可加列或减列。
-- 右侧上半部分是控件库，按“命令控件 / 输入与选择”分组。
-- 右侧下半部分是属性与 JSON，选中控件后可以编辑标题、尺寸、提示、条件和 AI 备注。
+1. **新增分组** —— 点画布上的「新增分组」，得到一条 3 行高的功能区网格；分组可横向加减列，用来表达功能区可用宽度。
+2. **拖入控件** —— 从底部控件库选类型和尺寸（大 / 中 / 小），按住徽章直接拖到网格上。控件的占格与真实 Ribbon 一致：拖「大 2×3」就落成 2×3。
+3. **导出安装包** —— 点「导出」，生成 `.esriAddInX`。双击安装，重启 ArcGIS Pro 就能看到你的功能区。
 
-## 控件尺寸规则
+首次启动会有引导浮层，也可以直接点「打开示例布局」看看成品长什么样。
 
-当前以 `1格 = 32px x 32px` 建模：
+## 功能
+
+**布局编辑**
+- 9 类 Ribbon 控件：按钮、工具、分裂按钮、工具板、菜单、画廊、下拉框、输入框、复选框
+- 每类支持大 / 中 / 小尺寸，占格与 ArcGIS Pro 真实显示一致
+- 网格吸附、碰撞检测（空间不足时拒绝放置），分组高度固定 3 行、只允许横向扩列
+- 容器控件（菜单 / 工具板 / 画廊）支持递归子项编辑
+
+**效率**
+- 全量撤销 / 重做（`Ctrl+Z` / `Ctrl+Y`，栈深 50），清空等危险操作有确认弹窗
+- 快捷键：`Ctrl+Z` 撤销、`Ctrl+Y` 重做、`Ctrl+S` 保存、`Ctrl+O` 打开、`Ctrl+N` 新建、`Delete` 删除选中控件、`Esc` 逐层关闭弹层
+- 标题栏「文件」菜单：新建 / 打开 / 保存 / 另存为 / 最近 8 个文件 / 示例布局
+- 单文档模型，磁盘草稿持续自动兜底，关窗不会丢工作
+
+**图标**
+- 内置 Tabler Icons 全集（约 5100 个，MIT 协议），16 / 32 像素双尺寸
+- 支持中文搜索：输入「图层」「放大」这类中文词直接命中对应图标
+- 可上传自定义 PNG 图标
+
+**外观**
+- 浅色 / 暗色主题，还原 ArcGIS Pro 本体的 Fluent 观感
+- 窗口大小与位置记忆
+
+## 导出是怎么做到免编译的
+
+传统做法要在用户机器上编译 C# 插件，依赖 .NET SDK 和 Esri Pro SDK，大众用户必然装不上。
+
+本设计器的做法是：**预编译一组通用占位类随应用分发**，导出时只做三件事——
+
+```
+RibbonDocument (JSON)
+  ├─ 生成 Config.daml（控件统一指向占位类）
+  ├─ 打包占位 DLL + deps.json
+  ├─ 注入图标到 Images/
+  └─ 连同布局快照 zip 成 .esriAddInX
+```
+
+所以用户机器上零依赖，解压即得安装包。
+
+> 注意：占位类的行为是空的，按钮点下去不会有反应。这个版本解决的是**界面布局**的快速成型；真实命令 / 事件的绑定在后续里程碑。
+
+## 从源码构建
+
+需要 Node.js 20+ 与 Rust 工具链。
+
+```powershell
+# 1. 生成图标包（首次必须，cargo 编译期会校验它存在；幂等可重复跑）
+cd tools/icon-gen
+npm ci
+node gen-png.mjs
+
+# 2. 构建桌面应用
+cd ../../designer-app
+npm ci
+npm run tauri build
+```
+
+产物在 `designer-app/src-tauri/target/release/` 与 `bundle/nsis/`。
+
+开发调试：
+
+```powershell
+cd designer-app
+npm run tauri dev      # 启动桌面应用（自动跳过已生成的图标包）
+npx tsc --noEmit       # 类型检查
+```
+
+测试：
+
+```powershell
+cd designer-app/src-tauri
+cargo test --lib                     # 单元测试（图标解析 / 取名 / 编码）
+cargo test --test import_addin_test  # 导入链路：解包 DAML / 图标落盘 / 损坏包优雅失败
+```
+
+## 仓库结构
+
+| 目录 | 说明 |
+| --- | --- |
+| `designer-app/` | 桌面设计器本体（Tauri 2 + React 19 + TypeScript），主线 |
+| `designer-app/src/core/` | 纯逻辑层：布局 / 网格 / 碰撞 / DAML 生成 |
+| `ribbon-designer/` | 旧版 Web 设计器，仅 `shared/arcgisProValidation.ts` 打包链仍在用 |
+| `tools/tabler-icons/` | vendored 的 Tabler Icons SVG 源（MIT） |
+| `tools/icon-gen/` | 图标包生成器（node + sharp），产出单文件 `icons-tabler.zip` |
+| `tools/placeholder-addin/` | 免编译导出的占位 DLL 源码 |
+| `tools/` 其余 | 开发侧验算 / 构建 / 装机截图比对脚本 |
+| `arcgis-pro-validation/` | .NET 8 验算插件，开发侧装机验证用 |
+
+## 布局规则速查
+
+以 `1 格 = 32px × 32px` 建模，分组高 3 行：
 
 | 控件类型 | 小 | 中 | 大 |
 | --- | --- | --- | --- |
-| Button 按钮 | `1x1` | `2x1` | `2x3` |
-| Tool 交互工具 | `1x1` | `2x1` | `2x3` |
-| SplitButton 分裂按钮 | - | `2x1` | `2x2` |
-| ToolPalette 工具板 | - | `3x1` | `3x3` |
-| Menu 菜单 | `1x1` | `2x1` | `2x2` |
-| Gallery 画廊 | - | `3x1` | `3x3` |
-| ComboBox 下拉框 | - | `3x1` | `4x1` |
-| EditBox 输入框 | - | `3x1` | `4x1` |
-| CheckBox 复选框 | `1x1` | `2x1` | - |
+| 按钮 Button | `1x1` | `2x1` | `2x3` |
+| 工具 Tool | `1x1` | `2x1` | `2x3` |
+| 分裂按钮 SplitButton | - | `2x1` | `2x2` |
+| 工具板 ToolPalette | - | `3x1` | `3x3` |
+| 菜单 Menu | `1x1` | `2x1` | `2x2` |
+| 画廊 Gallery | - | `3x1` | `3x3` |
+| 下拉框 ComboBox | - | `3x1` | `4x1` |
+| 输入框 EditBox | - | `3x1` | `4x1` |
+| 复选框 CheckBox | `1x1` | `2x1` | - |
 
-## 已实现功能
+## 许可证
 
-- 中文控件库和中文界面文案。
-- 默认空白 Ribbon。
-- 右侧控件库拖放到画布分组。
-- 控件库中的每个尺寸变体都按真实 Ribbon 外观和占格显示。
-- 画布控件拖动重排，并按网格吸附。
-- 分组固定 3 行高，只允许调整列数。
-- 拖入或移动到已有控件位置时拒绝放置。
-- 改尺寸时如果会覆盖其他控件，会自动寻找空位；没有空位则拒绝修改。
-- 属性编辑与 JSON 实时同步。
-- JSON 复制、导出、导入。
-- 浏览器本地存储自动保存。
-- Playwright 主流程测试和截图验收。
+本项目以 [MIT](LICENSE) 协议开源。
 
-## 数据模型
+内置图标来自 [Tabler Icons](https://github.com/tabler/tabler-icons)（MIT 协议）。
 
-导出 JSON 仍保留后续生成 DAML 所需的结构：
-
-```json
-{
-  "metadata": {
-    "app": "gispro-ribbon-designer",
-    "schemaVersion": "1.0"
-  },
-  "tabs": [],
-  "groups": [],
-  "subgroups": [],
-  "controls": []
-}
-```
-
-说明：
-
-- `subgroups` 目前作为内部兼容层保留，每个 `Group` 只有一个内部网格。
-- 用户界面不再暴露多个子组。
-- `control.layout` 保存真实网格位置：`x / y / w / h`。
-- `control.behavior` 和 `eventBindings` 先作为后续命令事件扩展入口。
-
-## 运行方式
-
-推荐双击仓库根目录的：
-
-```text
-启动Ribbon设计器.vbs
-```
-
-这个入口会隐藏启动后台 Vite 服务，并自动打开浏览器，不会显示 cmd 窗口。如果端口 `4173` 已经在运行，它会直接打开网页。
-
-命令行方式：
-
-```powershell
-cd ribbon-designer
-npm install
-npm run dev -- --host 127.0.0.1 --port 4173
-```
-
-打开：
-
-```text
-http://127.0.0.1:4173/
-```
-
-## 验证命令
-
-```powershell
-cd ribbon-designer
-npm run build
-npm run test:smoke
-```
-
-测试会验证：
-
-- 页面正常打开。
-- 默认没有 Add-In 工具箱、地图风格模板按钮。
-- 只显示宽屏，不显示标准、紧凑、折叠。
-- 没有加行、减行按钮。
-- 新增分组后高度固定为 3 行。
-- 大按钮保持 `2x3`，即 `64px x 96px`。
-- 小按钮保持 `1x1`，即 `32px x 32px`。
-- 已占位置不能再放入其他控件。
-- 修改控件标题后 JSON 同步更新。
-- JSON 可以导出。
-
-## 主要文件
-
-```text
-ribbon-designer/src/next/NextRibbonDesigner.tsx   默认主界面、拖放、分组网格、导入导出
-ribbon-designer/src/next/NextRibbonDesigner.css   ArcGIS Pro 风格界面、网格、控件比例
-ribbon-designer/src/next/ribbonLayout.ts          网格尺寸、碰撞检测、吸附布局
-ribbon-designer/src/next/ControlMock.tsx          Ribbon 控件外观模拟
-ribbon-designer/src/library.ts                    控件库定义
-ribbon-designer/src/ribbon.ts                     模板、导入校验、尺寸规则
-ribbon-designer/src/types.ts                      JSON 数据模型类型
-ribbon-designer/tests/ribbon-smoke.spec.ts        Playwright 主流程测试
-```
-
-## 后续建议
-
-- 增加更贴近 DAML 的 Tab、Group、Control 属性面板。
-- 增加命令事件配置面板。
-- 增加 DAML/XML 生成器。
-- 根据更多官方控件文档继续校准 SplitButton、Gallery、ComboBox 等控件的展示规则。
-
-## 最新状态
-
-- 顶部下载按钮已经改成分裂按钮，主按钮用于下载 `Config.daml`，下拉里还提供 `下载 addin 安装包`。
-- `Config.daml` 现在会写到你在工具栏里指定的本机目录，不再只走默认浏览器下载目录。
-- 安装包已经改为真实的 `.esriAddInX` 文件，不再是伪装成 add-in 的 zip。
-- 为了减少 ArcGIS Pro 复用旧包的概率，安装包文件名会带上布局版本号，`AddInInfo id` 也会随最新布局时间变化。
-- 目前默认下载目录是：
-  `~/arcgis-pro-addin-layout-agent\arcgis-pro-validation\GisProRibbonLayoutValidator.AddIn\bin\Debug\net8.0-windows7.0`
-- 如果 ArcGIS Pro 安装后的内容和设计器不一致，先删除旧的 add-in 包，再安装最新版本号的 `.esriAddInX`。
+ArcGIS、ArcGIS Pro 是 Esri 的商标，本项目与 Esri 无隶属关系。

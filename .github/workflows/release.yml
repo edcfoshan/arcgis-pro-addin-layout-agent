@@ -1,0 +1,57 @@
+name: release
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 生成图标包
+        run: |
+          cd tools/icon-gen
+          npm ci
+          node gen-png.mjs
+
+      - name: 安装前端依赖
+        run: npm ci
+        working-directory: designer-app
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: designer-app
+          tagName: ${{ github.ref_name }}
+          releaseName: '极思G GISpro 插件设计器 ${{ github.ref_name }}'
+          releaseBody: '在应用内「关于 → 检查更新」或直接下载下方 .exe 安装包升级。'
+          releaseDraft: true
+          prerelease: false
+
+      # jsdelivr 更新镜像:把 Release 里的 latest.json 提交回 master 根目录
+      - name: 同步 latest.json 到仓库根(供 jsdelivr 镜像)
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $tmp = New-TemporaryFile
+          curl -sL -o $tmp "https://github.com/${{ github.repository }}/releases/download/$tag/latest.json"
+          if ((Get-Item $tmp).Length -gt 100) {
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git checkout master 2>$null; git checkout main 2>$null
+            git pull origin $env:GITHUB_REF_NAME_PROTECTED 2>$null
+            Move-Item $tmp latest.json -Force
+            git add latest.json
+            git commit -m "chore: 同步 updater latest.json ($tag)" || exit 0
+            git push origin HEAD:main 2>$null || git push origin HEAD:master
+          }
+        shell: pwsh

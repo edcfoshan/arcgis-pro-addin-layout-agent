@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows7.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <RootNamespace>GisProRibbonLayoutValidator.AddIn</RootNamespace>
+    <AssemblyName>GisProRibbonLayoutValidator.AddIn</AssemblyName>
+    <LangVersion>latest</LangVersion>
+    <Version>1.0.0</Version>
+    <!-- 刻意不用 PackageType=AddIn:免编译导出只要 DLL 本体,不要 Esri 打包 targets -->
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Esri.ArcGISPro.Extensions30" Version="3.5.0.57366">
+      <ExcludeAssets Condition="'$(MSBuildRuntimeType)' == 'Core'">build</ExcludeAssets>
+    </PackageReference>
+  </ItemGroup>
+</Project>

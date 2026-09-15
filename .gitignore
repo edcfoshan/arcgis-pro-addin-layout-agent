@@ -8,7 +8,26 @@ tools/icon-extract/bin/
 tools/icon-extract/obj/
 .playwright-mcp/
 
+# 占位插件构建中间产物(交付物在 designer-app/src-tauri/resources/placeholder/)
+tools/placeholder-addin/obj/
+tools/placeholder-addin/bin/
+tools/placeholder-addin/dist/
+
 # 正式版设计器 exe(从 target/release 复制,见 CLAUDE.md 常用命令)
 /designer-app.exe
 /00测试包/
 tools/icon-cache-import/
+
+# 依赖(designer-app 有自己的 .gitignore,tools 侧需在此忽略)
+node_modules/
+
+# 生成的图标包:由 tools/icon-gen 从 vendored SVG 复现,
+# CI(build.yml/release.yml)与 `npm run icons` 都会自动生成
+designer-app/src-tauri/icons-tabler.zip
+
+# Tabler 图标下载中间产物(交付物只有 tools/tabler-icons/svg/)
+tools/tabler-icons/tabler-icons-main/
+tools/tabler-icons/tabler-main.tar.gz
+
+# 本地 agent 工作区(计划/临时笔记),不入公开仓库
+.claude/

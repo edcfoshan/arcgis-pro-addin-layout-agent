@@ -1,0 +1,21 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1976d2"/>
+      <stop offset="1" stop-color="#0f4c94"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="1024" height="1024" rx="184" fill="url(#bg)"/>
+  <!-- G 环:粗描边圆弧留出右侧缺口 -->
+  <circle cx="500" cy="480" r="264" fill="none" stroke="#ffffff" stroke-width="124"
+    stroke-dasharray="1080 580" stroke-linecap="butt"
+    transform="rotate(40 500 480)"/>
+  <!-- G 的横杠 -->
+  <rect x="500" y="418" width="290" height="124" rx="34" fill="#ffffff"/>
+  <!-- 功能区格意象:左下三枚小格 -->
+  <g fill="#ffffff" opacity="0.92">
+    <rect x="196" y="700" width="120" height="120" rx="24"/>
+    <rect x="340" y="700" width="120" height="120" rx="24" opacity="0.7"/>
+    <rect x="484" y="700" width="120" height="120" rx="24" opacity="0.45"/>
+  </g>
+</svg>

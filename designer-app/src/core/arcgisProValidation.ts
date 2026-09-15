@@ -19,6 +19,8 @@ export interface ArcGISProValidationOptions {
   moduleId?: string;
   moduleClassName?: string;
   moduleCaption?: string;
+  /** 免编译导出:控件 className 统一指向预编译占位 DLL 的固定类,用户机器无需 .NET SDK */
+  placeholderBehaviors?: boolean;
 }
 
 export interface ArcGISProValidationArtifacts {
@@ -109,6 +111,7 @@ const DEFAULT_OPTIONS: Required<ArcGISProValidationOptions> = {
   moduleId: 'GisProRibbonLayoutValidator_AddIn_Module',
   moduleClassName: 'AddInModule',
   moduleCaption: 'Ribbon Layout Validator',
+  placeholderBehaviors: false,
 };
 
 const buildVersionFromDocument = (document: RibbonDocument) => {
@@ -228,6 +231,7 @@ const createLeafControl = (
   type: GeneratedLeafControl['type'],
   order: number,
   labelSuffix?: string,
+  placeholderBehaviors = false,
 ): GeneratedLeafControl => {
   const suffix = labelSuffix ? `${control.id}_${labelSuffix}` : control.id;
   const token = sanitizeToken(suffix, `${type}_${order + 1}`);
@@ -239,7 +243,9 @@ const createLeafControl = (
     caption: control.caption || fallbackCaptionByType[control.type],
     tooltip: buildTooltipText(control),
     keytip: `C${order + 1}`,
-    className: `Generated.${baseClassName}`,
+    className: placeholderBehaviors
+      ? `Generated.Placeholder${toPascalCase(type, 'Button')}`
+      : `Generated.${baseClassName}`,
     suggestedClassName,
     target: control.behavior.target,
     aiNotes: control.aiNotes,
@@ -274,7 +280,7 @@ const buildArtifactsModel = (document: RibbonDocument, options: Required<ArcGISP
   let order = 0;
 
   const registerLeaf = (control: RibbonControl, type: GeneratedLeafControl['type'], labelSuffix?: string) => {
-    const leaf = createLeafControl(projectToken, control, type, order++, labelSuffix);
+    const leaf = createLeafControl(projectToken, control, type, order++, labelSuffix, options.placeholderBehaviors);
     leafControls.push(leaf);
     return leaf;
   };

@@ -1,0 +1,38 @@
+name: build
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: designer-app/src-tauri
+
+      # cargo 编译期校验 bundle.resources,需先生成 icons-tabler.zip
+      - name: 生成图标包
+        run: |
+          cd tools/icon-gen
+          npm ci
+          node gen-png.mjs
+
+      - name: 前端依赖与类型检查
+        run: |
+          cd designer-app
+          npm ci
+          npx tsc --noEmit
+
+      - name: Rust 单元测试
+        run: cargo test --lib
+        working-directory: designer-app/src-tauri

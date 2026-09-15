@@ -2,34 +2,81 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::Mutex;
+use std::sync::OnceLock;
 
 use base64::Engine as _;
 use serde::{Deserialize, Serialize};
+use tauri::Manager;
 
 const REPO_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../..");
 
-fn icon_cache_dir() -> PathBuf {
+// ===== 图标目录解析 =====
+// 主缓存是单个 icons-tabler.zip(Tabler 全量 16/32px PNG + zh-aliases.json),
+// 避免上万个散文件拖慢 NSIS 打包与安装;导入/上传图标仍是 AppData 下的散文件目录。
+
+fn main_icon_zip_path(app: Option<&tauri::AppHandle>) -> PathBuf {
     if let Ok(dir) = std::env::var("ICON_CACHE_DIR") {
         if !dir.trim().is_empty() {
             return PathBuf::from(dir);
         }
     }
-    PathBuf::from(REPO_ROOT).join("tools/icon-cache")
+    if let Some(app) = app {
+        if let Ok(res) = app.path().resource_dir() {
+            let zip = res.join("icons-tabler.zip");
+            if zip.is_file() {
+                return zip;
+            }
+        }
+    }
+    // 开发态回退:src-tauri 下由 tools/icon-gen/gen-png.mjs 生成
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("icons-tabler.zip")
 }
 
-// 导入包提取的图标落盘目录(独立于 vendored 主缓存,避免污染 git);ICON_IMPORT_DIR 可覆盖
-fn icon_import_dir() -> PathBuf {
+// 用户级图标目录(导入包提取 + 手动上传),AppData 下,机器无关
+fn icon_import_dir(app: Option<&tauri::AppHandle>) -> PathBuf {
     if let Ok(dir) = std::env::var("ICON_IMPORT_DIR") {
         if !dir.trim().is_empty() {
             return PathBuf::from(dir);
         }
     }
-    PathBuf::from(REPO_ROOT).join("tools/icon-cache-import")
+    let base = app
+        .and_then(|app| app.path().app_data_dir().ok())
+        .unwrap_or_else(|| std::env::temp_dir());
+    base.join("icons")
 }
 
-// 图标查找目录:导入目录优先于主缓存
-fn icon_search_dirs() -> [PathBuf; 2] {
-    [icon_import_dir(), icon_cache_dir()]
+fn main_zip_archive(
+    app: Option<&tauri::AppHandle>,
+) -> Result<&'static Mutex<zip::ZipArchive<fs::File>>, String> {
+    static ARCHIVE: OnceLock<Result<Mutex<zip::ZipArchive<fs::File>>, String>> = OnceLock::new();
+    ARCHIVE
+        .get_or_init(|| {
+            let path = main_icon_zip_path(app);
+            let file = fs::File::open(&path)
+                .map_err(|e| format!("打开图标包 {}: {e}", path.display()))?;
+            let archive = zip::ZipArchive::new(file)
+                .map_err(|e| format!("图标包不是有效 zip {}: {e}", path.display()))?;
+            Ok(Mutex::new(archive))
+        })
+        .as_ref()
+        .map_err(|e| e.clone())
+}
+
+// ===== 中文别名(打包在 icons-tabler.zip 内) =====
+
+fn zh_alias_map(
+    app: Option<&tauri::AppHandle>,
+) -> Result<std::collections::HashMap<String, String>, String> {
+    let archive = main_zip_archive(app)?;
+    let mut archive = archive.lock().unwrap();
+    let mut entry = archive
+        .by_name("zh-aliases.json")
+        .map_err(|_| "图标包内缺少 zh-aliases.json".to_string())?;
+    let mut text = String::new();
+    std::io::Read::read_to_string(&mut entry, &mut text)
+        .map_err(|e| format!("读取 zh-aliases.json: {e}"))?;
+    serde_json::from_str(&text).map_err(|e| format!("zh-aliases.json 解析失败: {e}"))
 }
 
 fn validator_project_dir() -> PathBuf {
@@ -44,10 +91,18 @@ fn default_target_dir() -> PathBuf {
     validator_project_dir().join("bin/Debug/net8.0-windows7.0")
 }
 
-// 默认导出目录随 REPO_ROOT 编译期定位,避免写死机器路径;前端首启或发现旧机器路径时来取
+// 开发态(仓库内验算插件产物存在)沿用原默认目录;用户机器回退到「文档\极思G GISpro 插件设计器」
 #[tauri::command]
-fn get_default_target_dir() -> Result<String, String> {
-    Ok(default_target_dir().to_string_lossy().to_string())
+fn get_default_target_dir(app: tauri::AppHandle) -> Result<String, String> {
+    let legacy = default_target_dir();
+    if legacy.is_dir() {
+        return Ok(legacy.to_string_lossy().to_string());
+    }
+    let docs = app
+        .path()
+        .document_dir()
+        .map_err(|e| format!("无法定位文档目录: {e}"))?;
+    Ok(docs.join("极思G GISpro 插件设计器").to_string_lossy().to_string())
 }
 
 #[derive(Serialize)]
@@ -86,17 +141,30 @@ fn parse_icon_file(file: &str) -> Option<IconEntry> {
 }
 
 #[tauri::command]
-fn list_icons() -> Result<Vec<IconEntry>, String> {
+fn list_icons(app: tauri::AppHandle) -> Result<Vec<IconEntry>, String> {
     let mut icons = Vec::new();
     let mut seen = std::collections::HashSet::new();
-    for dir in icon_search_dirs() {
-        if !dir.is_dir() {
-            continue; // 导入目录可能尚不存在
-        }
-        let entries =
-            fs::read_dir(&dir).map_err(|e| format!("read_dir {}: {e}", dir.display()))?;
+    // 导入目录(散文件)优先
+    let import_dir = icon_import_dir(Some(&app));
+    if import_dir.is_dir() {
+        let entries = fs::read_dir(&import_dir)
+            .map_err(|e| format!("read_dir {}: {e}", import_dir.display()))?;
         for entry in entries.flatten() {
             let name = entry.file_name().to_string_lossy().to_string();
+            if name.ends_with(".png") && seen.insert(name.clone()) {
+                if let Some(icon) = parse_icon_file(&name) {
+                    icons.push(icon);
+                }
+            }
+        }
+    }
+    // 主缓存 zip 名单
+    if let Ok(archive) = main_zip_archive(Some(&app)) {
+        let names: Vec<String> = {
+            let archive = archive.lock().unwrap();
+            archive.file_names().map(|n| n.to_string()).collect()
+        };
+        for name in names {
             if name.ends_with(".png") && seen.insert(name.clone()) {
                 if let Some(icon) = parse_icon_file(&name) {
                     icons.push(icon);
@@ -121,24 +189,29 @@ fn valid_icon_name(file: &str) -> bool {
         && !file.contains("..")
         && file
             .chars()
-            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '.')
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '.' || c == '-')
 }
 
-// 双目录读图标:导入目录优先,主缓存兜底
-fn read_icon_bytes(file: &str) -> Result<Vec<u8>, String> {
-    for dir in icon_search_dirs() {
-        if let Ok(bytes) = fs::read(dir.join(file)) {
-            return Ok(bytes);
-        }
-    }
-    Err(format!("read icon {file}: not found in icon directories"))
-}
-
-fn icon_data_url(file: &str) -> Result<IconResult, String> {
+// 双源读图标:导入目录(散文件)优先,主缓存 zip 兜底
+fn read_icon_bytes(app: &tauri::AppHandle, file: &str) -> Result<Vec<u8>, String> {
     if !valid_icon_name(file) {
         return Err(format!("invalid icon file name: {file}"));
     }
-    let bytes = read_icon_bytes(file)?;
+    if let Ok(bytes) = fs::read(icon_import_dir(Some(app)).join(file)) {
+        return Ok(bytes);
+    }
+    let archive = main_zip_archive(Some(app))?;
+    let mut archive = archive.lock().unwrap();
+    let mut entry = archive
+        .by_name(file)
+        .map_err(|_| format!("read icon {file}: not found"))?;
+    let mut bytes = Vec::new();
+    std::io::Read::read_to_end(&mut entry, &mut bytes).map_err(|e| e.to_string())?;
+    Ok(bytes)
+}
+
+fn icon_data_url(app: &tauri::AppHandle, file: &str) -> Result<IconResult, String> {
+    let bytes = read_icon_bytes(app, file)?;
     let b64 = base64::engine::general_purpose::STANDARD.encode(bytes);
     Ok(IconResult {
         file: file.to_string(),
@@ -147,9 +220,23 @@ fn icon_data_url(file: &str) -> Result<IconResult, String> {
 }
 
 #[tauri::command]
-fn search_icons(query: String, theme: String, limit: usize) -> Result<Vec<IconResult>, String> {
-    let all = list_icons()?;
-    let q = query.to_lowercase();
+fn search_icons(
+    app: tauri::AppHandle,
+    query: String,
+    theme: String,
+    limit: usize,
+) -> Result<Vec<IconResult>, String> {
+    let all = list_icons(app.clone())?;
+    let q = query.trim().to_lowercase();
+    // 中文别名:命中则改按图标 base 名匹配
+    let alias_target = if q.is_empty() {
+        None
+    } else {
+        zh_alias_map(Some(&app))
+            .ok()
+            .and_then(|map| map.get(&q).cloned())
+    };
+    let match_base = alias_target.as_deref().unwrap_or(&q).to_lowercase();
     let want_theme = if theme.is_empty() { "light" } else { theme.as_str() };
     let cap = limit.clamp(1, 400);
     let mut out = Vec::new();
@@ -157,10 +244,10 @@ fn search_icons(query: String, theme: String, limit: usize) -> Result<Vec<IconRe
         if icon.theme != want_theme {
             continue;
         }
-        if !q.is_empty() && !icon.base.to_lowercase().contains(&q) {
+        if !match_base.is_empty() && !icon.base.to_lowercase().contains(&match_base) {
             continue;
         }
-        out.push(icon_data_url(&icon.file)?);
+        out.push(icon_data_url(&app, &icon.file)?);
         if out.len() >= cap {
             break;
         }
@@ -169,8 +256,63 @@ fn search_icons(query: String, theme: String, limit: usize) -> Result<Vec<IconRe
 }
 
 #[tauri::command]
-fn get_icon_data_url(file: String) -> Result<IconResult, String> {
-    icon_data_url(&file)
+fn get_icon_data_url(app: tauri::AppHandle, file: String) -> Result<IconResult, String> {
+    icon_data_url(&app, &file)
+}
+
+// 用户上传自定义图标:仅接受 PNG,复制进导入目录(imp_ 前缀防撞),返回落盘文件名
+#[tauri::command]
+fn import_user_icon(app: tauri::AppHandle, path: String) -> Result<ImportedIcon, String> {
+    let file_path = PathBuf::from(&path);
+    if !file_path.is_file() {
+        return Err(format!("文件不存在: {path}"));
+    }
+    if file_path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| !e.eq_ignore_ascii_case("png"))
+        .unwrap_or(true)
+    {
+        return Err("仅支持上传 PNG 图标".into());
+    }
+    let bytes = fs::read(&file_path).map_err(|e| format!("读取失败: {e}"))?;
+    if bytes.len() > 8 * 1024 * 1024 {
+        return Err("图标文件过大(上限 8MB)".into());
+    }
+    let sanitized = sanitize_icon_file_name(&path);
+    let import_dir = icon_import_dir(Some(&app));
+    // 主缓存 zip 内已有的名字视为占用(撞名加 imp_ 前缀)
+    let zip_names: std::collections::HashSet<String> = main_zip_archive(Some(&app))
+        .ok()
+        .map(|archive| {
+            let archive = archive.lock().unwrap();
+            archive.file_names().map(|n| n.to_string()).collect()
+        })
+        .unwrap_or_default();
+    let (file_name, skip_write) = pick_import_name_two_dirs(
+        &import_dir,
+        &sanitized,
+        &bytes,
+        &|candidate| zip_names.contains(candidate),
+    )
+    .ok_or("无法为上传图标分配文件名")?;
+    if !skip_write {
+        fs::create_dir_all(&import_dir).map_err(|e| e.to_string())?;
+        fs::write(import_dir.join(&file_name), &bytes).map_err(|e| e.to_string())?;
+    }
+    Ok(ImportedIcon {
+        daml_name: sanitized,
+        file: file_name,
+    })
+}
+
+#[tauri::command]
+fn read_text_file(path: String) -> Result<String, String> {
+    let p = PathBuf::from(&path);
+    if !p.is_file() {
+        return Err(format!("文件不存在: {path}"));
+    }
+    fs::read_to_string(p).map_err(|e| format!("读取失败: {e}"))
 }
 
 #[tauri::command]
@@ -179,7 +321,7 @@ fn write_text_file(dir: String, filename: String, content: String) -> Result<Str
         && !filename.contains("..")
         && filename
             .chars()
-            .all(|c| c.is_ascii_alphanumeric() || "._- \\".contains(c));
+            .all(|c| c.is_ascii_alphanumeric() || "._- \\\\".contains(c));
     if !is_safe_name {
         return Err(format!("invalid filename: {filename}"));
     }
@@ -200,6 +342,8 @@ pub struct ExportPayload {
     pub target_dir: String,
     pub version: String,
     pub icon_files: Vec<String>,
+    /// 免编译导出:前端已生成好的 Config.daml 文本;Some 时不再走 ps1/dotnet 编译链
+    pub daml: Option<String>,
 }
 
 fn add_file_to_zip<W: Write + std::io::Seek>(
@@ -219,8 +363,7 @@ fn add_dir_to_zip<W: Write + std::io::Seek>(
     prefix: &str,
     options: zip::write::SimpleFileOptions,
 ) -> Result<(), String> {
-    let entries =
-        fs::read_dir(dir).map_err(|e| format!("read_dir {}: {e}", dir.display()))?;
+    let entries = fs::read_dir(dir).map_err(|e| format!("read_dir {}: {e}", dir.display()))?;
     for entry in entries.flatten() {
         let child_name = entry.file_name().to_string_lossy().to_string();
         let entry_path = entry.path();
@@ -241,6 +384,84 @@ fn export_addin(payload: ExportPayload) -> Result<String, String> {
     run_export_addin(payload)
 }
 
+// 占位 DLL 资源定位:发布态在 exe 同级(NSIS 资源平铺),开发态回退仓库内 resources 目录
+fn placeholder_resource(name: &str) -> Result<PathBuf, String> {
+    if let Ok(dir) = std::env::var("PLACEHOLDER_DIR") {
+        if !dir.trim().is_empty() {
+            let path = PathBuf::from(dir).join(name);
+            if path.is_file() {
+                return Ok(path);
+            }
+        }
+    }
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            let path = dir.join(name);
+            if path.is_file() {
+                return Ok(path);
+            }
+        }
+    }
+    let dev = PathBuf::from(REPO_ROOT)
+        .join("designer-app/src-tauri/resources/placeholder")
+        .join(name);
+    if dev.is_file() {
+        return Ok(dev);
+    }
+    Err(format!("占位资源缺失: {name}(先运行 tools/placeholder-addin/build-placeholder.ps1)"))
+}
+
+// 免编译导出:Config.daml + 占位 DLL/deps.json + Layout 快照 + 图标 → zip 成包
+fn export_package_from_placeholder(
+    daml: &str,
+    payload: &ExportPayload,
+) -> Result<String, String> {
+    let dll_bytes = fs::read(placeholder_resource("GisProRibbonLayoutValidator.AddIn.dll")?)
+        .map_err(|e| format!("read placeholder dll: {e}"))?;
+    let deps_bytes = fs::read(placeholder_resource(
+        "GisProRibbonLayoutValidator.AddIn.deps.json",
+    )?)
+    .map_err(|e| format!("read placeholder deps.json: {e}"))?;
+
+    let target_dir = PathBuf::from(&payload.target_dir);
+    fs::create_dir_all(&target_dir).map_err(|e| e.to_string())?;
+    let package_path = target_dir.join(&payload.package_file_name);
+    let zip_file = fs::File::create(&package_path)
+        .map_err(|e| format!("create package: {e}"))?;
+    let mut zip = zip::ZipWriter::new(zip_file);
+    let options: zip::write::SimpleFileOptions = zip::write::SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated);
+
+    add_file_to_zip(&mut zip, "Config.daml", daml.as_bytes(), options)?;
+    add_file_to_zip(
+        &mut zip,
+        "Install/GisProRibbonLayoutValidator.AddIn.dll",
+        &dll_bytes,
+        options,
+    )?;
+    add_file_to_zip(
+        &mut zip,
+        "Install/GisProRibbonLayoutValidator.AddIn.deps.json",
+        &deps_bytes,
+        options,
+    )?;
+    add_file_to_zip(
+        &mut zip,
+        "Install/Layout/current-layout.json",
+        payload.layout_snapshot.as_bytes(),
+        options,
+    )?;
+    for file in &payload.icon_files {
+        if !valid_icon_name(file) {
+            return Err(format!("invalid icon file name: {file}"));
+        }
+        let bytes = read_icon_bytes_standalone(file)?;
+        add_file_to_zip(&mut zip, &format!("Images/{file}"), &bytes, options)?;
+    }
+    zip.finish().map_err(|e| e.to_string())?;
+    Ok(package_path.to_string_lossy().to_string())
+}
+
 pub fn run_export_addin(payload: ExportPayload) -> Result<String, String> {
     if !payload
         .package_file_name
@@ -248,6 +469,11 @@ pub fn run_export_addin(payload: ExportPayload) -> Result<String, String> {
         .ends_with(".esriaddinx")
     {
         return Err("package_file_name must end with .esriAddInX".into());
+    }
+
+    // 免编译路径:用户机器零依赖出包
+    if let Some(daml) = &payload.daml {
+        return export_package_from_placeholder(daml, &payload);
     }
 
     let project_dir = validator_project_dir();
@@ -308,12 +534,43 @@ pub fn run_export_addin(payload: ExportPayload) -> Result<String, String> {
         if !valid_icon_name(file) {
             return Err(format!("invalid icon file name: {file}"));
         }
-        let bytes = read_icon_bytes(file)?;
+        let bytes = read_icon_bytes_standalone(file)?;
         add_file_to_zip(&mut zip, &format!("Images/{file}"), &bytes, options)?;
     }
 
     zip.finish().map_err(|e| e.to_string())?;
     Ok(package_path.to_string_lossy().to_string())
+}
+
+// 导出链不依赖 AppHandle(集成测试直接调 run_export_addin):双源读图标
+pub fn read_icon_bytes_standalone(file: &str) -> Result<Vec<u8>, String> {
+    if !valid_icon_name(file) {
+        return Err(format!("invalid icon file name: {file}"));
+    }
+    if let Ok(dir) = std::env::var("ICON_IMPORT_DIR") {
+        if !dir.trim().is_empty() {
+            if let Ok(bytes) = fs::read(PathBuf::from(dir).join(file)) {
+                return Ok(bytes);
+            }
+        }
+    }
+    let zip_path = std::env::var("ICON_CACHE_DIR")
+        .ok()
+        .filter(|d| !d.trim().is_empty())
+        .map(PathBuf::from)
+        .unwrap_or_else(|| {
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("icons-tabler.zip")
+        });
+    let zip_file = fs::File::open(&zip_path)
+        .map_err(|e| format!("打开图标包 {}: {e}", zip_path.display()))?;
+    let mut archive = zip::ZipArchive::new(zip_file)
+        .map_err(|e| format!("图标包不是有效 zip: {e}"))?;
+    let mut entry = archive
+        .by_name(file)
+        .map_err(|_| format!("read icon {file}: not found in icon sources"))?;
+    let mut bytes = Vec::new();
+    std::io::Read::read_to_end(&mut entry, &mut bytes).map_err(|e| e.to_string())?;
+    Ok(bytes)
 }
 
 // ===== 第三方 add-in 导入:解包取 DAML 文本与图标,布局解析在前端 core/damlImport =====
@@ -366,7 +623,7 @@ fn sanitize_icon_file_name(name: &str) -> String {
         .unwrap_or("")
         .chars()
         .map(|c| {
-            if c.is_ascii_alphanumeric() || c == '_' || c == '.' {
+            if c.is_ascii_alphanumeric() || c == '_' || c == '.' || c == '-' {
                 c
             } else {
                 '_'
@@ -382,12 +639,12 @@ fn sanitize_icon_file_name(name: &str) -> String {
     }
 }
 
-// 选导入图标落盘名:导入目录已有同字节文件则幂等跳过;与导入目录或主缓存撞名一律加 imp_ 前缀
-fn pick_import_icon_name(
+// 通用取名:exists 闭包判定候选名是否已占用;同字节幂等跳过
+fn pick_import_name_two_dirs(
     import_dir: &Path,
-    main_dir: &Path,
     base: &str,
     bytes: &[u8],
+    name_taken: &dyn Fn(&str) -> bool,
 ) -> Option<(String, bool)> {
     for attempt in 0..100 {
         let candidate = match attempt {
@@ -402,7 +659,7 @@ fn pick_import_icon_name(
             }
             continue;
         }
-        if main_dir.join(&candidate).is_file() {
+        if name_taken(&candidate) {
             continue;
         }
         return Some((candidate, false));
@@ -410,7 +667,7 @@ fn pick_import_icon_name(
     None
 }
 
-pub fn run_open_import_file(path: &str) -> Result<ImportedPackage, String> {
+pub fn run_open_import_file(path: &str, dirs: &ImportDirs) -> Result<ImportedPackage, String> {
     let file_path = PathBuf::from(path);
     if !file_path.is_file() {
         return Err(format!("文件不存在: {path}"));
@@ -458,8 +715,7 @@ pub fn run_open_import_file(path: &str) -> Result<ImportedPackage, String> {
 
     let mut daml_text = String::new();
     let mut icons: Vec<ImportedIcon> = Vec::new();
-    let import_dir = icon_import_dir();
-    let main_dir = icon_cache_dir();
+    let import_dir = &dirs.import_dir;
     for index in 0..archive.len() {
         let mut entry = archive
             .by_index(index)
@@ -486,10 +742,12 @@ pub fn run_open_import_file(path: &str) -> Result<ImportedPackage, String> {
                 .map_err(|e| format!("读取图标 {name} 失败: {e}"))?;
             let sanitized = sanitize_icon_file_name(&name);
             if let Some((file_name, skip_write)) =
-                pick_import_icon_name(&import_dir, &main_dir, &sanitized, &bytes)
+                pick_import_name_two_dirs(import_dir, &sanitized, &bytes, &|candidate| {
+                    dirs.main_zip_contains(candidate)
+                })
             {
                 if !skip_write {
-                    fs::create_dir_all(&import_dir).map_err(|e| e.to_string())?;
+                    fs::create_dir_all(import_dir).map_err(|e| e.to_string())?;
                     fs::write(import_dir.join(&file_name), &bytes).map_err(|e| e.to_string())?;
                 }
                 icons.push(ImportedIcon {
@@ -511,9 +769,30 @@ pub fn run_open_import_file(path: &str) -> Result<ImportedPackage, String> {
     })
 }
 
+// 命令层与测试层共用的图标目录描述
+pub struct ImportDirs {
+    pub import_dir: PathBuf,
+    pub main_zip: PathBuf,
+}
+
+impl ImportDirs {
+    fn main_zip_contains(&self, name: &str) -> bool {
+        if let Ok(file) = fs::File::open(&self.main_zip) {
+            if let Ok(mut archive) = zip::ZipArchive::new(file) {
+                return archive.file_names().any(|n| n == name);
+            }
+        }
+        false
+    }
+}
+
 #[tauri::command]
-fn open_import_file(path: String) -> Result<ImportedPackage, String> {
-    run_open_import_file(&path)
+fn open_import_file(app: tauri::AppHandle, path: String) -> Result<ImportedPackage, String> {
+    let dirs = ImportDirs {
+        import_dir: icon_import_dir(Some(&app)),
+        main_zip: main_icon_zip_path(Some(&app)),
+    };
+    run_open_import_file(&path, &dirs)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -521,10 +800,15 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_window_state::Builder::default().build())
         .invoke_handler(tauri::generate_handler![
             list_icons,
             search_icons,
             get_icon_data_url,
+            import_user_icon,
+            read_text_file,
             write_text_file,
             get_default_target_dir,
             export_addin,
@@ -540,15 +824,19 @@ mod tests {
 
     #[test]
     fn parses_light_dark_and_sizes() {
-        let light = parse_icon_file("images_adddata32.png").unwrap();
+        let light = parse_icon_file("images_map-pin32.png").unwrap();
         assert_eq!(light.theme, "light");
-        assert_eq!(light.base, "adddata");
+        assert_eq!(light.base, "map-pin");
         assert_eq!(light.px, 32);
 
         let dark = parse_icon_file("darkimages_zoomtool16.png").unwrap();
         assert_eq!(dark.theme, "dark");
         assert_eq!(dark.base, "zoomtool");
         assert_eq!(dark.px, 16);
+
+        // kebab 名与多段数字尾缀
+        let kebab = parse_icon_file("images_arrow-right16.png").unwrap();
+        assert_eq!(kebab.base, "arrow-right");
 
         assert!(parse_icon_file("readme.txt").is_none());
     }
@@ -557,7 +845,7 @@ mod tests {
     fn rejects_bad_icon_names() {
         assert!(!valid_icon_name("../evil.png"));
         assert!(!valid_icon_name("a/b.png"));
-        assert!(valid_icon_name("images_adddata32.png"));
+        assert!(valid_icon_name("images_map-pin32.png"));
     }
 
     #[test]
@@ -566,27 +854,50 @@ mod tests {
         assert_eq!(sanitize_icon_file_name("Data/Images/x.PNG"), "x.PNG");
         assert_eq!(sanitize_icon_file_name("../evil\\x.png"), "x.png");
         assert_eq!(sanitize_icon_file_name(""), "imported_icon.png");
+        // Tabler kebab 名保留连字符(否则 images_map-pin32.png 会被读不回来)
+        assert_eq!(
+            sanitize_icon_file_name("Images/images_map-pin32.png"),
+            "images_map-pin32.png"
+        );
     }
 
     #[test]
     fn picks_import_icon_names() {
         let tmp = std::env::temp_dir().join("designer-icon-pick-test");
         let _ = fs::remove_dir_all(&tmp);
-        let main = tmp.join("main");
         let import = tmp.join("import");
-        fs::create_dir_all(&main).unwrap();
+        let main_zip = tmp.join("icons-tabler.zip");
         fs::create_dir_all(&import).unwrap();
+        // 造一个含 cached.png 的主缓存 zip
+        let zf = fs::File::create(&main_zip).unwrap();
+        let mut zw = zip::ZipWriter::new(zf);
+        let opts = zip::write::SimpleFileOptions::default();
+        zw.start_file("cached.png", opts).unwrap();
+        zw.write_all(b"z").unwrap();
+        zw.finish().unwrap();
+        let dirs = ImportDirs {
+            import_dir: import.clone(),
+            main_zip: main_zip.clone(),
+        };
 
         // 新名:直接落盘
-        let (name, skip) = pick_import_icon_name(&import, &main, "fresh.png", b"a").unwrap();
+        let (name, skip) = pick_import_name_two_dirs(&import, "fresh.png", b"a", &|c| {
+            dirs.main_zip_contains(c)
+        })
+        .unwrap();
         assert_eq!((name.as_str(), skip), ("fresh.png", false));
         fs::write(import.join("fresh.png"), b"a").unwrap();
         // 同字节:幂等跳过
-        let (name, skip) = pick_import_icon_name(&import, &main, "fresh.png", b"a").unwrap();
+        let (name, skip) = pick_import_name_two_dirs(&import, "fresh.png", b"a", &|c| {
+            dirs.main_zip_contains(c)
+        })
+        .unwrap();
         assert_eq!((name.as_str(), skip), ("fresh.png", true));
-        // 撞主缓存名:加 imp_ 前缀
-        fs::write(main.join("cached.png"), b"z").unwrap();
-        let (name, skip) = pick_import_icon_name(&import, &main, "cached.png", b"a").unwrap();
+        // 撞主缓存 zip 内名:加 imp_ 前缀
+        let (name, skip) = pick_import_name_two_dirs(&import, "cached.png", b"a", &|c| {
+            dirs.main_zip_contains(c)
+        })
+        .unwrap();
         assert_eq!((name.as_str(), skip), ("imp_cached.png", false));
 
         let _ = fs::remove_dir_all(&tmp);

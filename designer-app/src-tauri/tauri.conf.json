@@ -1,18 +1,18 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "designer-app",
-  "version": "0.1.0",
-  "identifier": "com.tauri-app.designer-app",
+  "productName": "极思G GISpro 插件设计器",
+  "version": "1.0.0",
+  "identifier": "com.jisig.gispro-addin-designer",
   "build": {
-    "beforeDevCommand": "npm run dev",
+    "beforeDevCommand": "npm run icons && npm run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run build",
+    "beforeBuildCommand": "npm run icons && npm run build",
     "frontendDist": "../dist"
   },
   "app": {
     "windows": [
       {
-        "title": "ArcGIS Pro Add-In Ribbon 布局设计器",
+        "title": "极思G GISpro 插件设计器",
         "width": 1360,
         "height": 860,
         "minWidth": 1100,
@@ -21,18 +21,39 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://api.github.com https://github.com https://*.githubusercontent.com"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "active": true,
+      "dialog": false,
+      "endpoints": [
+        "https://github.com/edcfoshan/arcgis-pro-addin-layout-agent/releases/latest/download/latest.json",
+        "https://cdn.jsdelivr.net/gh/edcfoshan/arcgis-pro-addin-layout-agent@main/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDIwRTM3QjA2NUQwODQ1MEIKUldRTFJRaGRCbnZqSUJhWWlTNmo4ZStnWFBDaHpLRnI2RnZxTEhzSzh6cTV4U28zMkNtUWY1bksK"
     }
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": "nsis",
+    "createUpdaterArtifacts": true,
+    "resources": {
+      "icons-tabler.zip": "icons-tabler.zip",
+      "resources/placeholder/GisProRibbonLayoutValidator.AddIn.dll": "GisProRibbonLayoutValidator.AddIn.dll",
+      "resources/placeholder/GisProRibbonLayoutValidator.AddIn.deps.json": "GisProRibbonLayoutValidator.AddIn.deps.json"
+    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
-      "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    }
   }
 }
