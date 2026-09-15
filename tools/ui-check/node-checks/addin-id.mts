@@ -3,15 +3,17 @@
 // id 抖动会导致 Pro 里累积多份同名插件而非更新已有那份。
 // 用法：node --experimental-strip-types tools/ui-check/node-checks/addin-id.mts
 import { buildConfigDaml } from '../../../designer-app/src/core/arcgisProValidation.ts';
+// 打包链用的是 shared 变体，两者必须产出同一个插件身份——只改一侧正是本任务的核心风险。
+import { buildConfigDaml as buildSharedConfigDaml } from '../../../ribbon-designer/shared/arcgisProValidation.ts';
 import type { RibbonDocument } from '../../../designer-app/src/core/types.ts';
 
 // 最小可导出的文档：一个页签、一个分组、一个按钮。
 // 不引 demoLayout 是为了让本检查的输入完全自足、不受别处改动影响。
-const makeDoc = (lastUpdated: string): RibbonDocument =>
+const makeDoc = (lastUpdated: string, name = '恒定插件名'): RibbonDocument =>
   ({
     metadata: {
       id: 'doc_stable0001',
-      name: '恒定插件名',
+      name,
       app: 'gispro-ribbon-designer',
       schemaVersion: '1.0',
       lastUpdated,
@@ -76,14 +78,37 @@ const extractAddInId = (daml: string): string => {
 
 const early = extractAddInId(buildConfigDaml(makeDoc('2026-01-01T00:00:00.000Z')));
 const late = extractAddInId(buildConfigDaml(makeDoc('2026-09-15T12:34:56.000Z')));
+// 改名的同一份设计稿：metadata.name 也是被移出种子的可变分量（界面可双击改名），
+// 若它被加回种子，这一项会与 early 不等。
+const renamed = extractAddInId(buildConfigDaml(makeDoc('2026-01-01T00:00:00.000Z', '改过名的插件')));
+// 同一份文档交给打包链用的 shared 变体，身份必须与设计器变体逐字一致。
+const shared = extractAddInId(buildSharedConfigDaml(makeDoc('2026-01-01T00:00:00.000Z')));
 
 console.log(`  早期编辑时刻的 addInId：${early}`);
 console.log(`  后期编辑时刻的 addInId：${late}`);
+console.log(`  仅改名后的 addInId：${renamed}`);
+console.log(`  shared 变体（打包链）的 addInId：${shared}`);
 
-if (early !== late) {
-  console.error('\nFAIL：同一设计稿在不同编辑时刻导出，插件身份 GUID 不同。');
-  console.error('      ArcGIS Pro 会把它装进不同目录，导致同名插件在 Pro 里累积。');
+let failures = 0;
+const expectSame = (label: string, actual: string, expected: string) => {
+  if (actual === expected) return;
+  failures += 1;
+  console.error(`\nFAIL ${label}`);
+  console.error(`      期望：${expected}`);
+  console.error(`      实得：${actual}`);
+};
+
+expectSame(
+  '同一设计稿在不同编辑时刻导出，插件身份 GUID 不同——ArcGIS Pro 会把它装进不同目录，导致同名插件在 Pro 里累积。',
+  late,
+  early,
+);
+expectSame('仅改插件名就改变了插件身份 GUID。', renamed, early);
+expectSame('shared 变体（打包链）与设计器变体产出了不同的插件身份 GUID，两文件已漂移。', shared, early);
+
+if (failures) {
+  console.error(`\nFAIL：${failures} 项不通过。`);
   process.exit(1);
 }
 
-console.log('\nPASS：插件身份 GUID 稳定。');
+console.log('\nPASS：插件身份 GUID 稳定，且两个变体一致。');
