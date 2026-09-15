@@ -1,6 +1,6 @@
 import { eq, ok } from '../assert.mjs';
 
-export const name = 'P3-1 画布页签条存在、可切换、且与侧栏双向联动';
+export const name = 'P3-1 画布页签条存在、可切换、与侧栏双向联动，且是完整的 ARIA tabs pattern';
 
 export default async function (page) {
   // 先加一个页签，确保有得切
@@ -39,6 +39,71 @@ export default async function (page) {
     true,
     '画布页签应跟随侧栏切换',
   );
+
+  // ===== ARIA tabs pattern：语义与键盘行为必须成对出现 =====
+  // 只挂 role="tablist"/"tab" 而不给方向键与 roving tabindex，是用语义承诺一个没实现的
+  // 交互（4.1.2 语义夸大）。断言取结果：按键之后「谁被选中」「焦点在哪」都要跟着变。
+  const tabStripState = () =>
+    page.evaluate(() => {
+      const tabs = [...document.querySelectorAll('.next-canvas-tab')];
+      const panel = document.querySelector('.next-ribbon-area');
+      return {
+        selected: tabs.map((tab) => tab.getAttribute('aria-selected') === 'true'),
+        tabIndex: tabs.map((tab) => tab.getAttribute('tabindex')),
+        focused: tabs.indexOf(document.activeElement),
+        domIds: tabs.map((tab) => tab.id),
+        controls: tabs.map((tab) => tab.getAttribute('aria-controls')),
+        panelRole: panel.getAttribute('role'),
+        panelId: panel.id,
+        panelLabelledBy: panel.getAttribute('aria-labelledby'),
+      };
+    });
+
+  {
+    const strip = await tabStripState();
+    // roving tabindex：整条页签条只占一个 tab stop，且停在选中的那一个上
+    eq(
+      strip.tabIndex.filter((value) => value === '0').length,
+      1,
+      `页签条应只有一个 tab stop（roving tabindex），实际 tabindex=${JSON.stringify(strip.tabIndex)}`,
+    );
+    eq(
+      strip.tabIndex[strip.selected.indexOf(true)],
+      '0',
+      '唯一那个 tab stop 必须落在选中的页签上',
+    );
+    eq(strip.panelRole, 'tabpanel', 'ribbon 区应声明 role="tabpanel"');
+    ok(strip.panelId, 'tabpanel 需要一个 id 供页签的 aria-controls 指向');
+    ok(
+      strip.controls.length > 0 && strip.controls.every((value) => value === strip.panelId),
+      `每个页签的 aria-controls 都应指向 tabpanel（${strip.panelId}），实际 ${JSON.stringify(strip.controls)}`,
+    );
+    eq(
+      strip.panelLabelledBy,
+      strip.domIds[strip.selected.indexOf(true)],
+      'tabpanel 应由当前激活页签具名（aria-labelledby）',
+    );
+
+    // 方向键：移动即激活（Pro 的 ribbon tab row 手感），焦点跟着走
+    await canvasTabs.last().focus();
+    await page.keyboard.press('ArrowLeft');
+    await page.waitForTimeout(200);
+    const left = await tabStripState();
+    eq(left.selected[canvasCount - 2], true, '← 应把选中态移到左边那个页签');
+    eq(left.focused, canvasCount - 2, '← 之后焦点应跟着走，否则下一个按键还从旧页签起算');
+
+    await page.keyboard.press('Home');
+    await page.waitForTimeout(200);
+    const home = await tabStripState();
+    eq(home.selected[0], true, 'Home 应选中第一个页签');
+    eq(home.focused, 0, 'Home 之后焦点应在第一个页签上');
+
+    await page.keyboard.press('End');
+    await page.waitForTimeout(200);
+    const end = await tabStripState();
+    eq(end.selected[canvasCount - 1], true, 'End 应选中最后一个页签');
+    eq(end.focused, canvasCount - 1, 'End 之后焦点应在最后一个页签上');
+  }
 
   // keytip 应显示在页签上（Pro 的实际行为）。
   // 取最后一个页签：空白文档自带的首页签 keytip 是 'A'（自定义工具箱），

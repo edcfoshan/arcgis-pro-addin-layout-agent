@@ -312,6 +312,12 @@ const ownerTabOfControl = (document: RibbonDocument, controlId: string): string 
   return document.groups.find((group) => group.id === groupId)?.tabId ?? null;
 };
 
+// 画布页签条的 ARIA tabs 关联：页签用 aria-controls 指向 tabpanel，tabpanel 用
+// aria-labelledby 指回激活页签。页签的 DOM id 由业务 id 派生（页签 id 是生成/导入来的，
+// 不用它直接当 DOM id，免得外部数据里出现不适合做 id 的字符）。
+const CANVAS_TABPANEL_ID = 'ribbon-canvas-tabpanel';
+const canvasTabDomId = (tabId: string) => `ribbon-canvas-tab-${tabId}`;
+
 export default function Designer() {
   const [initialSession] = useState(loadInitialSession);
   const [projects, setProjects] = useState<ProjectEntry[]>(initialSession.projects);
@@ -496,8 +502,33 @@ export default function Designer() {
     if (tabId !== undefined) updateProject(projectId, { activeTabId: tabId });
   };
 
-  // 结构树点控件 → 选中它，并滚动定位到画布上对应的位置（spec §4 P4；验收 A8 的「点击定位」）。
-  // 顺序不能反：activateProject 会清空 selectedControlId（换了页签就是换了选中对象），
+  // 页签条的方向键。ARIA tabs pattern 的自动激活形态：移动即激活（Pro 的 ribbon tab row
+  // 也是这个手感），Home/End 到首尾。焦点必须跟着走——roving tabindex 下只有激活页签在
+  // Tab 序里，不挪焦点的话下一个方向键还从旧页签起算。焦点是同步挪的：页签按钮始终在
+  // DOM 里（只是 tabIndex 不同），不必等重渲染。
+  const handleCanvasTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
+    const tabs = document.tabs;
+    if (!tabs.length) return;
+    const last = tabs.length - 1;
+    const nextIndex =
+      event.key === 'ArrowRight'
+        ? (index + 1) % tabs.length
+        : event.key === 'ArrowLeft'
+          ? (index - 1 + tabs.length) % tabs.length
+          : event.key === 'Home'
+            ? 0
+            : event.key === 'End'
+              ? last
+              : -1;
+    if (nextIndex < 0) return;
+    event.preventDefault();
+    const target = tabs[nextIndex];
+    activateProject(activeProject.id, target.id);
+    const siblings = event.currentTarget.parentElement?.querySelectorAll<HTMLElement>('[role="tab"]');
+    siblings?.[nextIndex]?.focus();
+  };
+
+  // 结构树点控件 → 选中它，并滚动定位到画布上对应的位置（spec §4 P4；验收 A8 的「点击定位」）。  // 顺序不能反：activateProject 会清空 selectedControlId（换了页签就是换了选中对象），
   // 先选中会被那次清空吞掉。
   const revealControl = (controlId: string) => {
     const ownerTabId = ownerTabOfControl(document, controlId);
@@ -1963,16 +1994,24 @@ export default function Designer() {
           <main className="next-canvas-row" id="main-canvas" tabIndex={-1}>
             <section className="next-canvas">
               {/* Pro 的 ribbon 顶部有一条页签条，这是它最显眼的特征。
-                  点击与侧栏 .next-tab-item 走同一个入口 activateProject，双向联动。 */}
+                  点击与侧栏 .next-tab-item 走同一个入口 activateProject，双向联动。
+                  这里是完整的 ARIA tabs pattern（tablist + tab + tabpanel + roving tabindex
+                  + 方向键）：只挂 role="tablist"/"tab" 而不给键盘行为，是在用语义承诺一个
+                  没实现的交互，属 4.1.2 的语义夸大。 */}
               <div className="next-canvas-tabs" role="tablist" aria-label="Ribbon 页签">
-                {document.tabs.map((tab) => (
+                {document.tabs.map((tab, index) => (
                   <button
                     key={tab.id}
                     type="button"
                     role="tab"
+                    id={canvasTabDomId(tab.id)}
+                    // roving tabindex：整条页签条只占一个 tab stop，方向键在其中移动
                     className={`next-canvas-tab${tab.id === activeTabId ? ' active' : ''}`}
                     aria-selected={tab.id === activeTabId}
+                    aria-controls={CANVAS_TABPANEL_ID}
+                    tabIndex={tab.id === activeTabId ? 0 : -1}
                     onClick={() => activateProject(activeProject.id, tab.id)}
+                    onKeyDown={(event) => handleCanvasTabKeyDown(event, index)}
                     title={tab.caption}
                   >
                     <span className="next-canvas-tab-caption">{tab.caption}</span>
@@ -1980,7 +2019,12 @@ export default function Designer() {
                   </button>
                 ))}
               </div>
-              <div className="next-ribbon-area">
+              <div
+                className="next-ribbon-area"
+                id={CANVAS_TABPANEL_ID}
+                role="tabpanel"
+                aria-labelledby={canvasTabDomId(activeTabId)}
+              >
                 {activeGroups.length ? (
                   activeGroups.map((group, index) => (
                     <RibbonGroupView
