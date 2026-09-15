@@ -2320,8 +2320,9 @@ function RibbonGroupView({
   const spec = getGridSpec(subgroup);
 
   return (
-    <section
+    <div
       className="next-group"
+      role="group"
       tabIndex={0}
       aria-label={`分组 ${group.caption}`}
       style={{ '--group-cols': spec.cols } as CSSProperties}
@@ -2376,7 +2377,7 @@ function RibbonGroupView({
       <div className="next-group-footer">
         <div className="next-group-caption">{group.caption}</div>
       </div>
-    </section>
+    </div>
   );
 }
 

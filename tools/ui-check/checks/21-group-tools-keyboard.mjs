@@ -34,6 +34,24 @@ export default async function (page) {
     });
   ok(focusedReachable, '编辑条内的按钮必须可被聚焦');
 
+  // 分组必须是普通 group，且不能用 <section> 承载。axe-core 4.10 的 landmark-unique 对
+  // <section>/<form> 有特例分支：只要带可访问名就算 landmark，显式写 role="group" 也压不住
+  // （实测同名分组仍报 landmark-unique）。而两个分组同名是用户真会做的事，项目无障碍
+  // 不变量又要求两主题违规为 0。这条只有 axe 看得见，套件里没有 axe，故在此钉死可断言部分。
+  const groupSemantics = await page
+    .locator('.next-group')
+    .evaluateAll((els) => els.map((el) => ({ tag: el.tagName, role: el.getAttribute('role') })));
+  ok(
+    groupSemantics.length > 0 &&
+      groupSemantics.every((item) => item.role === 'group' && item.tag !== 'SECTION'),
+    `分组必须以 role="group" 的非 <section> 元素承载（实际 ${JSON.stringify(groupSemantics)}），否则会变成 landmark`,
+  );
+  eq(
+    await page.getByRole('region', { name: /分组/ }).count(),
+    0,
+    '分组不得暴露 region landmark（同名分组会触发 axe landmark-unique）',
+  );
+
   // 浮层得真的看得见。.next-ribbon-area 是 overflow-y:hidden 的裁剪容器，而分组紧贴它的
   // 顶边：不预留空间时编辑条会被整条裁在容器外（实测 60px 里只剩 9px 可见），
   // 此时 visibility 依然算 visible —— 只读计算样式抓不到这个失效，必须比几何。
