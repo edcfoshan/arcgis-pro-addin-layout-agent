@@ -59,25 +59,25 @@
   /* 字体 */
   --font-ui: 'Microsoft YaHei UI', 'Microsoft YaHei', 'Segoe UI', sans-serif;
   --font-mono: Consolas, 'Cascadia Code', 'Courier New', monospace;
-  --fs-lg: 13px;
-  --fs-base: 12px;
-  --fs-sm: 11px;
-  --fs-xs: 10px;
+  --fs-lg: 15px;
+  --fs-base: 13px;
+  --fs-sm: 12px;
+  --fs-xs: 11px;
 
   /* 间距阶(4px 栅格) */
   --sp-1: 2px;
   --sp-2: 4px;
   --sp-3: 6px;
   --sp-4: 8px;
-  --sp-5: 10px;
-  --sp-6: 12px;
-  --sp-8: 16px;
+  --sp-5: 12px;
+  --sp-6: 16px;
+  --sp-8: 24px;
 
   /* 圆角与控件高度 */
-  --radius: 2px;
-  --h-ctl: 26px;
-  --h-ctl-sm: 22px;
-  --h-ctl-xs: 18px;
+  --radius: 4px;
+  --h-ctl: 28px;
+  --h-ctl-sm: 24px;
+  --h-ctl-xs: 20px;
 
   /* 动效 */
   --t-fast: 120ms;
