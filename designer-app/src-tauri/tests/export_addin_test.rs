@@ -18,6 +18,7 @@ fn export_addin_builds_package() {
         target_dir: out_dir.to_string_lossy().to_string(),
         version: "1.0.0".into(),
         icon_files: vec![],
+        daml: None,
     };
 
     let result = designer_app_lib::run_export_addin(payload);
@@ -77,6 +78,7 @@ fn build_all_controls_demo_package() {
         target_dir: out_dir.to_string_lossy().to_string(),
         version: "1.0.1".into(),
         icon_files,
+        daml: None,
     };
     let result = designer_app_lib::run_export_addin(payload).expect("demo package build should succeed");
 
