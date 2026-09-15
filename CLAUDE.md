@@ -103,7 +103,7 @@ designer.css 全量 token 化(`:root` ~40 语义 token),浅色基准还原 ArcGI
 ## 发布与更新
 
 - updater:tauri-plugin-updater,`dialog:false` 自建 UI(关于弹窗检查更新+下载进度+relaunch;启动静默检查可关,横幅提示);endpoints=GitHub Releases latest.json + jsdelivr @main 镜像(release.yml 发布后回写 latest.json 到仓库根)
-- 签名:私钥 `~/.tauri/jisig-designer.key`(空密码,丢失则无法再发更新,务必离线备份),公钥在 tauri.conf.json;CI 需 Secrets:`TAURI_SIGNING_PRIVATE_KEY`/`TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
+- 签名:私钥 `~/.tauri/jisig-designer.key`(**已设口令**;口令只放 GitHub Secrets 和你的密码管理器,不要写进仓库),公钥在 tauri.conf.json;CI 需 Secrets:`TAURI_SIGNING_PRIVATE_KEY`/`TAURI_SIGNING_PRIVATE_KEY_PASSWORD`。**私钥或口令丢失就无法再发更新,务必离线备份两者**;换口令只能重新生成密钥对(tauri 不支持给已有密钥改密码),会换掉公钥,需同步更新 tauri.conf.json 的 pubkey 与两个 Secrets
 - CI:`build.yml`(push/PR:gen-png → npm ci → tsc → cargo test --lib);`release.yml`(tag v*:tauri-action 出 NSIS+签名产物+latest.json,草稿 Release)
 - 发布流程:改版本(package.json/tauri.conf.json/Cargo.toml 三处)→ commit → tag vX.Y.Z → push tag → CI 出包 → 编辑 Release 说明后发布
 - bundle:仅 nsis(Windows),`installMode: currentUser`,resources 平铺 exe 同级(icons-tabler.zip + 占位 DLL/deps.json 映射);`createUpdaterArtifacts: true`
