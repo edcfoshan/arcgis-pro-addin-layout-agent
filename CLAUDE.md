@@ -91,7 +91,7 @@ RibbonDocument (JSON)
 - `ribbon-designer/shared/arcgisProValidation.ts` — **打包链实际使用的那个**(sync 脚本入口),随机验算也走它
 - `designer-app/src/core/arcgisProValidation.ts` — Tauri 应用内 artifacts 生成(喂「导出 Config.daml」按钮和 export/validate 的 payload)
 
-两者都仅在 icon 为 `.png` 完整文件名时输出 `smallImage/largeImage`(随机生成器的逻辑名如 `tool16` 会被守卫跳过)。
+两者都仅在 icon 为 `.png` 完整文件名时输出 `smallImage/largeImage`(随机生成器的逻辑名如 `tool16` 会被守卫跳过)。两边的容器子项结构(GeneratedChildRef/childRefs/registerChildTree)为同构复制,改任一侧必须镜像另一侧;已知文本差异:shared 版 menus 模板用 `iconAttrs(menu)` 辅助函数、app 版为内联三元,机械替换时 oldText 不同。
 
 `designer-app/src/core/` 是从旧 `ribbon-designer` 原样移植的纯逻辑层(types / ribbonLayout / library / ribbon / arcgisProValidation),不要重写其中已验证的网格/碰撞/DAML 生成逻辑;UI 层在 `designer-app/src/ui/`。
 
@@ -112,8 +112,8 @@ designer.css 已全量 token 化(`:root` 约 40 个语义 token:背景 5 层级/
 - **`:root` 之外不允许出现裸 hex/rgb**,改 UI 一律引用 token;要新颜色先加 token
 - 全局 2px 圆角、按钮高 26px、文字 12px 基准/11px 次要;激活语言只有两种:侧栏条目=左 2px 竖条+白底,按钮/控件=浅蓝填充+accent 边框
 - 控件 mock 的 Pro 还原度规则写在 CSS 07 节注释里(复选框画布白底未勾选/库内演示蓝勾、splitButton/menu 箭头贴右下 8px、兜底图标统一单色深灰蓝、控件面不透明浅渐变)
-- `--cell` 恒为 32px,与 `core/ribbonLayout.ts` 的 `RIBBON_CELL` 及 inline px 定位算式联动,不可改
-- UI 自检套路:`npm run dev` 后前端可在**普通浏览器**直接渲染(Tauri invoke 会失败但布局/样式全真),用 Playwright 开 localhost:1420 + `evaluate` 读计算样式/布局指标做机械验收
+- `--cell` 恒为 32px,与 `core/ribbonLayout.ts` 的 `RIBBON_CELL` 及 inline px 定位算式联动,不可改;`--group-cols` 必须同时设在组元素(.next-group 的 min-width 消费)与网格元素(.next-subgroup 的 width 消费)上——漏传组元素会让组框按默认 8 列渲染、超 8 列组内容溢出组框(2026-09-15 实修 bug dd37c532)
+- UI 自检套路:`npm run dev` 后前端可在**普通浏览器**直接渲染(Tauri invoke 会失败但布局/样式全真;图标显示为占位灰块属预期,是 ProImage 加载失败的兜底),用 Playwright 开 localhost:1420 + `evaluate` 读计算样式/布局指标做机械验收;向 localStorage 注入测试文档必须含 `metadata.app='gispro-ribbon-designer'`+`schemaVersion:'1.0'` 且 subgroup 带 `layout{row,columns,rows}`,否则被 parseImportedDocument 拒绝并静默重置为空白文档
 
 ## 图标系统
 
@@ -125,7 +125,7 @@ designer.css 已全量 token 化(`:root` 约 40 个语义 token:背景 5 层级/
 
 ## Rust 后端(designer-app/src-tauri)
 
-命令:`list_icons`、`search_icons`、`get_icon_data_url`、`write_text_file`、`get_default_target_dir`(下发 REPO_ROOT 派生的默认导出目录,作 save 对话框无记忆时的回退)、`export_addin`(薄壳,内部调 `pub fn run_export_addin` 便于集成测试直接调用)、`open_import_file`(第三方导入:解 .esriAddInX/.daml/.json → DAML 文本 + 图标落盘,实逻辑在 `pub fn run_open_import_file`)。依赖编译期常量 `REPO_ROOT`,可用环境变量 `ICON_CACHE_DIR`/`ICON_IMPORT_DIR` 覆盖图标目录。图标查找是**双目录**:导入目录 `tools/icon-cache-import/`(gitignore,与主缓存撞名一律加 `imp_` 前缀)优先于 vendored 主缓存;DAML→RibbonDocument 解析在前端 `core/damlImport.ts`(自动装箱、外部引用占位、splitButton/palette 从首子声明补齐)。
+命令:`list_icons`、`search_icons`、`get_icon_data_url`、`write_text_file`、`get_default_target_dir`(下发 REPO_ROOT 派生的默认导出目录,作 save 对话框无记忆时的回退)、`export_addin`(薄壳,内部调 `pub fn run_export_addin` 便于集成测试直接调用)、`open_import_file`(第三方导入:解 .esriAddInX/.daml/.json → DAML 文本 + 图标落盘,实逻辑在 `pub fn run_open_import_file`)。依赖编译期常量 `REPO_ROOT`,可用环境变量 `ICON_CACHE_DIR`/`ICON_IMPORT_DIR` 覆盖图标目录。图标查找是**双目录**:导入目录 `tools/icon-cache-import/`(gitignore,与主缓存撞名一律加 `imp_` 前缀)优先于 vendored 主缓存;DAML→RibbonDocument 解析在前端 `core/damlImport.ts`(自动装箱、外部引用占位、容器子项递归解析:buttonPalette/dynamicMenu 等变体映射后全量子项入 children,首子声明仅作图标兜底)。
 
 ## 已知约束与坑(Windows 环境)
 
