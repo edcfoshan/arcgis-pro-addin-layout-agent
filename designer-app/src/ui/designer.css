@@ -603,6 +603,11 @@ body,
   border-bottom: 1px solid var(--border);
   background: var(--bg-chrome);
   flex: 0 0 auto;
+  /* 画布是滚动容器，页签条跟着滚走就失去了「页签」的意义（Pro 的 ribbon tab row 常驻）。
+     粘在滚动容器顶部；它是定位元素，天然画在非定位的 .next-ribbon-area 之上，
+     无需 z-index，而编辑条的 --z-pop 仍高于它。底色必须不透明，否则会透出下层内容。 */
+  position: sticky;
+  top: 0;
 }
 
 .next-shell .next-canvas-tab {
@@ -646,10 +651,15 @@ body,
   gap: var(--sp-4);
   min-height: 320px;
   /* 顶部为悬浮编辑条留出空间（约 38px 高）：本容器是 overflow-y:hidden 的裁剪容器，
-     分组又紧贴它的顶边，不留空间时编辑条会被整条裁掉（实测 60px 里只剩 9px 可见）。 */
-  padding: calc(var(--sp-5) + 40px) var(--sp-5) var(--sp-5);
+     分组又紧贴它的顶边，不留空间时编辑条会被整条裁掉（实测 60px 里只剩 9px 可见）。
+     只在真的有分组时才预留——空画布上不可能浮出编辑条，白留 40px 是浪费。 */
+  padding: var(--sp-5);
   overflow: auto hidden;
   background: linear-gradient(180deg, var(--bg-surface) 0, var(--bg-sunken) 78px, var(--bg-canvas) 100%);
+}
+
+.next-ribbon-area:has(.next-group) {
+  padding-top: calc(var(--sp-5) + 40px);
 }
 
 .next-empty-canvas {
@@ -706,6 +716,16 @@ body,
 .next-group:focus-within .next-group-tools {
   visibility: visible;
   opacity: 1;
+}
+
+/* 最后一个分组的编辑条改为右对齐。编辑条宽是 max-content（为保持单行，见上），
+   比分组本身宽约 130px；左对齐时它会越过画布（.next-ribbon-area 是横向滚动容器）
+   的右缘，被算成滚动溢出——静止态就多出一条横向滚动条，还能往右滚进一片空白。
+   右对齐后它的右缘就是分组右缘，不再撑出滚动范围。中间分组往右探进的是后续分组
+   本来就要占用的区域，不产生多余溢出，所以只给最后一个分组翻边。 */
+.next-group:last-child .next-group-tools {
+  left: auto;
+  right: 0;
 }
 
 /* 拖拽进行中抑制浮现，否则拖控件横穿分组时编辑条会一路闪烁 */
@@ -844,6 +864,37 @@ body,
     var(--bg-surface);
   background-size: var(--cell) var(--cell), var(--cell) var(--cell), auto;
   overflow: hidden;
+}
+
+/* 画布与控件库之间的分隔条。视觉上是一条细线，热区用 ::after 补到 24px——
+   4px 的条子远小于 WCAG 2.5.8 的 24×24。热区不居中：往上多半给画布（那一带没有可点的
+   东西），往下只借控件库 6px 内边距（正好是 --sp-3），免得压住紧跟着的分类按钮。 */
+.next-splitter {
+  position: relative;
+  flex: 0 0 auto;
+  height: 4px;
+  margin: 0;
+  border-top: 1px solid var(--border);
+  background: var(--bg-chrome);
+  cursor: ns-resize;
+}
+
+.next-splitter::after {
+  content: '';
+  position: absolute;
+  inset: -14px 0 -6px;
+}
+
+.next-splitter:hover,
+.next-splitter:focus-visible {
+  background: var(--accent-soft);
+}
+
+/* 焦点指示用实心 --focus-ring：半透明的 --accent-focus 对比度只有约 1.3:1，
+   达不到 WCAG 1.4.11 的 3:1（这条是本项目无障碍审计定下的不变量）。 */
+.next-splitter:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -1px;
 }
 
 /* ============ 07 画布控件 mock ============ */
@@ -1378,10 +1429,12 @@ body,
 .next-bottom-palette {
   flex: 0 0 auto;
   min-height: 0;
-  /* 176px 是「卡片只有一行」的旧假设。9 种控件在常规宽度下必为两行
-     （P1 放大字号后实需约 260px），写死高度会让第二行永久不可达。
-     改为按视口比例设上限并允许纵向滚动，保证任何窗口尺寸下内容都够得到。 */
-  max-height: min(40vh, 280px);
+  /* 高度改由 JSX 内联（用户拖分隔条的值，120–460）。原先写死的 min(40vh, 280px) 上限
+     已移除：它按「两行卡片」估的，P5 的卡片带 mock 后会更高，且用户应当能自己分配空间。 */
+  max-height: none;
+  /* 必须显式 border-box：本仓库没有全局 box-sizing 重置，默认 content-box，
+     height:320 会被 1px 边框 + 上下内边距撑成 335，拖拽和断言都对不上实际高度。 */
+  box-sizing: border-box;
   overflow-x: auto;
   overflow-y: auto;
   border-top: 1px solid var(--border);

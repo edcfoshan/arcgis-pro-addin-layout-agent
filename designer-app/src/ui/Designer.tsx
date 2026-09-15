@@ -87,6 +87,14 @@ const THEME_STORAGE_KEY = 'gispro-ribbon-designer-theme';
 const AUTO_UPDATE_STORAGE_KEY = 'gispro-ribbon-designer-auto-update';
 const WELCOME_SEEN_STORAGE_KEY = 'gispro-ribbon-designer-welcome-seen';
 const LIB_CATEGORY_STORAGE_KEY = 'gispro-ribbon-designer-lib-category';
+const PALETTE_HEIGHT_STORAGE_KEY = 'gispro-ribbon-designer-palette-height';
+
+// 控件库高度由用户拖分隔条决定，这里只给区间与初值：
+// 上限 460 是为 P5 的卡片 mock 留的高度（两行约 455px），下限 120 保证分类 segment
+// 加一行卡片仍看得见，默认 320 正好是两行紧凑卡的观看高度。
+const PALETTE_HEIGHT_MIN = 120;
+const PALETTE_HEIGHT_MAX = 460;
+const PALETTE_HEIGHT_DEFAULT = 320;
 
 // 每项目一份的草稿槽 key(项目 id 分槽,旧版单份草稿用 STORAGE_KEY 迁移)
 const draftKey = (projectId: string) => `${STORAGE_KEY}-${projectId}`;
@@ -340,6 +348,49 @@ export default function Designer() {
     const saved = localStorage.getItem(LIB_CATEGORY_STORAGE_KEY);
     return saved === 'command' || saved === 'container' || saved === 'input' ? saved : 'all';
   });
+  // 控件库高度：用户拖分隔条调出来，存 localStorage 跨会话记忆。
+  // 越界或读不到就回默认值（旧草稿、手工改坏的值都不会让布局炸掉）。
+  const [paletteHeight, setPaletteHeight] = useState<number>(() => {
+    const raw = Number(localStorage.getItem(PALETTE_HEIGHT_STORAGE_KEY));
+    return Number.isFinite(raw) && raw >= PALETTE_HEIGHT_MIN && raw <= PALETTE_HEIGHT_MAX
+      ? raw
+      : PALETTE_HEIGHT_DEFAULT;
+  });
+
+  useEffect(() => {
+    localStorage.setItem(PALETTE_HEIGHT_STORAGE_KEY, String(Math.round(paletteHeight)));
+  }, [paletteHeight]);
+
+  const clampPaletteHeight = (value: number) =>
+    Math.min(PALETTE_HEIGHT_MAX, Math.max(PALETTE_HEIGHT_MIN, value));
+
+  const nudgePaletteHeight = (delta: number) =>
+    setPaletteHeight((current) => clampPaletteHeight(current + delta));
+
+  // 拖分隔条改高度。指针捕获挂在分隔条上，pointermove/pointerup 仍会冒泡到 window，
+  // 所以监听放 window；pointercancel 也要收，否则触摸被系统接管时监听器会留在 window 上。
+  const startPaletteResize = (event: React.PointerEvent<HTMLElement>) => {
+    event.preventDefault();
+    const target = event.currentTarget;
+    const pointerId = event.pointerId;
+    const startY = event.clientY;
+    const startHeight = paletteHeight;
+    target.setPointerCapture(pointerId);
+
+    const onMove = (moveEvent: PointerEvent) => {
+      // 往上拖 → 控件库变高
+      setPaletteHeight(clampPaletteHeight(startHeight + (startY - moveEvent.clientY)));
+    };
+    const onEnd = () => {
+      if (target.hasPointerCapture(pointerId)) target.releasePointerCapture(pointerId);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onEnd);
+      window.removeEventListener('pointercancel', onEnd);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onEnd);
+    window.addEventListener('pointercancel', onEnd);
+  };
   const [updateBanner, setUpdateBanner] = useState<{ version: string } | null>(null);
   const gridRefs = useRef(new Map<string, HTMLElement>());
   const dragRef = useRef<DragState>(null);
@@ -1910,7 +1961,32 @@ export default function Designer() {
             </aside>
           </main>
 
-          <section className="next-bottom-palette" aria-label="控件库">
+          {/* 画布与控件库之间的可拖拽分隔条。画布不再无条件吃掉剩余空间，
+              用户可以把空间分给控件库——P5 的卡片 mock 需要更多高度。 */}
+          <div
+            className="next-splitter"
+            role="separator"
+            aria-orientation="horizontal"
+            aria-label="调整控件库高度"
+            tabIndex={0}
+            onPointerDown={startPaletteResize}
+            onKeyDown={(event) => {
+              if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                nudgePaletteHeight(16);
+              }
+              if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                nudgePaletteHeight(-16);
+              }
+            }}
+          />
+
+          <section
+            className="next-bottom-palette"
+            aria-label="控件库"
+            style={{ height: paletteHeight, maxHeight: 'none' }}
+          >
             <div className="next-palette-tabs" role="group" aria-label="控件分类">
               {LIBRARY_CATEGORIES.map(({ id, label, Icon }) => (
                 <button
