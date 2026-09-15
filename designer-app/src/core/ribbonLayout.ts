@@ -30,16 +30,25 @@ export interface GridSpec {
   rows: number;
 }
 
-export const getFootprint = (type: ControlType, size: RibbonControlSize): Footprint => {
+export const getFootprint = (
+  type: ControlType,
+  size: RibbonControlSize,
+  variant?: RibbonControl['variant'],
+): Footprint => {
   if (size === 'small') return { w: 1, h: 1 };
+  if (variant === 'menuStyle') return { w: 1, h: 3 };
   if (type === 'comboBox' || type === 'editBox') return size === 'large' ? { w: 4, h: 1 } : { w: 3, h: 1 };
   if (type === 'gallery' || type === 'toolPalette') return size === 'large' ? { w: 3, h: 3 } : { w: 3, h: 1 };
   if (type === 'menu' || type === 'splitButton') return size === 'large' ? { w: 2, h: 2 } : { w: 2, h: 1 };
   return size === 'large' ? { w: 2, h: 3 } : { w: 2, h: 1 };
 };
 
-export const footprintLabel = (type: ControlType, size: RibbonControlSize) => {
-  const footprint = getFootprint(type, size);
+export const footprintLabel = (
+  type: ControlType,
+  size: RibbonControlSize,
+  variant?: RibbonControl['variant'],
+) => {
+  const footprint = getFootprint(type, size, variant);
   return `${footprint.w}x${footprint.h}`;
 };
 
@@ -53,7 +62,7 @@ export const getRenderedFootprint = (
   control: RibbonControl,
   subgroup: RibbonSubgroup,
   previewMode: RibbonPreviewMode,
-) => getFootprint(control.type, getRenderedSize(control, subgroup, previewMode));
+) => getFootprint(control.type, getRenderedSize(control, subgroup, previewMode), control.variant);
 
 export const getGridSpec = (subgroup?: RibbonSubgroup, _previewMode?: RibbonPreviewMode): GridSpec => ({
   cols: subgroup?.layout?.columns ?? DEFAULT_GROUP_COLS,

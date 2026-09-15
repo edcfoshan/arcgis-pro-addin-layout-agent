@@ -4,6 +4,7 @@
 // 不支持的条件/状态/updateModule 等静默忽略并计入 stats。
 // 注意:import 显式带 .ts 扩展名(node --experimental-strip-types 可直接跑本文件测试)。
 import type {
+  ControlChild,
   ControlType,
   RibbonControl,
   RibbonControlSize,
@@ -201,6 +202,9 @@ interface DamlDeclaration {
   iconSmall: string;
   iconLarge: string;
   tooltip: string;
+  /** 声明区原始节点:容器子项递归下钻用 */
+  node?: XmlElement;
+  menuStyle: boolean;
 }
 
 export function parseDamlToDocument(
@@ -242,6 +246,8 @@ export function parseDamlToDocument(
             iconSmall: iconBaseName(node.attrs.smallImage),
             iconLarge: iconBaseName(node.attrs.largeImage),
             tooltip: (findAllFirst(node, 'tooltip')?.text ?? '').trim(),
+            node,
+            menuStyle: (node.attrs.menuStyle ?? '').toLowerCase() === 'true',
           });
         }
       }
@@ -315,6 +321,42 @@ export function parseDamlToDocument(
   };
   const mapIcon = (name: string) =>
     options.iconMap && name && options.iconMap[name] ? options.iconMap[name] : name;
+
+  // 递归物化容器(splitButton/menu/toolPalette/buttonPalette)子项,任意嵌套;
+  // visited 防声明循环引用,depth 兜底防异常深度
+  const buildChildren = (node: XmlElement, depth: number, visited: Set<string>): ControlChild[] => {
+    if (depth > 16) return [];
+    return node.children
+      .filter((child) => child.attrs.refID && DAML_TAG_TO_TYPE[child.name])
+      .map((child) => {
+        const refControl = child.attrs.refID as string;
+        const decl = visited.has(refControl) ? undefined : declarations.get(refControl);
+        const nextVisited = new Set(visited);
+        nextVisited.add(refControl);
+        const tooltipLines = (decl?.tooltip ?? '')
+          .split('\n')
+          .map((line) => line.trim())
+          .filter(Boolean);
+        const childControl: ControlChild = {
+          id: uniqueId(sanitizeId(refControl)),
+          type: decl?.type ?? 'button',
+          caption: decl?.caption || lastSegment(refControl),
+          tooltip: tooltipLines[0] ?? '',
+          icon: {
+            small: mapIcon(decl?.iconSmall || decl?.iconLarge || ''),
+            large: mapIcon(decl?.iconLarge || decl?.iconSmall || ''),
+          },
+          behavior: {
+            commandType: decl?.type ?? 'button',
+            className: decl?.className ?? '',
+            target: '',
+            arguments: {},
+          },
+          children: decl?.node ? buildChildren(decl.node, depth + 1, nextVisited) : [],
+        };
+        return childControl;
+      });
+  };
 
   for (const module of modules) {
     for (const tabsSection of findAll(module, 'tabs')) {
@@ -397,6 +439,14 @@ export function parseDamlToDocument(
                     .join('\n') || note,
               };
               if (isPlaceholder) stats.placeholders += 1;
+              // 容器声明(splitButtons/palettes/menus 区)递归携带子项;menuStyle 按钮板记为窄竖条变体
+              if (
+                decl?.node &&
+                (type === 'splitButton' || type === 'toolPalette' || type === 'menu')
+              ) {
+                control.children = buildChildren(decl.node, 0, new Set([refControl]));
+                if (decl.menuStyle) control.variant = 'menuStyle';
+              }
               return control;
             });
 
@@ -407,7 +457,7 @@ export function parseDamlToDocument(
             placed = packRects(
               groupControls.map((control) => ({
                 id: control.id,
-                footprint: getFootprint(control.type, control.size),
+                footprint: getFootprint(control.type, control.size, control.variant),
               })),
               { cols: columns, rows: FIXED_GROUP_ROWS },
             );

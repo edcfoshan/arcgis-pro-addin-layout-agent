@@ -858,6 +858,44 @@ body,
   background: var(--accent-soft);
 }
 
+/* menuStyle 按钮板:窄竖条形态,子项小图标纵排,底部更多箭头(Pro 还原) */
+.pro-tool-palette-menu {
+  display: grid;
+  grid-template-columns: 20px;
+  grid-auto-rows: 20px;
+  gap: 2px;
+  padding: var(--sp-2);
+  align-content: start;
+  align-self: stretch;
+}
+
+.pro-tool-palette-menu > * {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 1px;
+  color: var(--icon-ink);
+}
+
+.pro-tool-palette-menu > *:hover {
+  background: var(--accent-soft);
+}
+
+.pro-tool-palette-menu .pro-drop-arrow {
+  position: static;
+  justify-self: end;
+  color: var(--ink-3);
+}
+
+/* 图标加载失败/无 Tauri 环境的占位灰块 */
+.pro-icon-placeholder {
+  display: block;
+  border: 1px solid var(--border-faint);
+  border-radius: 1px;
+  background: var(--bg-sunken);
+}
+
 /* ============ 08 拖拽反馈 ============ */
 .next-drop-preview {
   position: absolute;

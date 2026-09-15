@@ -83,6 +83,7 @@ type DragState =
       type: RibbonControl['type'];
       size: RibbonControlSize;
       iconFile?: string;
+      variant?: RibbonControl['variant'];
     }
   | null;
 
@@ -391,7 +392,7 @@ export default function Designer() {
           rejected += 1;
           continue;
         }
-        const footprint = getFootprint(control.type, size);
+        const footprint = getFootprint(control.type, size, control.variant);
         const slot = findFirstOpenSlot(footprint, placed, spec);
         if (slot) {
           placed.push({ i: control.id, x: slot.x, y: slot.y, w: slot.w, h: slot.h });
@@ -431,7 +432,7 @@ export default function Designer() {
         const layout = getSubgroupLayout(current, subgroup, 'Large').filter(
           (item) => item.i !== control.id,
         );
-        const footprint = getFootprint(control.type, patch.size as RibbonControlSize);
+        const footprint = getFootprint(control.type, patch.size as RibbonControlSize, control.variant);
         const currentLayout = control.layout ?? { x: 0, y: 0 };
         const candidate = {
           i: control.id,
@@ -751,7 +752,7 @@ export default function Designer() {
       const footprint =
         current.kind === 'new'
           ? getFootprint(current.definition.type, current.size)
-          : getFootprint(current.type, current.size);
+          : getFootprint(current.type, current.size, current.variant);
       for (const [subgroupId, element] of gridRefs.current) {
         const rect = element.getBoundingClientRect();
         if (
@@ -998,6 +999,7 @@ export default function Designer() {
                           type: control.type,
                           size: control.size,
                           iconFile: control.icon.small || undefined,
+                          variant: control.variant,
                         })
                       }
                     />
@@ -1368,6 +1370,8 @@ function RibbonGroupGrid({
               caption={control.caption}
               size={control.size}
               iconFile={control.icon.small || undefined}
+              variant={control.variant}
+              children={control.children}
             />
           </button>
         ))}
@@ -1448,7 +1452,7 @@ function Inspector({
           >
             {control.supportedSizes.map((size) => (
               <option key={size} value={size}>
-                {SIZE_LABELS[size]} {footprintLabel(control.type, size)}
+                {SIZE_LABELS[size]} {footprintLabel(control.type, size, control.variant)}
               </option>
             ))}
           </select>

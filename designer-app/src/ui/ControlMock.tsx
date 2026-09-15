@@ -14,7 +14,7 @@ import {
   SquareDashedMousePointer,
   Table2,
 } from 'lucide-react';
-import type { RibbonControl, RibbonControlSize } from '../core/types';
+import type { ControlChild, RibbonControl, RibbonControlSize } from '../core/types';
 import { getIconUrl } from './iconsClient';
 
 const iconSize = (size: RibbonControlSize) => (size === 'large' ? 32 : 16);
@@ -31,7 +31,16 @@ function ProImage({ file, pixels }: { file: string; pixels: number }) {
       cancelled = true;
     };
   }, [file]);
-  if (!url) return null;
+  // 无 Tauri 环境/加载失败时返回占位灰块,保持格子占位不塔形
+  if (!url) {
+    return (
+      <span
+        className="pro-icon pro-icon-placeholder"
+        style={{ width: pixels, height: pixels }}
+        aria-hidden
+      />
+    );
+  }
   return (
     <span className="pro-icon">
       <img src={url} width={pixels} height={pixels} alt="" draggable={false} />
@@ -128,12 +137,16 @@ export function ControlMock({
   size,
   iconFile,
   mode = 'canvas',
+  variant,
+  children,
 }: {
   type: RibbonControl['type'];
   caption: string;
   size: RibbonControlSize;
   iconFile?: string;
   mode?: 'canvas' | 'library';
+  variant?: RibbonControl['variant'];
+  children?: ControlChild[];
 }) {
   const label = size === 'small' && caption.length > 3 ? caption.slice(0, 3) : caption;
   const className = `next-control-mock mode-${mode} next-${type} size-${size}`;
@@ -186,14 +199,50 @@ export function ControlMock({
     );
   }
 
+  // menuStyle 按钮板:竖排前 3 个真实子项图标 + 右下更多箭头(Pro 窄竖条形态,无文字)
+  if (type === 'toolPalette' && variant === 'menuStyle') {
+    const shown = (children ?? []).slice(0, 3);
+    return (
+      <div className={className}>
+        <div className="pro-tool-palette-menu">
+          {shown.length
+            ? shown.map((child) => (
+                <ProImage
+                  key={child.id}
+                  file={child.icon.small || child.icon.large}
+                  pixels={16}
+                />
+              ))
+            : [0, 1, 2].map((index) => <ProIcon key={index} type="tool" size="small" />)}
+          <span className="pro-drop-arrow">
+            <ChevronDown size={11} />
+          </span>
+        </div>
+      </div>
+    );
+  }
+
   if (type === 'toolPalette') {
+    const shown = (children ?? []).slice(0, 3);
     return (
       <div className={className}>
         <div className="pro-tool-palette">
-          <ProIcon type="tool" size="small" iconFile={size === 'large' ? iconFile : undefined} />
-          <Pencil size={14} />
-          <Circle size={14} />
-          <Diamond size={14} />
+          {shown.length
+            ? shown.map((child) => (
+                <ProImage
+                  key={child.id}
+                  file={child.icon.small || child.icon.large}
+                  pixels={16}
+                />
+              ))
+            : (
+                <>
+                  <ProIcon type="tool" size="small" iconFile={size === 'large' ? iconFile : undefined} />
+                  <Pencil size={14} />
+                  <Circle size={14} />
+                  <Diamond size={14} />
+                </>
+              )}
         </div>
         {size !== 'small' ? <span className="pro-label">{label}</span> : null}
       </div>
