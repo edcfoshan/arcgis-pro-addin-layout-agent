@@ -174,3 +174,7 @@ export const SIZE_LABELS: Record<RibbonControlSize, string> = {
   middle: '中',
   large: '大',
 };
+
+export const TYPE_LABELS: Record<string, string> = Object.fromEntries(
+  CONTROL_LIBRARY.map((item) => [item.type, item.label]),
+);

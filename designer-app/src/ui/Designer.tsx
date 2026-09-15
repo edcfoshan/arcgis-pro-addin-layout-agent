@@ -16,7 +16,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import { CONTROL_LIBRARY, SIZE_LABELS } from '../core/library';
+import { CONTROL_LIBRARY, SIZE_LABELS, TYPE_LABELS } from '../core/library';
 import {
   cloneDocumentWithTimestamp,
   createControlFromType,
@@ -1428,7 +1428,7 @@ function Inspector({
   return (
     <section className="next-panel next-inspector">
       <div className="next-panel-title">
-        <strong>属性 · {control.type}</strong>
+        <strong>属性 · {TYPE_LABELS[control.type] ?? control.type}</strong>
       </div>
       <div className="next-form">
         <label>
@@ -1485,7 +1485,7 @@ function Inspector({
           <input
             value={control.condition}
             onChange={(event) => onUpdate(control.id, { condition: event.target.value })}
-            placeholder="condition ID"
+            placeholder="条件 ID（可选）"
           />
         </label>
         <label>
@@ -1521,7 +1521,7 @@ function ContextMenu({
     <div className="context-menu" style={{ left: state.x, top: state.y }}>
       {control ? (
         <>
-          <div className="context-menu-title">{control.caption || control.type}</div>
+          <div className="context-menu-title">{control.caption || TYPE_LABELS[control.type] || control.type}</div>
           <button onClick={() => onAction('icons')}>选择图标…</button>
           <button className="danger" onClick={() => onAction('delete-control')}>
             删除控件
