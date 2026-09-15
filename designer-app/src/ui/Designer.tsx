@@ -402,8 +402,12 @@ export default function Designer() {
     }
     const entry = makeProjectEntry(base, {
       filePath: opts.filePath ?? null,
-      // 从 .json 打开时,项目名以文件名为初值;此后保存/另存为不再改写它
-      name: opts.filePath ? splitPath(opts.filePath).name.replace(/\.json$/i, '') : undefined,
+      // 从 .json 打开:文档自带的 metadata.name 优先(它可能已被用户改过),
+      // 仅在文档名为空时回退到文件名去 .json 扩展名。
+      // 顺序反了就会让「改名→另存为→重开」被文件名顶掉(验收 A3)。
+      name: opts.filePath
+        ? base.metadata.name || splitPath(opts.filePath).name.replace(/\.json$/i, '')
+        : undefined,
       dirty: doc ? !opts.filePath : false,
     });
     setProjects((current) => [...current, entry]);
@@ -468,8 +472,17 @@ export default function Designer() {
     history.future = [];
   };
 
+  // 项目名是项目元数据(与 filePath、collapsed 同类),不是画布内容,undo 不该改它。
+  // 但历史快照里带着当时的 metadata.name,直接恢复会让「界面显示的名字」与
+  // 「文档里的插件名」分叉(改名后 Ctrl+Z 即复现)。恢复时把该项目当前的
+  // entry.name 写回快照,维持不变量:document.metadata.name === project.name。
   const restoreDocument = (next: RibbonDocument) => {
-    updateActiveDocument(next);
+    const entry = projectsRef.current.find(
+      (project) => project.id === activeProjectIdRef.current,
+    );
+    updateActiveDocument(
+      entry && entry.name ? { ...next, metadata: { ...next.metadata, name: entry.name } } : next,
+    );
   };
 
   const undo = () => {
