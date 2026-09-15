@@ -93,7 +93,20 @@ designer.css 全量 token 化(`:root` ~40 语义 token),浅色基准还原 ArcGI
 - 快捷键:Ctrl+Z/Y/S/O/N、Delete 删选中、Esc 逐层关弹层(输入框聚焦时不拦截)
 - UI 自检:`npm run dev` 后浏览器直渲 localhost:1420(invoke 失败但布局样式全真),Playwright evaluate 读计算样式做机械验收
 
-**两套图标别混**:界面自身的图标(工具栏/弹窗/控件库卡片)走 `lucide-react` 组件;能拖进画布、会进导出包的**用户可选用**图标才是 Tabler(见下节)。改 UI 时不要拿 Tabler PNG 去替 lucide,反之亦然。UI 组件分工:`Designer.tsx` 主战场、`IconPicker.tsx` 图标选择器、`iconsClient.ts` 前端 icon 命令封装、`AboutDialog.tsx`/`Welcome.tsx` 弹窗、`ControlMock.tsx` 画布控件 mock。
+**两套图标别混**:界面自身的图标(工具栏/弹窗/控件库卡片)走 `lucide-react` 组件;能拖进画布、会进导出包的**用户可选用**图标才是 Tabler(见下节)。改 UI 时不要拿 Tabler PNG 去替 lucide,反之亦然。UI 组件分工:`Designer.tsx` 主战场、`Modal.tsx` 弹窗外壳(a11y 语义/焦点陷阱/焦点归还,**所有弹窗都必须走它**)、`IconPicker.tsx` 图标选择器、`iconsClient.ts` 前端 icon 命令封装、`AboutDialog.tsx`/`Welcome.tsx` 弹窗、`ControlMock.tsx` 画布控件 mock。
+
+## 无障碍不变量(2026-09-15 WCAG 2.2 AA 审计后确立)
+
+浅色/暗色主题的 axe-core 违规均已清零。以下几条**跨文件、易被后续改动悄悄破坏**,改 UI 前先读:
+
+- **焦点环是两个 token,别合并**:`--focus-ring`(实心,浅 `#1565c0` / 暗 `#4a90d9`,对各自全部底色 ≥3:1)专职焦点指示;`--accent-focus`(半透明)已被降级为**只剩拖拽预览填充**一个用途。拿半透明色当焦点环实测只有 1.25–1.38:1,远低于 WCAG 1.4.11 的 3:1
+- **弹窗不要手写 `<div className="next-modal">`**:手写会一次丢掉 `role="dialog"`/`aria-modal`/初始焦点/焦点陷阱/关闭后焦点归还五件事。用 `Modal.tsx`
+- **画布孤岛**:暗色下画布仍是白底,所以 `:root[data-theme='dark'] .next-ribbon-control, .icon-cell` 作用域内把 `--ink-*` 重定义成了 `--island-*` 浅色值(原来靠硬编码 `#ffffff`/`#1e2a38`,既违反 token 铁律又漏掉后代自设色)。**画布内新增自设 `color: var(--ink-*)` 的文案会自动拿到浅色值**;给孤岛加新 token 记得同步这一层
+- **紧凑控件热区**:`--h-ctl-xs: 18px` 是有意的视觉尺寸,**别为了过 WCAG 2.5.8 直接改高**。小于 24×24 的按钮统一用 `::after` 居中覆盖层补热区(`width/height: max(100%, 24px)`);这几类控件相邻中心距实测 ≥29px,覆盖层不会互相遮挡
+- **表单控件靠 `color: inherit` 取色**:`.next-shell input/select/textarea` 默认不继承 color,漏掉会退回 UA 黑字,暗色下变成 1.6:1
+- **文档结构**:h1 必须落在 landmark 内部(放在 `<header>` 里,裸挂在 shell 下 axe 会报 `region`);两个 `<aside>` 都要 `aria-label` 否则 `landmark-unique` 不过
+
+**a11y 验证方法**:`npm run dev` 后经 Playwright 注入 axe-core(`https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.10.2/axe.min.js`)扫 `violations`。⚠️ **主题切换后样式约 1 秒才真正落地**(不是 120ms 过渡那种速度),期间扫描会读到旧背景色而报**假违规**——必须轮询等到目标元素的计算样式变成新值再扫,否则会得到「暗色 23 处违规」这类噪声结论。
 
 ## 图标系统(Tabler,2026-09-15 换血)
 
@@ -122,6 +135,7 @@ designer.css 全量 token 化(`:root` ~40 语义 token),浅色基准还原 ArcGI
 - **.ps1 含中文必须带 UTF-8 BOM**(PS5.1 无 BOM 按 GBK 解析会撕碎引号);改完确保恰好一个 BOM
 - **Tauri 序列化**:入参自动 camel↔snake;**返回值不转换**,Rust 结构体需 `#[serde(rename_all="camelCase")]`
 - **cargo 编译期校验 bundle.resources**:icons-tabler.zip 必须先存在(生成它或跑过 `npm run icons`),否则 build script 报 `resource path doesn't exist`
+- **本机 `npm run tauri build` 不带 `TAURI_SIGNING_PRIVATE_KEY` 时是个静默陷阱**:tauri 打印 `A public key has been found, but no private key` 后**仍 exit 0**,安装包照出但未签名;更坑的是 `bundle/nsis/*.sig` 停留在**上一次构建**的时间戳,与新 exe **不匹配**——成对误用会让签名校验失败(即 `latest.json` 更新链失效那个坑)。本地出测试包无所谓,**发版必须带私钥与口令重跑**
 - **Windows 前台锁**:`SetForegroundWindow` 前先 `SendKeys('%')` 解锁;最小化用 `ShowWindowAsync(SW_RESTORE)`
 - 运行中的 Pro 不自动发现新 add-in,需重启;pro-ui-check 已内置前台句柄校验
 - 本机 Pro 装在 `LOCALAPPDATA\Programs\ArcGIS\Pro`(3.6.0);DAML `desktopVersion` 写 3.5.0(最低版本语义);dotnet SDK 10 可直接构建 net8.0-windows7.0
