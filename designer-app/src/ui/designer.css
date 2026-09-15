@@ -589,6 +589,51 @@ body,
   background: var(--bg-canvas);
 }
 
+/* 画布页签条：还原 ArcGIS Pro 的 ribbon tab row。
+   贴在 .next-canvas 顶部，选中页签底色与下方 ribbon 条带同色，形成「选中页签接续到条带」的观感。 */
+.next-canvas-tabs {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--sp-1);
+  padding: 0 var(--sp-5);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-chrome);
+  flex: 0 0 auto;
+}
+
+.next-canvas-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: var(--h-ctl);
+  padding: 0 var(--sp-5);
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: transparent;
+  color: var(--ink-2);
+  font-size: var(--fs-base);
+  cursor: pointer;
+}
+
+.next-canvas-tab:hover {
+  color: var(--ink);
+  background: var(--bg-sunken);
+}
+
+.next-canvas-tab.active {
+  border-color: var(--border);
+  background: var(--bg-surface);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+.next-canvas-tab-keytip {
+  color: var(--ink-4);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+}
+
 .next-ribbon-area {
   display: flex;
   align-items: stretch;

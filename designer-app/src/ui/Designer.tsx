@@ -1819,6 +1819,24 @@ export default function Designer() {
 
           <main className="next-canvas-row" id="main-canvas" tabIndex={-1}>
             <section className="next-canvas">
+              {/* Pro 的 ribbon 顶部有一条页签条，这是它最显眼的特征。
+                  点击与侧栏 .next-tab-item 走同一个入口 activateProject，双向联动。 */}
+              <div className="next-canvas-tabs" role="tablist" aria-label="Ribbon 页签">
+                {document.tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    className={`next-canvas-tab${tab.id === activeTabId ? ' active' : ''}`}
+                    aria-selected={tab.id === activeTabId}
+                    onClick={() => activateProject(activeProject.id, tab.id)}
+                    title={tab.caption}
+                  >
+                    <span className="next-canvas-tab-caption">{tab.caption}</span>
+                    <span className="next-canvas-tab-keytip">{tab.keytip}</span>
+                  </button>
+                ))}
+              </div>
               <div className="next-ribbon-area">
                 {activeGroups.length ? (
                   activeGroups.map((group, index) => (
