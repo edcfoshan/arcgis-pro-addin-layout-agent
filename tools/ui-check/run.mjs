@@ -35,6 +35,10 @@ for (const file of targets) {
   const mod = await import(pathToFileURL(path.join(DIR, file)).href);
   const label = mod.name ?? file;
   try {
+    // 视口也是「确定性初始状态」的一部分：所有检查复用同一个 page，
+    // 前一个检查改过的视口会泄漏给后一个（曾因此制造静默假通过）。
+    // 每轮回到默认视口，将来某个检查忘记复位也不会污染别人。
+    await page.setViewportSize(VIEWPORT);
     await page.goto(BASE, { waitUntil: 'load' });
     await page.waitForSelector('.next-shell', { timeout: 5000 });
     await mod.default(page);
