@@ -1,0 +1,11 @@
+{
+  "name": "ui-check",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node run.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.63.0"
+  }
+}
