@@ -215,11 +215,11 @@ const resolveOptions = (
   return {
     ...merged,
     version,
-    addInId:
-      merged.addInId ||
-      stableGuid(
-        `${merged.assemblyName}:${document.metadata.id}:${document.metadata.name}:${document.metadata.lastUpdated}`,
-      ),
+    // 插件身份 GUID 只由稳定字段派生。
+    // 原先种子里含 metadata.name 与 metadata.lastUpdated，而 commit() 每次
+    // 编辑都会刷新 lastUpdated —— 于是拖一个控件再导出，GUID 就变了，
+    // ArcGIS Pro 会把它当成全新插件装进新目录，同名插件不断累积。
+    addInId: merged.addInId || stableGuid(`${merged.assemblyName}:${document.metadata.id}`),
     moduleCaption: overrides?.moduleCaption || document.metadata.name || DEFAULT_OPTIONS.moduleCaption,
   };
 };

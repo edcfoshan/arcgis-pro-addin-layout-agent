@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "node run.mjs"
+    "check": "node run.mjs",
+    "check:node": "node --experimental-strip-types node-checks/addin-id.mts"
   },
   "dependencies": {
     "playwright": "^1.63.0"
