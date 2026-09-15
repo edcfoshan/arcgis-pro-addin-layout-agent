@@ -679,11 +679,15 @@ const makeProjectEntry = (
         metadata: entry.document.metadata,
 ```
 
-**同时**：从 `.json` **打开**项目时（该分支在 `openImportFile`/打开文件流程里，搜 `dirty: false` 附近的 `filePath` 赋值），要把文件名（去 `.json`）写进 `name`，且只在新建该 ProjectEntry 时写一次：
+**同时**：从 `.json` **打开**项目时（该分支在 `addProject` 里，搜 `filePath` 与 `dirty` 的赋值处），新建 ProjectEntry 要一并设 `name`，**且两个分量的顺序不能反**——文档自带的 `metadata.name` 优先，文件名（去 `.json`）只在文档无名字时兜底：
 
 ```ts
-        name: splitPath(path).name.replace(/\.json$/i, ''),
+        name: opts.filePath
+          ? base.metadata.name || splitPath(opts.filePath).name.replace(/\.json$/i, '')
+          : undefined,
 ```
+
+> 2026-09-15 执行时修正：本步原文写的是「把文件名（去 `.json`）写进 `name`」，与本任务 Step 14 要求的「改名→另存为→重开仍显示新名」自相矛盾（文件名会顶掉用户刚改的名）。实现改为**文档名优先、文件名只作回退**，与本步 Step 6 的「项目名恒显示 `project.name`」一致。
 
 - [ ] **Step 8: 侧栏项目名改成可双击编辑**
 
