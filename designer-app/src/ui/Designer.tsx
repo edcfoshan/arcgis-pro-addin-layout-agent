@@ -1992,9 +1992,10 @@ export default function Designer() {
               节点落在 landmark 内（同层的 <main> 与控件库 <section> 各自已是 landmark），
               故外面套一层具名 section 兜住它。
               可聚焦的 separator 属 window splitter，按 ARIA APG 须带三值。
-              aria-valuenow 报的是「用户偏好」（即分隔条控制的量，取值域恰为 min–max）；
-              窗口不够高时 CSS 的 flex 会把实际渲染高度压得更矮，那是渲染层的让步，
-              不改写偏好本身——见 applyPaletteResize 的注释。 */}
+              aria-valuenow 报「用户偏好」而不是实际渲染高度：偏好是这份高度的单一真相，
+              渲染高度只是它被窗口钳制后的投影（窗口不够高时 CSS 的 flex 会把画布地板
+              之外放不下的部分吃回去，但不改写偏好本身，见 applyPaletteResize 的注释），
+              而三值的值域本就是偏好的取值域，报偏好才与 min/max 自洽。 */}
           <section className="next-splitter-dock" aria-label="控件库高度调节">
             <div
               className="next-splitter"

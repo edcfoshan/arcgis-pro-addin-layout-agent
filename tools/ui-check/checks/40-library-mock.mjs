@@ -41,16 +41,40 @@ export default async function (page) {
 
   // 无障碍：占格图示只靠一条 1px 边框成形，axe 检测不到非文字对比度（WCAG 1.4.11），
   // 这里从解析后的颜色自己算：边框对图示自身底色必须 ≥3:1。
-  const chip = card.locator('.footprint-chip').first();
-  const chipStyle = await chip.evaluate((el) => {
-    const s = getComputedStyle(el);
-    return { border: s.borderTopColor, fill: s.backgroundColor };
-  });
-  const ratio = contrastRatio(chipStyle.border, chipStyle.fill);
-  ok(
-    ratio >= 3,
-    `占格图示边框对比度不足：边框 ${chipStyle.border} 对底色 ${chipStyle.fill} 仅 ${ratio.toFixed(2)}:1，需 ≥3:1`,
+  // run.mjs 统一起始于浅色，两个主题都要咬住 —— 只守浅色的话，暗色那档的比值就是一句
+  // 无人守护的声明（改坏了全套仍绿）。
+  const chipStyle = () =>
+    card.locator('.footprint-chip').first().evaluate((el) => {
+      const s = getComputedStyle(el);
+      return { border: s.borderTopColor, fill: s.backgroundColor };
+    });
+  const assertChipContrast = async (label) => {
+    const { border, fill } = await chipStyle();
+    const ratio = contrastRatio(border, fill);
+    ok(
+      ratio >= 3,
+      `${label}：占格图示边框对比度不足，边框 ${border} 对底色 ${fill} 仅 ${ratio.toFixed(2)}:1，需 ≥3:1`,
+    );
+  };
+
+  await assertChipContrast('浅色');
+
+  // 切到暗色（产品默认主题）。走真实 UI 切，不用 addInitScript —— 那会被 run.mjs 的初始化覆盖
+  // （范式同 20-canvas-tabs.mjs）。
+  const lightFill = (await chipStyle()).fill;
+  await page.locator('button[title="设置"]').click();
+  await page.waitForTimeout(200);
+  await page.locator('.settings-seg button', { hasText: '暗色' }).click();
+  // 主题切换后样式约 1 秒才真正落地：等到图示底色确实变了再断言，
+  // 否则读到的是旧主题的值，会得到假结论。
+  await page.waitForFunction(
+    (before) =>
+      document.documentElement.dataset.theme === 'dark' &&
+      getComputedStyle(document.querySelector('.footprint-chip')).backgroundColor !== before,
+    lightFill,
+    { timeout: 10000 },
   );
+  await assertChipContrast('暗色');
 }
 
 // —— 对比度工具：把 rgb()/rgba() 解析成相对亮度再算 WCAG 对比度。 ——
