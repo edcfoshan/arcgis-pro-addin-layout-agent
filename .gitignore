@@ -32,3 +32,4 @@ tools/tabler-icons/tabler-main.tar.gz
 
 # 本地 agent 工作区(计划/临时笔记),不入公开仓库
 .claude/
+.superpowers/
