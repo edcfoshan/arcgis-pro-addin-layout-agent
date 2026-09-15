@@ -41,6 +41,7 @@ import type {
   RibbonSubgroup,
 } from '../core/types';
 import { invoke } from '@tauri-apps/api/core';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { ControlMock } from './ControlMock';
 import { IconPicker, type IconSelection } from './IconPicker';
 import {
@@ -61,6 +62,12 @@ import './designer.css';
 
 const STORAGE_KEY = 'gispro-ribbon-designer-doc';
 const TARGET_DIR_STORAGE_KEY = 'gispro-ribbon-designer-target-dir';
+
+// 无边框窗口的自定义标题栏句柄;浏览器直渲(Playwright 自检)时无 Tauri internals,置 null 防崩
+const appWindow =
+  typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
+    ? getCurrentWindow()
+    : null;
 
 type DragState =
   | {
@@ -776,13 +783,21 @@ export default function Designer() {
 
   return (
     <div className="next-shell">
-      <header className="next-titlebar">
-        <div className="window-handle">ArcGIS Pro</div>
-        <div className="window-title">Add-In Ribbon 布局设计器</div>
-        <div className="window-buttons">
-          <span />
-          <span />
-          <span />
+      <header
+        className="next-titlebar"
+        data-tauri-drag-region
+        onDoubleClick={() => void appWindow?.toggleMaximize()}
+      >
+        <div className="window-handle" data-tauri-drag-region>
+          ArcGIS Pro
+        </div>
+        <div className="window-title" data-tauri-drag-region>
+          Add-In Ribbon 布局设计器
+        </div>
+        <div className="window-buttons" onDoubleClick={(event) => event.stopPropagation()}>
+          <span title="最小化" onClick={() => void appWindow?.minimize()} />
+          <span title="最大化/还原" onClick={() => void appWindow?.toggleMaximize()} />
+          <span title="关闭" onClick={() => void appWindow?.close()} />
         </div>
       </header>
 

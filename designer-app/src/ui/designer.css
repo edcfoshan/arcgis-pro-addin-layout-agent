@@ -243,7 +243,7 @@ body,
   justify-content: center;
   width: 44px;
   height: 30px;
-  cursor: default;
+  cursor: pointer;
   transition: background-color var(--t-fast) var(--ease);
 }
 
