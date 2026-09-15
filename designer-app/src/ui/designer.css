@@ -590,7 +590,11 @@ body,
 }
 
 /* 画布页签条：还原 ArcGIS Pro 的 ribbon tab row。
-   贴在 .next-canvas 顶部，选中页签底色与下方 ribbon 条带同色，形成「选中页签接续到条带」的观感。 */
+   贴在 .next-canvas 顶部，选中页签底色与下方 ribbon 条带同色，形成「选中页签接续到条带」的观感。
+   选择器必须带 .next-shell 前缀：通用规则 .next-shell button (0,1,1) 与
+   .next-shell button:hover (0,2,1) 会分别压过裸 .next-canvas-tab (0,1,0) 与
+   .next-canvas-tab.active (0,2,0)，导致未选中页签拿到 --bg-surface 底 + 完整描边、
+   悬浮还会吃掉选中态底色（与 .next-tab-delete / .next-ribbon-control 同一写法）。 */
 .next-canvas-tabs {
   display: flex;
   align-items: flex-end;
@@ -601,7 +605,7 @@ body,
   flex: 0 0 auto;
 }
 
-.next-canvas-tab {
+.next-shell .next-canvas-tab {
   display: inline-flex;
   align-items: center;
   gap: var(--sp-2);
@@ -616,12 +620,13 @@ body,
   cursor: pointer;
 }
 
-.next-canvas-tab:hover {
+.next-shell .next-canvas-tab:hover {
   color: var(--ink);
   background: var(--bg-sunken);
 }
 
-.next-canvas-tab.active {
+/* 排在 :hover 之后：同特异度(0,3,0)，靠书写顺序保证选中态压过悬浮态 */
+.next-shell .next-canvas-tab.active {
   border-color: var(--border);
   background: var(--bg-surface);
   color: var(--accent-ink);
