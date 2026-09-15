@@ -1305,6 +1305,7 @@ function RibbonGroupView({
   return (
     <section
       className="next-group"
+      style={{ '--group-cols': spec.cols } as CSSProperties}
       onContextMenu={(event) => {
         event.preventDefault();
         onContextMenuGroup(event.clientX, event.clientY, group.id);
