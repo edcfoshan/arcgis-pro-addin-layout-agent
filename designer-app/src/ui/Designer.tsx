@@ -1987,25 +1987,37 @@ export default function Designer() {
           </main>
 
           {/* 画布与控件库之间的可拖拽分隔条。画布不再无条件吃掉剩余空间，
-              用户可以把空间分给控件库——P5 的卡片 mock 需要更多高度。 */}
-          <div
-            className="next-splitter"
-            role="separator"
-            aria-orientation="horizontal"
-            aria-label="调整控件库高度"
-            tabIndex={0}
-            onPointerDown={startPaletteResize}
-            onKeyDown={(event) => {
-              if (event.key === 'ArrowUp') {
-                event.preventDefault();
-                nudgePaletteHeight(16);
-              }
-              if (event.key === 'ArrowDown') {
-                event.preventDefault();
-                nudgePaletteHeight(-16);
-              }
-            }}
-          />
+              用户可以把空间分给控件库——P5 的卡片 mock 需要更多高度。
+              分隔条自己是 role=separator，成不了 landmark，而 axe 的 region 规则要求
+              节点落在 landmark 内（同层的 <main> 与控件库 <section> 各自已是 landmark），
+              故外面套一层具名 section 兜住它。
+              可聚焦的 separator 属 window splitter，按 ARIA APG 须带三值。
+              aria-valuenow 报的是「用户偏好」（即分隔条控制的量，取值域恰为 min–max）；
+              窗口不够高时 CSS 的 flex 会把实际渲染高度压得更矮，那是渲染层的让步，
+              不改写偏好本身——见 applyPaletteResize 的注释。 */}
+          <section className="next-splitter-dock" aria-label="控件库高度调节">
+            <div
+              className="next-splitter"
+              role="separator"
+              aria-orientation="horizontal"
+              aria-label="调整控件库高度"
+              aria-valuemin={PALETTE_HEIGHT_MIN}
+              aria-valuemax={PALETTE_HEIGHT_MAX}
+              aria-valuenow={Math.round(paletteHeight)}
+              tabIndex={0}
+              onPointerDown={startPaletteResize}
+              onKeyDown={(event) => {
+                if (event.key === 'ArrowUp') {
+                  event.preventDefault();
+                  nudgePaletteHeight(16);
+                }
+                if (event.key === 'ArrowDown') {
+                  event.preventDefault();
+                  nudgePaletteHeight(-16);
+                }
+              }}
+            />
+          </section>
 
           <section
             className="next-bottom-palette"

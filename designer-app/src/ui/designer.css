@@ -882,6 +882,13 @@ body,
   overflow: hidden;
 }
 
+/* 分隔条的 landmark 外壳：它自己只是 role=separator，成不了 landmark，
+   而 axe 的 region 规则要求节点落在 landmark 内。外壳不带边框/内边距，
+   高度等于分隔条，故布局与包起来之前一致；flex 不可收缩照搬分隔条原值。 */
+.next-splitter-dock {
+  flex: 0 0 auto;
+}
+
 /* 画布与控件库之间的分隔条。视觉上是一条细线，热区用 ::after 补到 24px——
    4px 的条子远小于 WCAG 2.5.8 的 24×24。热区不居中：往上多半给画布（那一带没有可点的
    东西），往下只借控件库 6px 内边距（正好是 --sp-3），免得压住紧跟着的分类按钮。 */
