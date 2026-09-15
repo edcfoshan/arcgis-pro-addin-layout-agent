@@ -56,6 +56,7 @@ import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { open as openFileDialog, save as saveDialog } from '@tauri-apps/plugin-dialog';
 import { parseDamlToDocument } from '../core/damlImport';
 import { ControlMock } from './ControlMock';
+import { DocumentOutline } from './DocumentOutline';
 import { IconPicker, type IconSelection } from './IconPicker';
 import { getIconUrl, invalidateIconList } from './iconsClient';
 import { Welcome } from './Welcome';
@@ -1974,9 +1975,13 @@ export default function Designer() {
                   onRemoveChild={(childId) => removeChild(selectedControl.id, childId)}
                 />
               ) : (
-                <div className="next-empty-inspector">
-                  <span>点击画布上的控件编辑属性</span>
-                </div>
+                <DocumentOutline
+                  document={document}
+                  activeTabId={activeTabId}
+                  selectedControlId={selectedControlId}
+                  onSelectTab={(tabId) => activateProject(activeProject.id, tabId)}
+                  onSelectControl={(controlId) => setSelectedControlId(controlId)}
+                />
               )}
             </aside>
           </main>
