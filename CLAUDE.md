@@ -87,7 +87,7 @@ designer.css 全量 token 化(`:root` ~40 语义 token),浅色基准还原 ArcGI
 - `:root`/`[data-theme='dark']` 之外不允许裸 hex/rgb;新颜色先加 token(两主题都要出值)
 - 底部控件库**双层**:上层特性分类 segment(全部/命令/容器/输入,lucide 图标,选择跨会话记忆 `gispro-ribbon-designer-lib-category`),下层紧凑卡(每类型一卡:Tabler 代表图标 + 类型名 + 常显描述行 + 尺寸徽章;点徽章选中尺寸、按住徽章拖出即该尺寸),不渲染 mock 实体
 - `--cell` 恒 32px 不可改;`--group-cols` 必须同时设在组元素与网格元素(漏传组元素会按默认列数渲染导致溢出,实修 bug dd37c532)
-- 标题栏全图标化(按钮统一 26px):左 app 图标 + 文件 icon(FileText,悬停 tooltip 出菜单:新建/打开/保存/另存/最近 8 个/示例布局/关于)、中央当前项目名+未保存圆点、右设置/关于 icon 与窗口三键;更新横幅
+- 标题栏全图标化(按钮统一 26px):左 app 图标(`designer-app/public/app-icon.png`,当前是 Tauri 默认图,可单独替换)+ 文件 icon(FileText,悬停 tooltip 出菜单:新建/打开/保存/另存/最近 8 个/示例布局/关于)、中央当前项目名+未保存圆点、右设置/关于 icon 与窗口三键;更新横幅
 - 多项目模型(IDE 多开文件式):侧栏两级 **项目→页签**,项目=一个 .json=一个 addin 包;每项目独立 undo 栈/脏标记/activeTabId/折叠态;`RibbonDocument` schema 本身未加项目层,项目层只存在于 Designer.tsx 的 `ProjectEntry[]` 状态;Ctrl+S 作用于激活项目,无路径先另存;关闭项目脏则 Modal(保存/丢弃/取消),关最后一个自动开空白,**关窗仍不拦截**
 - 草稿分槽:`gispro-ribbon-designer-doc-<projectId>` 每项目一份 + 会话元数据 `gispro-ribbon-designer-projects`(顺序/激活/折叠/脏态),启动全部恢复;旧单份草稿 key 保留作迁移源(升级用户不丢数据)
 - 导入/打开/示例布局一律**开新项目并激活**(.json 打开带 path 不脏;.esriAddInX/.daml 脏),打开侧栏里已开的文件则聚焦既有条目不开重复份
@@ -135,6 +135,7 @@ designer.css 全量 token 化(`:root` ~40 语义 token),浅色基准还原 ArcGI
 ## 已知约束与坑(Windows 环境)
 
 - **.ps1 含中文必须带 UTF-8 BOM**(PS5.1 无 BOM 按 GBK 解析会撕碎引号);改完确保恰好一个 BOM
+- **PS5.1 `Compress-Archive` 只认 .zip 扩展**,直接压 `.esriAddInX` 报 NotSupportedArchiveFileExtension——build-arcgis-pro-validation.ps1 已改为先压 `.zip` 再 Rename(2026-09-15 实修),别改回去
 - **Tauri 序列化**:入参自动 camel↔snake;**返回值不转换**,Rust 结构体需 `#[serde(rename_all="camelCase")]`
 - **cargo 编译期校验 bundle.resources**:icons-tabler.zip 必须先存在(生成它或跑过 `npm run icons`),否则 build script 报 `resource path doesn't exist`
 - **本机 `npm run tauri build` 不带 `TAURI_SIGNING_PRIVATE_KEY` 时是个静默陷阱**:tauri 打印 `A public key has been found, but no private key` 后**仍 exit 0**,安装包照出但未签名;更坑的是 `bundle/nsis/*.sig` 停留在**上一次构建**的时间戳,与新 exe **不匹配**——成对误用会让签名校验失败(即 `latest.json` 更新链失效那个坑)。本地出测试包无所谓,**发版必须带私钥与口令重跑**
