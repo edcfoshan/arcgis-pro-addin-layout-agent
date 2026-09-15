@@ -99,7 +99,7 @@ RibbonDocument (JSON)
 
 `RibbonDocument → tabs → groups → subgroups → controls`。subgroup 是内部兼容层,每个 group 只有一个网格;控件位置存 `control.layout {x,y,w,h}`,网格单位 `RIBBON_CELL = 32px`,分组高度固定 3 行、只能横向扩列(3–18 列)。
 
-控件占格由 `getFootprint(type, size, variant)` 决定(如 button large = 2x3,comboBox large = 4x1),`variant='menuStyle'`(buttonPalette menuStyle 按钮板)恒占 1×3 窄竖条;尺寸概念对应 DAML 官方语义:large = 32x32 图标+文字,middle/small = 16x16。容器控件(splitButton/menu/toolPalette)可带递归 `children`(ControlChild:标题/图标/行为引用/嵌套),不进网格布局,仅用于 mock 展示与导出 DAML 再生(Inspector 提供子项增删改);导入侧 buttonPalette/dynamicMenu 等变体会解析出真实子项,导出时优先用真实子项、无子项时退回序号占位。
+控件占格由 `getFootprint(type, size, variant)` 决定(如 button large = 2x3,comboBox large = 4x1),`variant='menuStyle'`(buttonPalette menuStyle 按钮板)在 Pro 实测渲染为带下拉箭头的大按钮(2026-09-15 用户实机观察纠正,勿再改成竖条形态),占格同 button:large 2×3 / middle 2×1;尺寸概念对应 DAML 官方语义:large = 32x32 图标+文字,middle/small = 16x16。容器控件(splitButton/menu/toolPalette)可带递归 `children`(ControlChild:标题/图标/行为引用/嵌套),不进网格布局,仅用于 mock 展示与导出 DAML 再生(Inspector 提供子项增删改);导入侧 buttonPalette/dynamicMenu 等变体会解析出真实子项,导出时优先用真实子项、无子项时退回序号占位。
 
 `normalizeDocumentLayouts` 会按 `getSubgroupLayout` 规范化位置:**尊重有效的已存 layout**(拖到哪就是哪),无效时才找空位——修改拖拽/批量改尺寸逻辑时保持这一行为。
 

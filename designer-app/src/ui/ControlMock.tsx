@@ -199,25 +199,15 @@ export function ControlMock({
     );
   }
 
-  // menuStyle 按钮板:竖排前 3 个真实子项图标 + 右下更多箭头(Pro 窄竖条形态,无文字)
+  // menuStyle 按钮板:Pro 实测为大按钮形态(大图标+文字+右下箭头),与 menu 控件观感一致
   if (type === 'toolPalette' && variant === 'menuStyle') {
-    const shown = (children ?? []).slice(0, 3);
     return (
       <div className={className}>
-        <div className="pro-tool-palette-menu">
-          {shown.length
-            ? shown.map((child) => (
-                <ProImage
-                  key={child.id}
-                  file={child.icon.small || child.icon.large}
-                  pixels={16}
-                />
-              ))
-            : [0, 1, 2].map((index) => <ProIcon key={index} type="tool" size="small" />)}
-          <span className="pro-drop-arrow">
-            <ChevronDown size={11} />
-          </span>
-        </div>
+        <ProIcon type="menu" size={size} iconFile={iconFile} />
+        {size !== 'small' ? <span className="pro-label">{label}</span> : null}
+        <span className="pro-drop-arrow">
+          <ChevronDown size={11} />
+        </span>
       </div>
     );
   }

@@ -36,7 +36,8 @@ export const getFootprint = (
   variant?: RibbonControl['variant'],
 ): Footprint => {
   if (size === 'small') return { w: 1, h: 1 };
-  if (variant === 'menuStyle') return { w: 1, h: 3 };
+  // menuStyle 按钮板在 Pro 实测渲染为带下拉箭头的大按钮(用户实机观察 2026-09-15),占格同 button
+  if (variant === 'menuStyle') return size === 'large' ? { w: 2, h: 3 } : { w: 2, h: 1 };
   if (type === 'comboBox' || type === 'editBox') return size === 'large' ? { w: 4, h: 1 } : { w: 3, h: 1 };
   if (type === 'gallery' || type === 'toolPalette') return size === 'large' ? { w: 3, h: 3 } : { w: 3, h: 1 };
   if (type === 'menu' || type === 'splitButton') return size === 'large' ? { w: 2, h: 2 } : { w: 2, h: 1 };
