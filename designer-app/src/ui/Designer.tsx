@@ -1023,15 +1023,12 @@ export default function Designer() {
     });
     if (!saved) return false;
     localStorage.setItem(LAST_DOC_DIR_STORAGE_KEY, dir);
+    // 保存只更新文件绑定与脏标记，**不动 document**：
+    // 项目名（metadata.name）是用户资产，也是导出包的插件名，
+    // 不能被文件系统命名绑架（拆雷甲）。
     updateProject(id, {
       filePath: saved,
       dirty: false,
-      document: {
-        ...entry.document,
-        // 保存不再用文件名覆盖 metadata.name（拆雷甲）：
-        // 项目名是用户资产，也是导出包的插件名，不能被文件系统命名绑架。
-        metadata: entry.document.metadata,
-      },
     });
     rememberRecentFile(saved);
     showToast(`已保存到 ${name}`);
