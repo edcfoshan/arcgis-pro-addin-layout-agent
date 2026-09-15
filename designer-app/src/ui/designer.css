@@ -1388,6 +1388,23 @@ body,
   gap: var(--sp-2);
 }
 
+/* 尺寸徽章里的占格图示：一个网格单位固定 6px，故不同占格之间可直接目视比较大小。
+   --fw / --fh 由 JSX 从 getFootprint() 注入。 */
+.footprint-chip {
+  display: block;
+  margin: 0 auto;
+  /* 必须显式 border-box：本仓库没有全局 box-sizing 重置，默认是 content-box，
+     1px 边框会把盒子撑成 (w*6+2)×(h*6+2)。那样 2×1 会渲染成 14×8=1.75 而非 2，
+     Task 3 的宽高比断言（容差 0.1）会假失败。 */
+  box-sizing: border-box;
+  width: calc(var(--fw, 1) * 6px);
+  height: calc(var(--fh, 1) * 6px);
+  max-width: 100%;
+  border: 1px solid var(--border-strong);
+  border-radius: 1px;
+  background: var(--bg-ctl);
+}
+
 /* 尺寸徽章:点击选中尺寸,按住直接拖出该尺寸控件 */
 .library-compact-sizes button {
   display: grid;
@@ -1407,6 +1424,8 @@ body,
 }
 
 .library-compact-sizes button small {
+  display: block;
+  min-height: 20px;
   color: var(--ink-4);
   font-size: var(--fs-xs);
 }

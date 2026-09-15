@@ -1869,6 +1869,7 @@ export default function Designer() {
                           key={candidate}
                           className={candidate === size ? 'active' : ''}
                           title={`${item.label} · ${SIZE_LABELS[candidate]} · ${footprintLabel(item.type, candidate)}`}
+                          aria-label={`${item.label} ${SIZE_LABELS[candidate]} 尺寸，占 ${footprintLabel(item.type, candidate)} 格`}
                           onClick={() => setLibSize((current) => ({ ...current, [item.type]: candidate }))}
                           onPointerDown={(event) =>
                             startDrag(event, {
@@ -1879,7 +1880,20 @@ export default function Designer() {
                           }
                         >
                           {SIZE_LABELS[candidate]}
-                          <small>{footprintLabel(item.type, candidate)}</small>
+                          <small>
+                            {/* 占格用等比方块图示表达：1×1 是方格、2×1 是横条、2×3 是竖矩形 */}
+                            <span
+                              className="footprint-chip"
+                              data-footprint={footprintLabel(item.type, candidate)}
+                              style={
+                                {
+                                  '--fw': getFootprint(item.type, candidate).w,
+                                  '--fh': getFootprint(item.type, candidate).h,
+                                } as CSSProperties
+                              }
+                              aria-hidden
+                            />
+                          </small>
                         </button>
                       ))}
                     </div>
