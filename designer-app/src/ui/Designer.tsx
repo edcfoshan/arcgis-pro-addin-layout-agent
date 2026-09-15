@@ -472,17 +472,24 @@ export default function Designer() {
     history.future = [];
   };
 
-  // 项目名是项目元数据(与 filePath、collapsed 同类),不是画布内容,undo 不该改它。
-  // 但历史快照里带着当时的 metadata.name,直接恢复会让「界面显示的名字」与
-  // 「文档里的插件名」分叉(改名后 Ctrl+Z 即复现)。恢复时把该项目当前的
-  // entry.name 写回快照,维持不变量:document.metadata.name === project.name。
-  const restoreDocument = (next: RibbonDocument) => {
+  // 不变量:任何时刻 document.metadata.name === 激活项目的 name。
+  // 项目名(entry.name)是权威,侧栏与窗口标题显示它;document.metadata.name 是它的镜像,
+  // 会随保存写进 .json,也会随导出写进 Config.daml 的 <Name> 与 moduleCaption。
+  // 项目名属项目元数据(与 filePath、collapsed 同类),不是画布内容,所以整份换文档时
+  // 不能把它一起换掉——否则「界面上叫 A、导出的插件叫 B」(改名后 Ctrl+Z、改名后清空都复现过)。
+  // 因此撤销/重做、清空画布,以及将来任何整份替换文档的路径,都必须经由本函数,
+  // 不要直接调 updateActiveDocument 塞入外来文档。
+  const withActiveProjectName = (next: RibbonDocument): RibbonDocument => {
     const entry = projectsRef.current.find(
       (project) => project.id === activeProjectIdRef.current,
     );
-    updateActiveDocument(
-      entry && entry.name ? { ...next, metadata: { ...next.metadata, name: entry.name } } : next,
-    );
+    return entry && entry.name
+      ? { ...next, metadata: { ...next.metadata, name: entry.name } }
+      : next;
+  };
+
+  const restoreDocument = (next: RibbonDocument) => {
+    updateActiveDocument(withActiveProjectName(next));
   };
 
   const undo = () => {
@@ -1085,10 +1092,10 @@ export default function Designer() {
     addProject();
   };
 
-  // 清空当前项目画布:保留文件绑定与未命名编号,内容重置(可撤销)
+  // 清空当前项目画布:保留文件绑定、项目名与未命名编号,内容重置(可撤销)
   const resetDocument = () => {
     pushHistory(documentRef.current);
-    updateActiveDocument(createEmptyDocument());
+    updateActiveDocument(withActiveProjectName(createEmptyDocument()));
     setSelectedControlId(null);
     setConfirmAction(null);
     showToast('已重置为空白 Ribbon(可撤销)');
