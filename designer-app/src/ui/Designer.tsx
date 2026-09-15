@@ -7,17 +7,23 @@ import {
   type CSSProperties,
 } from 'react';
 import {
+  Box,
   ChevronDown,
+  ChevronRight,
   Copy,
   FilePlus,
+  FileText,
   FolderOpen,
   Image as ImageIcon,
   Info,
+  LayoutGrid,
+  MousePointerClick,
   Package,
   Plus,
   Redo2,
   Save,
   Settings,
+  TextCursorInput,
   Trash2,
   Undo2,
   X,
@@ -73,12 +79,17 @@ import {
 import './designer.css';
 
 const STORAGE_KEY = 'gispro-ribbon-designer-doc';
+const PROJECTS_STORAGE_KEY = 'gispro-ribbon-designer-projects';
 const LAST_EXPORT_DIR_STORAGE_KEY = 'gispro-ribbon-designer-last-export-dir';
 const LAST_DOC_DIR_STORAGE_KEY = 'gispro-ribbon-designer-last-doc-dir';
 const RECENT_FILES_STORAGE_KEY = 'gispro-ribbon-designer-recent-files';
 const THEME_STORAGE_KEY = 'gispro-ribbon-designer-theme';
 const AUTO_UPDATE_STORAGE_KEY = 'gispro-ribbon-designer-auto-update';
 const WELCOME_SEEN_STORAGE_KEY = 'gispro-ribbon-designer-welcome-seen';
+const LIB_CATEGORY_STORAGE_KEY = 'gispro-ribbon-designer-lib-category';
+
+// 每项目一份的草稿槽 key(项目 id 分槽,旧版单份草稿用 STORAGE_KEY 迁移)
+const draftKey = (projectId: string) => `${STORAGE_KEY}-${projectId}`;
 
 const HISTORY_LIMIT = 50;
 
@@ -157,26 +168,114 @@ interface RecentFile {
   name: string;
 }
 
-const librarySections = [
-  {
-    title: '命令控件',
-    items: CONTROL_LIBRARY.filter((item) =>
-      ['button', 'tool', 'splitButton', 'toolPalette', 'menu', 'gallery'].includes(item.type),
-    ),
-  },
-  {
-    title: '输入与选择',
-    items: CONTROL_LIBRARY.filter((item) => ['comboBox', 'editBox', 'checkBox'].includes(item.type)),
-  },
+// 控件库双层分类:上层 segment 按交互特性分组,下层为具体控件卡
+const LIBRARY_CATEGORY: Record<string, 'command' | 'container' | 'input'> = {
+  button: 'command',
+  tool: 'command',
+  splitButton: 'container',
+  toolPalette: 'container',
+  menu: 'container',
+  gallery: 'container',
+  comboBox: 'input',
+  editBox: 'input',
+  checkBox: 'input',
+};
+
+const LIBRARY_CATEGORIES: {
+  id: 'all' | 'command' | 'container' | 'input';
+  label: string;
+  Icon: typeof LayoutGrid;
+}[] = [
+  { id: 'all', label: '全部', Icon: LayoutGrid },
+  { id: 'command', label: '命令', Icon: MousePointerClick },
+  { id: 'container', label: '容器', Icon: Box },
+  { id: 'input', label: '输入', Icon: TextCursorInput },
 ];
 
-const loadInitialDocument = (): RibbonDocument => {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved) {
-    const parsed = parseImportedDocument(saved);
-    if (parsed) return normalizeDocumentLayouts(parsed, 'Large');
+// 项目 = 一个 .json 文档 = 一个 addin 包(IDE 多开文件式);侧栏两级:项目 → 页签
+interface ProjectEntry {
+  id: string;
+  document: RibbonDocument;
+  filePath: string | null;
+  dirty: boolean;
+  activeTabId: string;
+  collapsed: boolean;
+}
+
+interface StoredProjectMeta {
+  id: string;
+  filePath: string | null;
+  dirty: boolean;
+  activeTabId: string;
+  collapsed: boolean;
+}
+
+interface StoredSession {
+  activeProjectId: string;
+  projects: StoredProjectMeta[];
+}
+
+const makeProjectEntry = (
+  document: RibbonDocument,
+  opts: { id?: string; filePath?: string | null; dirty?: boolean } = {},
+): ProjectEntry => ({
+  id: opts.id ?? createId('proj'),
+  document,
+  filePath: opts.filePath ?? null,
+  dirty: opts.dirty ?? true,
+  activeTabId: document.tabs[0]?.id ?? '',
+  collapsed: false,
+});
+
+// 启动恢复:优先读多项目会话;没有则迁移旧版单份草稿;再没有开一个空白项目。
+// 落盘项目也从草稿槽恢复(与旧版「草稿兜底优先于文件」行为一致)
+const loadInitialSession = (): { projects: ProjectEntry[]; activeProjectId: string } => {
+  try {
+    const sessionRaw = localStorage.getItem(PROJECTS_STORAGE_KEY);
+    if (sessionRaw) {
+      const session = JSON.parse(sessionRaw) as StoredSession;
+      if (Array.isArray(session.projects) && session.projects.length) {
+        const projects = session.projects.flatMap((meta) => {
+          const draft = localStorage.getItem(draftKey(meta.id));
+          if (!draft) return [];
+          const parsed = parseImportedDocument(draft);
+          if (!parsed) return [];
+          const document = normalizeDocumentLayouts(parsed, 'Large');
+          const activeTabId = document.tabs.some((tab) => tab.id === meta.activeTabId)
+            ? meta.activeTabId
+            : document.tabs[0]?.id ?? '';
+          return [
+            {
+              id: meta.id,
+              document,
+              filePath: meta.filePath ?? null,
+              dirty: meta.dirty ?? true,
+              activeTabId,
+              collapsed: Boolean(meta.collapsed),
+            },
+          ];
+        });
+        if (projects.length) {
+          const activeProjectId = projects.some((p) => p.id === session.activeProjectId)
+            ? session.activeProjectId
+            : projects[0].id;
+          return { projects, activeProjectId };
+        }
+      }
+    }
+  } catch {
+    // 会话数据损坏时回退到旧版迁移路径
   }
-  return createEmptyDocument();
+  const legacy = localStorage.getItem(STORAGE_KEY);
+  if (legacy) {
+    const parsed = parseImportedDocument(legacy);
+    if (parsed) {
+      const entry = makeProjectEntry(normalizeDocumentLayouts(parsed, 'Large'), { dirty: true });
+      return { projects: [entry], activeProjectId: entry.id };
+    }
+  }
+  const entry = makeProjectEntry(createEmptyDocument(), { dirty: false });
+  return { projects: [entry], activeProjectId: entry.id };
 };
 
 const computeLayoutVersion = (document: RibbonDocument) => {
@@ -188,8 +287,9 @@ const computeLayoutVersion = (document: RibbonDocument) => {
 };
 
 export default function Designer() {
-  const [document, setDocument] = useState<RibbonDocument>(loadInitialDocument);
-  const [activeTabId, setActiveTabId] = useState(document.tabs[0]?.id ?? '');
+  const [initialSession] = useState(loadInitialSession);
+  const [projects, setProjects] = useState<ProjectEntry[]>(initialSession.projects);
+  const [activeProjectId, setActiveProjectId] = useState(initialSession.activeProjectId);
   const [selectedControlId, setSelectedControlId] = useState<string | null>(null);
   const [drag, setDrag] = useState<DragState>(null);
   const [ghostPos, setGhostPos] = useState<GhostPos>({ x: 0, y: 0 });
@@ -209,9 +309,8 @@ export default function Designer() {
   const [lastExportDir, setLastExportDir] = useState(
     () => localStorage.getItem(LAST_EXPORT_DIR_STORAGE_KEY) || '',
   );
-  const [currentFile, setCurrentFile] = useState<string | null>(null);
-  const [fileDirty, setFileDirty] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<'clear' | 'new' | null>(null);
+  const [pendingCloseProjectId, setPendingCloseProjectId] = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<'clear' | null>(null);
   const [showWelcome, setShowWelcome] = useState(
     () => !localStorage.getItem(WELCOME_SEEN_STORAGE_KEY),
   );
@@ -231,54 +330,156 @@ export default function Designer() {
     }
   });
   const [libSize, setLibSize] = useState<Record<string, RibbonControlSize>>({});
+  const [libCategory, setLibCategory] = useState<'all' | 'command' | 'container' | 'input'>(() => {
+    const saved = localStorage.getItem(LIB_CATEGORY_STORAGE_KEY);
+    return saved === 'command' || saved === 'container' || saved === 'input' ? saved : 'all';
+  });
   const [updateBanner, setUpdateBanner] = useState<{ version: string } | null>(null);
   const gridRefs = useRef(new Map<string, HTMLElement>());
   const dragRef = useRef<DragState>(null);
   const hoverRef = useRef<HoverTarget | null>(null);
+  const projectsRef = useRef(projects);
+  projectsRef.current = projects;
+  const activeProjectIdRef = useRef(activeProjectId);
+  activeProjectIdRef.current = activeProjectId;
+
+  // ===== 多项目派生:document/页签/文件路径/脏标记都来自激活项目 =====
+  const activeProject =
+    projects.find((project) => project.id === activeProjectId) ?? projects[0];
+  const document = activeProject.document;
+  const activeTabId = activeProject.activeTabId;
+  const currentFile = activeProject.filePath;
+  const fileDirty = activeProject.dirty;
   const documentRef = useRef(document);
   documentRef.current = document;
+
+  const updateProject = (id: string, patch: Partial<ProjectEntry>) =>
+    setProjects((current) =>
+      current.map((project) => (project.id === id ? { ...project, ...patch } : project)),
+    );
+
+  // 文档编辑统一走这里:commit/restore 的落盘目标永远是「当前激活项目」
+  const updateActiveDocument = (next: RibbonDocument, extra: Partial<ProjectEntry> = {}) => {
+    documentRef.current = next;
+    setProjects((current) =>
+      current.map((project) =>
+        project.id === activeProjectIdRef.current
+          ? {
+              ...project,
+              document: next,
+              dirty: true,
+              activeTabId: next.tabs.some((tab) => tab.id === project.activeTabId)
+                ? project.activeTabId
+                : next.tabs[0]?.id ?? '',
+              ...extra,
+            }
+          : project,
+      ),
+    );
+  };
+
+  const activateProject = (projectId: string, tabId?: string) => {
+    setActiveProjectId(projectId);
+    setSelectedControlId(null);
+    if (tabId !== undefined) updateProject(projectId, { activeTabId: tabId });
+  };
+
+  // 新增项目条目并激活;doc 缺省 = 空白布局
+  const addProject = (
+    doc?: RibbonDocument,
+    opts: { filePath?: string | null } = {},
+  ): ProjectEntry => {
+    const base = doc ? normalizeDocumentLayouts(doc, 'Large') : createEmptyDocument();
+    if (!doc) {
+      const n = projectsRef.current.filter((project) => !project.filePath).length + 1;
+      base.metadata = { ...base.metadata, name: `未命名 ${n}` };
+    }
+    const entry = makeProjectEntry(base, {
+      filePath: opts.filePath ?? null,
+      dirty: doc ? !opts.filePath : false,
+    });
+    setProjects((current) => [...current, entry]);
+    setActiveProjectId(entry.id);
+    setSelectedControlId(null);
+    return entry;
+  };
+
+  // 关闭项目:脏项目先经确认弹窗;关掉最后一个时自动补一个空白项目
+  const removeProject = (id: string) => {
+    const idx = projectsRef.current.findIndex((project) => project.id === id);
+    localStorage.removeItem(draftKey(id));
+    historyRef.current.delete(id);
+    let next = projectsRef.current.filter((project) => project.id !== id);
+    if (!next.length) {
+      const fresh = createEmptyDocument();
+      fresh.metadata = { ...fresh.metadata, name: '未命名 1' };
+      next = [makeProjectEntry(fresh, { dirty: false })];
+    }
+    setProjects(next);
+    if (activeProjectIdRef.current === id) {
+      const fallback = next[Math.min(Math.max(idx, 0), next.length - 1)];
+      setActiveProjectId(fallback.id);
+    }
+    setSelectedControlId(null);
+  };
+
+  const closeProject = (id: string) => {
+    const target = projectsRef.current.find((project) => project.id === id);
+    if (!target) return;
+    if (target.dirty) {
+      setPendingCloseProjectId(id);
+      return;
+    }
+    removeProject(id);
+  };
 
   const showToast = useCallback((message: string) => {
     setToast(message);
     window.setTimeout(() => setToast(''), 2400);
   }, []);
 
-  // ===== 撤销/重做:双栈 ref + tick 触发重渲染(避免在 setState updater 里做副作用) =====
-  const pastRef = useRef<RibbonDocument[]>([]);
-  const futureRef = useRef<RibbonDocument[]>([]);
+  // ===== 撤销/重做:每项目独立双栈 + tick 触发重渲染(避免在 setState updater 里做副作用) =====
+  const historyRef = useRef(
+    new Map<string, { past: RibbonDocument[]; future: RibbonDocument[] }>(),
+  );
   const [, setHistoryTick] = useState(0);
   const syncHistory = () => setHistoryTick((t) => t + 1);
 
+  const historyOf = (projectId: string) => {
+    let entry = historyRef.current.get(projectId);
+    if (!entry) {
+      entry = { past: [], future: [] };
+      historyRef.current.set(projectId, entry);
+    }
+    return entry;
+  };
+
   const pushHistory = (prev: RibbonDocument) => {
-    pastRef.current = [...pastRef.current.slice(-(HISTORY_LIMIT - 1)), prev];
-    futureRef.current = [];
+    const history = historyOf(activeProjectIdRef.current);
+    history.past = [...history.past.slice(-(HISTORY_LIMIT - 1)), prev];
+    history.future = [];
   };
 
   const restoreDocument = (next: RibbonDocument) => {
-    documentRef.current = next;
-    setDocument(next);
-    setActiveTabId((current) =>
-      next.tabs.some((tab) => tab.id === current) ? current : next.tabs[0]?.id ?? '',
-    );
-    setFileDirty(true);
+    updateActiveDocument(next);
   };
 
   const undo = () => {
-    const past = pastRef.current;
-    if (!past.length) return;
-    const prev = past[past.length - 1];
-    futureRef.current = [documentRef.current, ...futureRef.current].slice(0, HISTORY_LIMIT);
-    pastRef.current = past.slice(0, -1);
+    const history = historyOf(activeProjectIdRef.current);
+    if (!history.past.length) return;
+    const prev = history.past[history.past.length - 1];
+    history.future = [documentRef.current, ...history.future].slice(0, HISTORY_LIMIT);
+    history.past = history.past.slice(0, -1);
     restoreDocument(prev);
     syncHistory();
   };
 
   const redo = () => {
-    const future = futureRef.current;
-    if (!future.length) return;
-    const next = future[0];
-    pastRef.current = [...pastRef.current.slice(-(HISTORY_LIMIT - 1)), documentRef.current];
-    futureRef.current = future.slice(1);
+    const history = historyOf(activeProjectIdRef.current);
+    if (!history.future.length) return;
+    const next = history.future[0];
+    history.past = [...history.past.slice(-(HISTORY_LIMIT - 1)), documentRef.current];
+    history.future = history.future.slice(1);
     restoreDocument(next);
     syncHistory();
   };
@@ -287,15 +488,39 @@ export default function Designer() {
     const current = documentRef.current;
     const next = normalizeDocumentLayouts(cloneDocumentWithTimestamp(recipe(current)), 'Large');
     pushHistory(current);
-    documentRef.current = next;
-    setDocument(next);
-    setFileDirty(true);
+    updateActiveDocument(next);
     syncHistory();
   }, []);
 
+  // 草稿:每项目一个槽 + 会话元数据(顺序/激活项/折叠/脏态),关窗随时可恢复
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(document));
-  }, [document]);
+    for (const project of projects) {
+      try {
+        localStorage.setItem(draftKey(project.id), JSON.stringify(project.document));
+      } catch {
+        // 草稿兜底尽力而为,写不进(如存储满)不阻塞编辑
+      }
+    }
+    const session: StoredSession = {
+      activeProjectId,
+      projects: projects.map((project) => ({
+        id: project.id,
+        filePath: project.filePath,
+        dirty: project.dirty,
+        activeTabId: project.activeTabId,
+        collapsed: project.collapsed,
+      })),
+    };
+    try {
+      localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(session));
+    } catch {
+      // 同上
+    }
+  }, [projects, activeProjectId]);
+
+  useEffect(() => {
+    localStorage.setItem(LIB_CATEGORY_STORAGE_KEY, libCategory);
+  }, [libCategory]);
 
   useEffect(() => {
     localStorage.setItem(LAST_EXPORT_DIR_STORAGE_KEY, lastExportDir);
@@ -327,21 +552,48 @@ export default function Designer() {
   const selectedControl =
     document.controls.find((control) => control.id === selectedControlId) ?? null;
 
-  const addTab = () => {
+  // 侧栏/标题栏共用的项目显示名:落盘 = 文件名去扩展名;未落盘 = metadata.name
+  const projectTitle = (project: ProjectEntry) =>
+    project.filePath
+      ? splitPath(project.filePath).name.replace(/\.json$/i, '')
+      : project.document.metadata.name || '未命名';
+  const activeProjectTitle = projectTitle(activeProject);
+
+  // undo/redo 按钮状态 = 激活项目的独立历史栈(historyTick 触发重渲染时重读)
+  const activeHistory = historyRef.current.get(activeProjectId);
+  const canUndo = Boolean(activeHistory?.past.length);
+  const canRedo = Boolean(activeHistory?.future.length);
+
+  const visibleLibraryItems =
+    libCategory === 'all'
+      ? CONTROL_LIBRARY
+      : CONTROL_LIBRARY.filter((item) => LIBRARY_CATEGORY[item.type] === libCategory);
+
+  // 新增页签(可作用于非激活项目:该项目的独立历史栈照常入栈)
+  const addTabTo = (projectId: string) => {
+    const entry = projectsRef.current.find((project) => project.id === projectId);
+    if (!entry) return;
     const tabId = createId('tab');
-    commit((current) => ({
-      ...current,
-      tabs: [
-        ...current.tabs,
-        {
-          id: tabId,
-          caption: `新页签 ${current.tabs.length + 1}`,
-          keytip: `T${current.tabs.length + 1}`,
-          groupIds: [],
-        },
-      ],
-    }));
-    setActiveTabId(tabId);
+    const next = normalizeDocumentLayouts(
+      cloneDocumentWithTimestamp({
+        ...entry.document,
+        tabs: [
+          ...entry.document.tabs,
+          {
+            id: tabId,
+            caption: `新页签 ${entry.document.tabs.length + 1}`,
+            keytip: `T${entry.document.tabs.length + 1}`,
+            groupIds: [],
+          },
+        ],
+      }),
+      'Large',
+    );
+    const history = historyOf(projectId);
+    history.past = [...history.past.slice(-(HISTORY_LIMIT - 1)), entry.document];
+    history.future = [];
+    updateProject(projectId, { document: next, dirty: true, activeTabId: tabId });
+    setSelectedControlId(null);
   };
 
   const updateTab = (tabId: string, patch: Partial<{ caption: string; keytip: string }>) => {
@@ -379,7 +631,8 @@ export default function Designer() {
       };
     });
     if (activeTabId === tabId) {
-      setActiveTabId(document.tabs.find((tab) => tab.id !== tabId)?.id ?? '');
+      const fallback = document.tabs.find((tab) => tab.id !== tabId)?.id ?? '';
+      updateProject(activeProject.id, { activeTabId: fallback });
     }
   };
 
@@ -654,24 +907,14 @@ export default function Designer() {
     });
   };
 
-  // ===== 文件导入(菜单「打开文件…」与窗口拖放的统一入口) =====
-  const applyImportedDocument = (
-    next: RibbonDocument,
-    message: string,
-    filePath?: string,
-  ) => {
-    pushHistory(documentRef.current);
-    documentRef.current = next;
-    setDocument(normalizeDocumentLayouts(next, 'Large'));
-    setActiveTabId(next.tabs[0]?.id ?? '');
-    setSelectedControlId(null);
-    setFileDirty(!filePath);
-    setCurrentFile(filePath ?? null);
+  // ===== 导入/打开/示例布局的统一落点:一律开新项目并激活,不动当前编辑中的项目 =====
+  const addProjectFromDocument = (next: RibbonDocument, message: string, filePath?: string) => {
+    addProject(next, { filePath: filePath ?? null });
     if (filePath) rememberRecentFile(filePath);
     showToast(message);
   };
 
-  // ===== 单文档文件菜单:新建/打开/保存/另存为/最近文件 =====
+  // ===== 文件菜单:新建/打开/保存/另存为/最近文件(均作用于项目条目) =====
   const rememberRecentFile = (path: string) => {
     const name = path.split(/[\\/]/).pop() ?? path;
     setRecentFiles((current) =>
@@ -684,6 +927,13 @@ export default function Designer() {
 
   const loadDocumentFromPath = async (path: string) => {
     if (!path) return;
+    // 该文件已在侧栏打开:直接聚焦既有条目,不开重复份
+    const existing = projectsRef.current.find((project) => project.filePath === path);
+    if (existing) {
+      activateProject(existing.id);
+      showToast(`已在侧栏打开 ${splitPath(path).name}`);
+      return;
+    }
     const text = await invoke<string>('read_text_file', { path }).catch((error) => {
       showToast(`读取失败:${String(error)}`);
       return '';
@@ -694,11 +944,7 @@ export default function Designer() {
       showToast('打开失败:JSON 结构不符合当前 schema');
       return;
     }
-    applyImportedDocument(
-      parsed,
-      `已打开 ${parsed.tabs.length} 个页签的布局`,
-      path,
-    );
+    addProjectFromDocument(parsed, `已打开 ${parsed.tabs.length} 个页签的布局`, path);
   };
 
   const openDocDialog = async () => {
@@ -715,60 +961,75 @@ export default function Designer() {
     }
   };
 
-  const saveDocAs = async () => {
+  // 返回是否成功;projectId 缺省 = 当前激活项目(关闭项目前的「保存并关闭」要显式传 id,
+  // 防止异步过程中用户切走项目导致存错对象)
+  const saveDocAs = async (projectId?: string): Promise<boolean> => {
     if (!appWindow) {
       showToast('请在桌面应用中保存文件');
-      return;
+      return false;
     }
+    const id = projectId ?? activeProjectIdRef.current;
+    const entry = projectsRef.current.find((project) => project.id === id);
+    if (!entry) return false;
     const fallbackDir =
       localStorage.getItem(LAST_DOC_DIR_STORAGE_KEY) ||
       (await invoke<string>('get_default_target_dir').catch(() => ''));
     const picked = await saveDialog({
       filters: [{ name: '布局 JSON', extensions: ['json'] }],
       defaultPath: fallbackDir
-        ? `${fallbackDir}\\${documentRef.current.metadata.name || '布局'}.json`
-        : `${documentRef.current.metadata.name || '布局'}.json`,
+        ? `${fallbackDir}\\${entry.document.metadata.name || '布局'}.json`
+        : `${entry.document.metadata.name || '布局'}.json`,
     }).catch(() => null);
-    if (typeof picked !== 'string' || !picked) return;
+    if (typeof picked !== 'string' || !picked) return false;
     const { dir, name } = splitPath(picked);
     const saved = await invoke<string>('write_text_file', {
       dir,
       filename: name,
-      content: JSON.stringify(documentRef.current, null, 2),
+      content: JSON.stringify(entry.document, null, 2),
     }).catch((error) => {
       showToast(`保存失败:${String(error)}`);
       return '';
     });
-    if (!saved) return;
+    if (!saved) return false;
     localStorage.setItem(LAST_DOC_DIR_STORAGE_KEY, dir);
-    setCurrentFile(saved);
-    setFileDirty(false);
+    updateProject(id, {
+      filePath: saved,
+      dirty: false,
+      document: {
+        ...entry.document,
+        metadata: { ...entry.document.metadata, name: name.replace(/\.json$/i, '') },
+      },
+    });
     rememberRecentFile(saved);
     showToast(`已保存到 ${name}`);
+    return true;
   };
 
-  const saveDoc = async () => {
-    if (!currentFile) {
-      await saveDocAs();
-      return;
+  const saveDoc = async (projectId?: string): Promise<boolean> => {
+    const id = projectId ?? activeProjectIdRef.current;
+    const entry = projectsRef.current.find((project) => project.id === id);
+    if (!entry) return false;
+    if (!entry.filePath) {
+      return saveDocAs(id);
     }
-    const { dir, name } = splitPath(currentFile);
+    const { dir, name } = splitPath(entry.filePath);
     const saved = await invoke<string>('write_text_file', {
       dir,
       filename: name,
-      content: JSON.stringify(documentRef.current, null, 2),
+      content: JSON.stringify(entry.document, null, 2),
     }).catch((error) => {
       showToast(`保存失败:${String(error)}`);
       return '';
     });
-    if (!saved) return;
-    setFileDirty(false);
+    if (!saved) return false;
+    updateProject(id, { dirty: false });
     rememberRecentFile(saved);
     showToast(`已保存到 ${name}`);
+    return true;
   };
 
   const openDemoLayout = () => {
-    applyImportedDocument(createDemoDocument(), '已载入示例布局,可自由修改');
+    addProjectFromDocument(createDemoDocument(), '已载入示例布局,可自由修改');
   };
 
   const dismissWelcome = () => {
@@ -776,23 +1037,16 @@ export default function Designer() {
     setShowWelcome(false);
   };
 
+  // 多开模型下新建 = 追加空白项目,对当前编辑无破坏性,不再需要确认
   const requestNewDocument = () => {
-    if (documentHasContent()) {
-      setConfirmAction('new');
-      return;
-    }
-    resetDocument(false);
+    addProject();
   };
 
-  const resetDocument = (keepFile: boolean) => {
+  // 清空当前项目画布:保留文件绑定与未命名编号,内容重置(可撤销)
+  const resetDocument = () => {
     pushHistory(documentRef.current);
-    const next = createEmptyDocument();
-    documentRef.current = next;
-    setDocument(next);
-    setActiveTabId(next.tabs[0]?.id ?? '');
+    updateActiveDocument(createEmptyDocument());
     setSelectedControlId(null);
-    setFileDirty(true);
-    if (!keepFile) setCurrentFile(null);
     setConfirmAction(null);
     showToast('已重置为空白 Ribbon(可撤销)');
   };
@@ -817,7 +1071,7 @@ export default function Designer() {
           showToast('导入失败:JSON 结构不符合当前 schema');
           return;
         }
-        applyImportedDocument(parsed, `已导入 JSON:${parsed.tabs.length} 个页签`, path);
+        addProjectFromDocument(parsed, `已导入 JSON:${parsed.tabs.length} 个页签`, path);
         return;
       }
       const iconMap = Object.fromEntries(pkg.icons.map((icon) => [icon.damlName, icon.file]));
@@ -829,7 +1083,7 @@ export default function Designer() {
         showToast('导入失败:未在 DAML 中发现分组/控件');
         return;
       }
-      applyImportedDocument(
+      addProjectFromDocument(
         imported,
         `导入成功:${stats.tabs} 页签 · ${stats.groups} 分组 · ${stats.controls} 控件` +
           (stats.placeholders ? `,${stats.placeholders} 个外部引用显示为占位` : '') +
@@ -1208,6 +1462,7 @@ export default function Designer() {
         else if (contextMenu) setContextMenu(null);
         else if (iconPickerFor) setIconPickerFor(null);
         else if (confirmAction) setConfirmAction(null);
+        else if (pendingCloseProjectId) setPendingCloseProjectId(null);
         else if (showAbout) setShowAbout(false);
         else if (showWelcome) setShowWelcome(false);
         else if (selectedControlId) setSelectedControlId(null);
@@ -1245,21 +1500,22 @@ export default function Designer() {
       >
         <h1 className="visually-hidden">极思G GISpro 插件设计器</h1>
         <div className="window-handle" data-tauri-drag-region>
-          极思G
+          <img className="window-app-icon" src="/app-icon.png" alt="" draggable={false} />
         </div>
         <button
-          className="titlebar-menu-btn"
+          className="titlebar-icon-btn"
+          title="文件"
+          aria-label="文件"
           onClick={(event) => {
             event.stopPropagation();
             const rect = event.currentTarget.getBoundingClientRect();
             setDropdown({ kind: 'file', x: rect.left, y: rect.bottom + 4 });
           }}
         >
-          文件
-          <ChevronDown size={12} />
+          <FileText size={14} />
         </button>
         <div className="window-title" data-tauri-drag-region>
-          {currentFile ? splitPath(currentFile).name : '未保存布局'}
+          {activeProjectTitle}
           {fileDirty ? <span className="dirty-dot" title="有未保存到文件的修改" /> : null}
         </div>
         <button
@@ -1324,41 +1580,88 @@ export default function Designer() {
       ) : null}
 
       <div className="next-workbench">
-        <aside className="next-tab-sidebar" aria-label="页签列表">
+        <aside className="next-tab-sidebar" aria-label="项目与页签列表">
           <div className="next-tab-sidebar-head">
-            <strong>页签</strong>
-            <button onClick={addTab} title="新增页签">
+            <strong>项目</strong>
+            <button onClick={() => addProject()} title="新增项目">
               <Plus size={13} />
             </button>
           </div>
-          {document.tabs.map((tab) => (
-            <div
-              key={tab.id}
-              className={`next-tab-item${tab.id === activeTab?.id ? ' active' : ''}`}
-              onClick={() => setActiveTabId(tab.id)}
-            >
-              {tab.id === activeTab?.id ? (
-                <input
-                  className="next-tab-name"
-                  aria-label="页签名称"
-                  value={tab.caption}
-                  onChange={(event) => updateTab(tab.id, { caption: event.target.value })}
-                  spellCheck={false}
-                />
-              ) : (
-                <span className="next-tab-name">{tab.caption}</span>
-              )}
-              {document.tabs.length > 1 ? (
+          {projects.map((project) => (
+            <div className="next-project-block" key={project.id}>
+              <div
+                className={`next-project-item${project.id === activeProject.id ? ' active' : ''}`}
+                onClick={() => activateProject(project.id)}
+                title={projectTitle(project)}
+              >
                 <button
-                  className="next-tab-delete"
-                  title="删除页签"
+                  className="next-project-chevron"
+                  aria-label={project.collapsed ? `展开 ${projectTitle(project)} 的页签` : `折叠 ${projectTitle(project)} 的页签`}
+                  aria-expanded={!project.collapsed}
                   onClick={(event) => {
                     event.stopPropagation();
-                    deleteTab(tab.id);
+                    updateProject(project.id, { collapsed: !project.collapsed });
+                  }}
+                >
+                  {project.collapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
+                </button>
+                <span className="next-project-name">{projectTitle(project)}</span>
+                {project.dirty ? <span className="dirty-dot" title="有未保存到文件的修改" /> : null}
+                <button
+                  className="next-tab-delete"
+                  title="关闭项目"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    closeProject(project.id);
                   }}
                 >
                   <X size={11} />
                 </button>
+              </div>
+              {!project.collapsed ? (
+                <>
+                  {project.document.tabs.map((tab) => (
+                    <div
+                      key={tab.id}
+                      className={`next-tab-item${
+                        project.id === activeProject.id && tab.id === activeTab?.id ? ' active' : ''
+                      }`}
+                      onClick={() => activateProject(project.id, tab.id)}
+                    >
+                      {project.id === activeProject.id && tab.id === activeTab?.id ? (
+                        <input
+                          className="next-tab-name"
+                          aria-label="页签名称"
+                          value={tab.caption}
+                          onChange={(event) => updateTab(tab.id, { caption: event.target.value })}
+                          spellCheck={false}
+                        />
+                      ) : (
+                        <span className="next-tab-name">{tab.caption}</span>
+                      )}
+                      {project.document.tabs.length > 1 ? (
+                        <button
+                          className="next-tab-delete"
+                          title="删除页签"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            if (project.id === activeProject.id) {
+                              deleteTab(tab.id);
+                            } else {
+                              showToast('请先切换到该项目再删除页签');
+                            }
+                          }}
+                        >
+                          <X size={11} />
+                        </button>
+                      ) : null}
+                    </div>
+                  ))}
+                  <button className="next-tab-add" onClick={() => addTabTo(project.id)}>
+                    <Plus size={11} />
+                    新增页签
+                  </button>
+                </>
               ) : null}
             </div>
           ))}
@@ -1369,14 +1672,14 @@ export default function Designer() {
             <div className="next-toolbar-left">
               <button
                 onClick={undo}
-                disabled={!pastRef.current.length}
+                disabled={!canUndo}
                 title="撤销 (Ctrl+Z)"
               >
                 <Undo2 size={14} />
               </button>
               <button
                 onClick={redo}
-                disabled={!futureRef.current.length}
+                disabled={!canRedo}
                 title="重做 (Ctrl+Y)"
               >
                 <Redo2 size={14} />
@@ -1389,7 +1692,7 @@ export default function Designer() {
                 className="danger"
                 onClick={() => {
                   if (documentHasContent()) setConfirmAction('clear');
-                  else resetDocument(true);
+                  else resetDocument();
                 }}
               >
                 <Trash2 size={14} />
@@ -1516,8 +1819,30 @@ export default function Designer() {
           </main>
 
           <section className="next-bottom-palette" aria-label="控件库">
+            <div className="next-palette-tabs" role="group" aria-label="控件分类">
+              {LIBRARY_CATEGORIES.map(({ id, label, Icon }) => (
+                <button
+                  key={id}
+                  className={libCategory === id ? 'active' : ''}
+                  aria-pressed={libCategory === id}
+                  title={
+                    id === 'all'
+                      ? '全部控件'
+                      : id === 'command'
+                        ? '命令类:点击执行动作'
+                        : id === 'container'
+                          ? '容器类:承载多个命令或选项'
+                          : '输入类:录入参数值'
+                  }
+                  onClick={() => setLibCategory(id)}
+                >
+                  <Icon size={13} />
+                  {label}
+                </button>
+              ))}
+            </div>
             <div className="next-palette-cards">
-              {librarySections.flatMap((section) => section.items).map((item) => {
+              {visibleLibraryItems.map((item) => {
                 const size =
                   libSize[item.type] ??
                   (item.supportedSizes.includes('large')
@@ -1533,6 +1858,7 @@ export default function Designer() {
                       <LibraryIconThumb type={item.type} />
                       <span>{item.label}</span>
                     </div>
+                    <p className="library-compact-desc">{item.shortDescription}</p>
                     <div className="library-compact-sizes">
                       {item.supportedSizes.map((candidate) => (
                         <button
@@ -1624,7 +1950,7 @@ export default function Designer() {
             <>
               <div className="context-menu-title">文件</div>
               <button onClick={() => void requestNewDocument()}>
-                新建布局<span className="menu-hint">Ctrl+N</span>
+                新建项目<span className="menu-hint">Ctrl+N</span>
               </button>
               <button onClick={() => void openDocDialog()}>
                 打开…<span className="menu-hint">Ctrl+O</span>
@@ -1755,25 +2081,69 @@ export default function Designer() {
         </div>
       ) : null}
 
-      {confirmAction ? (
+      {confirmAction === 'clear' ? (
         <Modal
-          label={confirmAction === 'clear' ? '清空画布' : '新建布局'}
+          label="清空画布"
           cardClassName="confirm-card"
           onClose={() => setConfirmAction(null)}
         >
           <div className="next-modal-head">
-            <strong>{confirmAction === 'clear' ? '清空画布' : '新建布局'}</strong>
+            <strong>清空画布</strong>
           </div>
           <p className="confirm-body">
             将丢弃当前 {documentRef.current.tabs.length} 个页签、{documentRef.current.controls.length}{' '}
-            个控件的布局。{confirmAction === 'new' ? '当前文件不会被删除。' : ''}
-            此操作可通过 Ctrl+Z 撤销。
+            个控件的布局。此操作可通过 Ctrl+Z 撤销。
           </p>
           <div className="confirm-actions">
-            <button className="danger" onClick={() => resetDocument(confirmAction === 'clear')}>
+            <button className="danger" onClick={() => resetDocument()}>
               确认清空
             </button>
             <button onClick={() => setConfirmAction(null)}>取消</button>
+          </div>
+        </Modal>
+      ) : null}
+
+      {pendingCloseProjectId ? (
+        <Modal
+          label="关闭项目"
+          cardClassName="confirm-card"
+          onClose={() => setPendingCloseProjectId(null)}
+        >
+          <div className="next-modal-head">
+            <strong>关闭项目</strong>
+          </div>
+          <p className="confirm-body">
+            {(() => {
+              const target = projects.find(
+                (project) => project.id === pendingCloseProjectId,
+              );
+              if (!target) return '';
+              return `「${projectTitle(target)}」有未保存到文件的修改。保存后关闭,还是直接丢弃?`;
+            })()}
+          </p>
+          <div className="confirm-actions">
+            <button
+              className="primary"
+              onClick={() => {
+                const id = pendingCloseProjectId;
+                setPendingCloseProjectId(null);
+                void saveDoc(id).then((ok) => {
+                  if (ok) removeProject(id);
+                });
+              }}
+            >
+              保存并关闭
+            </button>
+            <button
+              className="danger"
+              onClick={() => {
+                removeProject(pendingCloseProjectId);
+                setPendingCloseProjectId(null);
+              }}
+            >
+              丢弃并关闭
+            </button>
+            <button onClick={() => setPendingCloseProjectId(null)}>取消</button>
           </div>
         </Modal>
       ) : null}

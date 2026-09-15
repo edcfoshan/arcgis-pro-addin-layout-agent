@@ -85,11 +85,13 @@ RibbonDocument (JSON)
 designer.css 全量 token 化(`:root` ~40 语义 token),浅色基准还原 ArcGIS Pro 本体(Fluent 风);**暗色主题** = `:root[data-theme='dark']` 全量 token 覆盖(13 段),画布 mock 与图标选择器格子保持白底(Tabler PNG 仅浅色版,还原 Pro 画布观感)。铁律:
 
 - `:root`/`[data-theme='dark']` 之外不允许裸 hex/rgb;新颜色先加 token(两主题都要出值)
-- 底部控件库是**紧凑卡**(每类型一卡:Tabler 代表图标 + 类型名 + 尺寸徽章行;点徽章选中尺寸、按住徽章拖出即该尺寸),不再渲染 mock 实体
+- 底部控件库**双层**:上层特性分类 segment(全部/命令/容器/输入,lucide 图标,选择跨会话记忆 `gispro-ribbon-designer-lib-category`),下层紧凑卡(每类型一卡:Tabler 代表图标 + 类型名 + 常显描述行 + 尺寸徽章;点徽章选中尺寸、按住徽章拖出即该尺寸),不渲染 mock 实体
 - `--cell` 恒 32px 不可改;`--group-cols` 必须同时设在组元素与网格元素(漏传组元素会按默认列数渲染导致溢出,实修 bug dd37c532)
-- 标题栏:左「文件 ▾」下拉(新建/打开/保存/另存/最近 8 个/示例布局/关于)、文件名+未保存圆点、右侧设置齿轮与关于按钮、更新横幅
-- 单文档模型:`currentFile`+`fileDirty`,Ctrl+S 无路径先另存;导入 .json 等同打开(带 path);localStorage 草稿持续兜底,关窗不拦截
-- undo/redo:双栈 ref(pastRef/futureRef,深 50)+ `commit()` 单一入口(读 documentRef.current 不用 setState updater,防 StrictMode 双推);清空/新建走确认弹窗,其余删除靠 undo 兜底
+- 标题栏全图标化(按钮统一 26px):左 app 图标 + 文件 icon(FileText,悬停 tooltip 出菜单:新建/打开/保存/另存/最近 8 个/示例布局/关于)、中央当前项目名+未保存圆点、右设置/关于 icon 与窗口三键;更新横幅
+- 多项目模型(IDE 多开文件式):侧栏两级 **项目→页签**,项目=一个 .json=一个 addin 包;每项目独立 undo 栈/脏标记/activeTabId/折叠态;`RibbonDocument` schema 本身未加项目层,项目层只存在于 Designer.tsx 的 `ProjectEntry[]` 状态;Ctrl+S 作用于激活项目,无路径先另存;关闭项目脏则 Modal(保存/丢弃/取消),关最后一个自动开空白,**关窗仍不拦截**
+- 草稿分槽:`gispro-ribbon-designer-doc-<projectId>` 每项目一份 + 会话元数据 `gispro-ribbon-designer-projects`(顺序/激活/折叠/脏态),启动全部恢复;旧单份草稿 key 保留作迁移源(升级用户不丢数据)
+- 导入/打开/示例布局一律**开新项目并激活**(.json 打开带 path 不脏;.esriAddInX/.daml 脏),打开侧栏里已开的文件则聚焦既有条目不开重复份
+- undo/redo:每项目独立双栈 Map(historyRef,深 50)+ `commit()` 单一入口(读 documentRef.current 不用 setState updater,防 StrictMode 双推);清空走确认弹窗(多开下新建只是追加项目,无破坏性不确认),其余删除靠 undo 兜底
 - 快捷键:Ctrl+Z/Y/S/O/N、Delete 删选中、Esc 逐层关弹层(输入框聚焦时不拦截)
 - UI 自检:`npm run dev` 后浏览器直渲 localhost:1420(invoke 失败但布局样式全真),Playwright evaluate 读计算样式做机械验收
 
