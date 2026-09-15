@@ -4,6 +4,7 @@ import { getVersion } from '@tauri-apps/api/app';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { check, type Update } from '@tauri-apps/plugin-updater';
 import { openUrl } from '@tauri-apps/plugin-opener';
+import { Modal } from './Modal';
 
 const REPO_URL = 'https://github.com/edcfoshan/arcgis-pro-addin-layout-agent';
 
@@ -108,43 +109,41 @@ export function AboutDialog({ open, onClose }: { open: boolean; onClose: () => v
   };
 
   return (
-    <div className="next-modal" onClick={onClose}>
-      <div className="next-modal-card about-card" onClick={(event) => event.stopPropagation()}>
-        <div className="next-modal-head">
-          <strong>关于</strong>
-          <button onClick={onClose} aria-label="关闭">
-            <X size={14} />
-          </button>
-        </div>
-        <div className="about-body">
-          <div className="about-logo">G</div>
-          <div className="about-title">
-            <strong>极思G GISpro 插件设计器</strong>
-            <span>版本 {version || '...'}</span>
-          </div>
-        </div>
-        <p className="about-desc">
-          可视化设计 ArcGIS Pro Add-in 功能区布局，一键导出 .esriAddInX 安装包。图标来自
-          Tabler Icons（MIT）。
-        </p>
-        <div className="about-update">
-          {updateBlock()}
-          <button
-            className="about-check-update"
-            onClick={() => void checkForUpdate()}
-            disabled={updateState.kind === 'checking' || updateState.kind === 'downloading'}
-          >
-            <RefreshCw size={13} />
-            检查更新
-          </button>
-        </div>
-        <div className="about-links">
-          <button onClick={() => void openUrl(REPO_URL).catch(() => undefined)}>
-            <ExternalLink size={13} />
-            项目主页与源码
-          </button>
+    <Modal label="关于" cardClassName="about-card" onClose={onClose}>
+      <div className="next-modal-head">
+        <strong>关于</strong>
+        <button onClick={onClose} aria-label="关闭">
+          <X size={14} />
+        </button>
+      </div>
+      <div className="about-body">
+        <div className="about-logo">G</div>
+        <div className="about-title">
+          <strong>极思G GISpro 插件设计器</strong>
+          <span>版本 {version || '...'}</span>
         </div>
       </div>
-    </div>
+      <p className="about-desc">
+        可视化设计 ArcGIS Pro Add-in 功能区布局，一键导出 .esriAddInX 安装包。图标来自 Tabler
+        Icons（MIT）。
+      </p>
+      <div className="about-update">
+        {updateBlock()}
+        <button
+          className="about-check-update"
+          onClick={() => void checkForUpdate()}
+          disabled={updateState.kind === 'checking' || updateState.kind === 'downloading'}
+        >
+          <RefreshCw size={13} />
+          检查更新
+        </button>
+      </div>
+      <div className="about-links">
+        <button onClick={() => void openUrl(REPO_URL).catch(() => undefined)}>
+          <ExternalLink size={13} />
+          项目主页与源码
+        </button>
+      </div>
+    </Modal>
   );
 }

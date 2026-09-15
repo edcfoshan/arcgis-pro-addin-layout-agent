@@ -23,9 +23,17 @@
   /* 文字(4 级) */
   --ink: #1e2a38;
   --ink-2: #3d4d61;
-  --ink-3: #64748b;
-  --ink-4: #8a97a6;
+  --ink-3: #566779;
+  --ink-4: #5c6b7a;
   --icon-ink: #4e6172; /* 兜底 lucide 图标统一单色深灰蓝 */
+
+  /* 画布孤岛:画布 mock 与图标格子在两个主题下恒为浅色(还原 Pro 画布观感,Tabler 仅浅色版),
+     故其内部文字不能跟随暗色 ink 层级,单独固定一套 */
+  --island-bg: #ffffff;
+  --island-ink: #1e2a38;
+  --island-ink-2: #3d4d61;
+  --island-ink-3: #566779;
+  --island-ink-4: #5c6b7a;
 
   /* 主色系(ArcGIS Pro 蓝) */
   --accent: #1976d2;
@@ -35,6 +43,7 @@
   --accent-soft: #eaf3ff;
   --accent-soft-deep: #d6e9fb;
   --accent-focus: rgba(25, 118, 210, 0.24);
+  --focus-ring: #1565c0; /* 焦点环实心色,对全部浅色底 ≥4.79:1(WCAG 1.4.11 需 3:1) */
 
   /* 危险系 */
   --danger: #b3261e;
@@ -139,6 +148,8 @@ body,
 .next-shell select,
 .next-shell textarea {
   font: inherit;
+  /* input/select/textarea 默认不继承 color,不显式指定会在暗色主题下用 UA 黑字压深底(1.6:1) */
+  color: inherit;
 }
 
 .next-shell button {
@@ -166,7 +177,7 @@ body,
 }
 
 .next-shell button:focus-visible {
-  outline: 1px solid var(--accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: -1px;
 }
 
@@ -194,6 +205,40 @@ body,
 .next-shell button.danger:hover {
   border-color: var(--danger);
   background: var(--danger-soft);
+}
+
+/* 键盘跳转链接:平时移出视口,获得焦点时滑入 */
+.skip-link {
+  position: absolute;
+  top: var(--sp-2);
+  left: var(--sp-2);
+  z-index: var(--z-ghost);
+  padding: var(--sp-3) var(--sp-5);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--bg-surface);
+  color: var(--accent-ink);
+  font-size: var(--fs-base);
+  text-decoration: none;
+  transform: translateY(-200%);
+}
+
+.skip-link:focus {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  transform: translateY(0);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .next-titlebar,
@@ -236,33 +281,37 @@ body,
   width: auto;
 }
 
-.window-buttons span {
+.window-buttons button {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 44px;
   height: 30px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
   cursor: pointer;
   transition: background-color var(--t-fast) var(--ease);
 }
 
-.window-buttons span:nth-child(1)::before {
+.window-buttons button:nth-child(1)::before {
   content: '';
   width: 10px;
   height: 1px;
   background: var(--ink-2);
 }
 
-.window-buttons span:nth-child(2)::before {
+.window-buttons button:nth-child(2)::before {
   content: '';
   width: 9px;
   height: 9px;
   border: 1px solid var(--ink-2);
 }
 
-.window-buttons span:nth-child(3)::before,
-.window-buttons span:nth-child(3)::after {
+.window-buttons button:nth-child(3)::before,
+.window-buttons button:nth-child(3)::after {
   content: '';
   position: absolute;
   width: 11px;
@@ -270,24 +319,24 @@ body,
   background: var(--ink-2);
 }
 
-.window-buttons span:nth-child(3)::before {
+.window-buttons button:nth-child(3)::before {
   transform: rotate(45deg);
 }
 
-.window-buttons span:nth-child(3)::after {
+.window-buttons button:nth-child(3)::after {
   transform: rotate(-45deg);
 }
 
-.window-buttons span:hover {
+.window-buttons button:hover {
   background: var(--bg-sunken);
 }
 
-.window-buttons span:nth-child(3):hover {
+.window-buttons button:nth-child(3):hover {
   background: var(--danger);
 }
 
-.window-buttons span:nth-child(3):hover::before,
-.window-buttons span:nth-child(3):hover::after {
+.window-buttons button:nth-child(3):hover::before,
+.window-buttons button:nth-child(3):hover::after {
   background: var(--bg-surface);
 }
 
@@ -363,6 +412,7 @@ body,
 .next-tab-name:focus {
   outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 .next-tab-item.active .next-tab-name {
@@ -492,7 +542,7 @@ body,
 .next-group-tools input:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-focus);
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 .next-group-tools button {
@@ -549,6 +599,28 @@ body,
   min-height: 20px;
   padding: 0 var(--sp-3);
   font-size: var(--fs-sm);
+}
+
+/* WCAG 2.5.8(AA):紧凑控件的视觉尺寸保持不变,用居中覆盖层把点击热区补到 24×24。
+   这几类控件相邻中心距实测均 ≥29px,24px 覆盖层不会互相重叠、不会抢点击 */
+.next-tab-sidebar-head button,
+.next-tab-delete,
+.next-group-tools button,
+.next-group-batch button {
+  position: relative;
+}
+
+.next-tab-sidebar-head button::after,
+.next-tab-delete::after,
+.next-group-tools button::after,
+.next-group-batch button::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100%, 24px);
+  height: max(100%, 24px);
+  transform: translate(-50%, -50%);
 }
 
 .next-subgroup {
@@ -905,7 +977,7 @@ body,
 .child-row .child-behavior:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-focus);
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 .child-add {
@@ -1051,7 +1123,7 @@ body,
 .next-modal textarea:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-focus);
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 .next-side .next-form {
@@ -1208,6 +1280,11 @@ body,
   animation: pro-pop var(--t-modal) var(--ease);
 }
 
+/* 对话框容器本身承接初始焦点(供读屏播报),不显示焦点环,内层控件仍走 :focus-visible */
+.next-modal-card:focus {
+  outline: none;
+}
+
 .next-modal-head {
   justify-content: space-between;
   gap: var(--sp-5);
@@ -1302,7 +1379,7 @@ body,
 
 .icon-search:focus-within {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-focus);
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 .icon-search input {
@@ -1462,21 +1539,22 @@ body,
   /* 文字 */
   --ink: #e6ecf3;
   --ink-2: #c2cdd9;
-  --ink-3: #93a1b1;
-  --ink-4: #6d7c8d;
+  --ink-3: #a3b0bf;
+  --ink-4: #9fabbb;
   --icon-ink: #b6c3d1;
 
   /* 主色:同蓝提亮保对比度 */
-  --accent: #4f9bef;
-  --accent-hover: #6baceff;
+  --accent: #5ba3f0;
+  --accent-hover: #6bacef;
   --accent-pressed: #3a85d9;
   --accent-ink: #b8d9fb;
   --accent-soft: #1d3552;
   --accent-soft-deep: #24405f;
   --accent-focus: rgba(79, 155, 239, 0.3);
+  --focus-ring: #4a90d9; /* 焦点环实心色,对全部暗色底 ≥3.82:1 */
 
   /* 危险系 */
-  --danger: #e57368;
+  --danger: #ea8177;
   --danger-soft: #4a2622;
   --danger-border: #6e3c36;
   --danger-glow: rgba(229, 115, 104, 0.16);
@@ -1497,15 +1575,21 @@ body,
   --grid-line-faint: rgba(79, 155, 239, 0.1);
 }
 
-/* 暗色下画布 mock 面保持浅色(还原 Pro 画布观感,Tabler 图标无需暗色版) */
+/* 暗色下画布 mock 面保持浅色(还原 Pro 画布观感,Tabler 图标无需暗色版)。
+   孤岛内同时把 ink 层级改回浅色值 —— 否则后代里用 var(--ink-*) 自设颜色的文案
+   (如 .pro-label)会拿暗色的浅灰字压白底,对比度掉到 1.6:1 */
 :root[data-theme='dark'] .next-ribbon-control,
 :root[data-theme='dark'] .icon-cell {
-  background: #ffffff;
-  color: #1e2a38;
+  --ink: var(--island-ink);
+  --ink-2: var(--island-ink-2);
+  --ink-3: var(--island-ink-3);
+  --ink-4: var(--island-ink-4);
+  background: var(--island-bg);
+  color: var(--ink);
 }
 
 :root[data-theme='dark'] .next-ribbon-control .ctl-caption {
-  color: #1e2a38;
+  color: var(--ink);
 }
 
 /* ============ 14 标题栏扩展与更新横幅 ============ */

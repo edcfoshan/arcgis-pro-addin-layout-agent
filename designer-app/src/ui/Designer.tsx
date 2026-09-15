@@ -54,6 +54,7 @@ import { IconPicker, type IconSelection } from './IconPicker';
 import { getIconUrl, invalidateIconList } from './iconsClient';
 import { Welcome } from './Welcome';
 import { AboutDialog } from './AboutDialog';
+import { Modal } from './Modal';
 import { createDemoDocument } from '../core/demoLayout';
 import {
   DEFAULT_GROUP_COLS,
@@ -1207,6 +1208,8 @@ export default function Designer() {
         else if (contextMenu) setContextMenu(null);
         else if (iconPickerFor) setIconPickerFor(null);
         else if (confirmAction) setConfirmAction(null);
+        else if (showAbout) setShowAbout(false);
+        else if (showWelcome) setShowWelcome(false);
         else if (selectedControlId) setSelectedControlId(null);
       }
     };
@@ -1232,11 +1235,15 @@ export default function Designer() {
 
   return (
     <div className="next-shell">
+      <a className="skip-link" href="#main-canvas">
+        跳到画布
+      </a>
       <header
         className="next-titlebar"
         data-tauri-drag-region
         onDoubleClick={() => void appWindow?.toggleMaximize()}
       >
+        <h1 className="visually-hidden">极思G GISpro 插件设计器</h1>
         <div className="window-handle" data-tauri-drag-region>
           极思G
         </div>
@@ -1277,9 +1284,24 @@ export default function Designer() {
           <Info size={14} />
         </button>
         <div className="window-buttons" onDoubleClick={(event) => event.stopPropagation()}>
-          <span title="最小化" onClick={() => void appWindow?.minimize()} />
-          <span title="最大化/还原" onClick={() => void appWindow?.toggleMaximize()} />
-          <span title="关闭" onClick={() => void appWindow?.close()} />
+          <button
+            type="button"
+            aria-label="最小化"
+            title="最小化"
+            onClick={() => void appWindow?.minimize()}
+          />
+          <button
+            type="button"
+            aria-label="最大化/还原"
+            title="最大化/还原"
+            onClick={() => void appWindow?.toggleMaximize()}
+          />
+          <button
+            type="button"
+            aria-label="关闭"
+            title="关闭"
+            onClick={() => void appWindow?.close()}
+          />
         </div>
       </header>
 
@@ -1302,7 +1324,7 @@ export default function Designer() {
       ) : null}
 
       <div className="next-workbench">
-        <aside className="next-tab-sidebar">
+        <aside className="next-tab-sidebar" aria-label="页签列表">
           <div className="next-tab-sidebar-head">
             <strong>页签</strong>
             <button onClick={addTab} title="新增页签">
@@ -1318,6 +1340,7 @@ export default function Designer() {
               {tab.id === activeTab?.id ? (
                 <input
                   className="next-tab-name"
+                  aria-label="页签名称"
                   value={tab.caption}
                   onChange={(event) => updateTab(tab.id, { caption: event.target.value })}
                   spellCheck={false}
@@ -1342,7 +1365,7 @@ export default function Designer() {
         </aside>
 
         <div className="next-center">
-          <section className="next-toolbar">
+          <section className="next-toolbar" aria-label="工具栏">
             <div className="next-toolbar-left">
               <button
                 onClick={undo}
@@ -1374,7 +1397,9 @@ export default function Designer() {
               </button>
             </div>
             <div className="next-toolbar-right">
-              <span className="draft-status">{busy || '本地草稿自动保存'}</span>
+              <span className="draft-status" role="status">
+                {busy || '本地草稿自动保存'}
+              </span>
               <button
                 title="新建布局 (Ctrl+N)"
                 onClick={() => requestNewDocument()}
@@ -1415,7 +1440,7 @@ export default function Designer() {
             </div>
           </section>
 
-          <main className="next-canvas-row">
+          <main className="next-canvas-row" id="main-canvas" tabIndex={-1}>
             <section className="next-canvas">
               <div className="next-ribbon-area">
                 {activeGroups.length ? (
@@ -1465,7 +1490,7 @@ export default function Designer() {
               </div>
             </section>
 
-            <aside className="next-side">
+            <aside className="next-side" aria-label="属性面板">
               {selectedControl ? (
                 <Inspector
                   control={selectedControl}
@@ -1490,7 +1515,7 @@ export default function Designer() {
             </aside>
           </main>
 
-          <div className="next-bottom-palette">
+          <section className="next-bottom-palette" aria-label="控件库">
             <div className="next-palette-cards">
               {librarySections.flatMap((section) => section.items).map((item) => {
                 const size =
@@ -1532,7 +1557,7 @@ export default function Designer() {
                 );
               })}
             </div>
-          </div>
+          </section>
         </div>
       </div>
 
@@ -1731,27 +1756,26 @@ export default function Designer() {
       ) : null}
 
       {confirmAction ? (
-        <div className="next-modal" onClick={() => setConfirmAction(null)}>
-          <div className="next-modal-card confirm-card" onClick={(event) => event.stopPropagation()}>
-            <div className="next-modal-head">
-              <strong>{confirmAction === 'clear' ? '清空画布' : '新建布局'}</strong>
-            </div>
-            <p className="confirm-body">
-              将丢弃当前 {documentRef.current.tabs.length} 个页签、{documentRef.current.controls.length}{' '}
-              个控件的布局。{confirmAction === 'new' ? '当前文件不会被删除。' : ''}
-              此操作可通过 Ctrl+Z 撤销。
-            </p>
-            <div className="confirm-actions">
-              <button
-                className="danger"
-                onClick={() => resetDocument(confirmAction === 'clear')}
-              >
-                确认清空
-              </button>
-              <button onClick={() => setConfirmAction(null)}>取消</button>
-            </div>
+        <Modal
+          label={confirmAction === 'clear' ? '清空画布' : '新建布局'}
+          cardClassName="confirm-card"
+          onClose={() => setConfirmAction(null)}
+        >
+          <div className="next-modal-head">
+            <strong>{confirmAction === 'clear' ? '清空画布' : '新建布局'}</strong>
           </div>
-        </div>
+          <p className="confirm-body">
+            将丢弃当前 {documentRef.current.tabs.length} 个页签、{documentRef.current.controls.length}{' '}
+            个控件的布局。{confirmAction === 'new' ? '当前文件不会被删除。' : ''}
+            此操作可通过 Ctrl+Z 撤销。
+          </p>
+          <div className="confirm-actions">
+            <button className="danger" onClick={() => resetDocument(confirmAction === 'clear')}>
+              确认清空
+            </button>
+            <button onClick={() => setConfirmAction(null)}>取消</button>
+          </div>
+        </Modal>
       ) : null}
 
       <AboutDialog open={showAbout} onClose={() => setShowAbout(false)} />
@@ -1831,6 +1855,7 @@ function RibbonGroupView({
       <div className="next-group-tools">
         <input
           className="next-group-name"
+          aria-label="分组名称"
           value={group.caption}
           onChange={(event) => onUpdateGroup(group.id, { caption: event.target.value })}
           spellCheck={false}

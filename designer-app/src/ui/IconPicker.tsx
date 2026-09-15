@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Search, Upload, X } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
+import { Modal } from './Modal';
 import {
   invalidateIconList,
   listIcons,
@@ -88,57 +89,56 @@ export function IconPicker({
   if (!open) return null;
 
   return (
-    <div className="next-modal" onClick={onClose}>
-      <div className="next-modal-card icon-picker" onClick={(event) => event.stopPropagation()}>
-        <div className="next-modal-head">
-          <strong>选择图标</strong>
-          <button onClick={onClose} aria-label="关闭">
-            <X size={14} />
-          </button>
-        </div>
-        <div className="icon-picker-toolbar">
-          <label className="icon-search">
-            <Search size={13} />
-            <input
-              autoFocus
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="搜索图标，例如 图层 / 地图 / 放大"
-              spellCheck={false}
-            />
-          </label>
-          <button
-            className="icon-upload"
-            onClick={() => void uploadIcon()}
-            disabled={uploading}
-            title="上传自己的 PNG 图标"
-          >
-            <Upload size={13} />
-            {uploading ? '上传中...' : '上传图标'}
-          </button>
-        </div>
-        <div className="icon-picker-status">
-          {status} · 开源图标库共 {allCount} 张（Tabler Icons · MIT，可上传自定义 PNG）
-        </div>
-        <div className="icon-grid">
-          {hits.map((hit) => (
-            <button
-              key={hit.file}
-              className={`icon-cell${currentSmall ? (currentSmall === hit.file ? ' current' : '') : ''}`}
-              title={hit.file}
-              onClick={() => {
-                listIcons().then(
-                  (icons) => onPick(pairSizes(hit.file, icons)),
-                  () => onPick({ small: hit.file, large: hit.file }),
-                );
-              }}
-            >
-              <img src={hit.dataUrl} alt="" draggable={false} />
-              <span>{hit.file.replace(/^(dark)?images_/, '').replace(/\d+\.png$/, '')}</span>
-            </button>
-          ))}
-        </div>
+    <Modal label="选择图标" cardClassName="icon-picker" onClose={onClose}>
+      <div className="next-modal-head">
+        <strong>选择图标</strong>
+        <button onClick={onClose} aria-label="关闭">
+          <X size={14} />
+        </button>
       </div>
-    </div>
+      <div className="icon-picker-toolbar">
+        <label className="icon-search">
+          <Search size={13} />
+          <input
+            autoFocus
+            aria-label="搜索图标"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="搜索图标，例如 图层 / 地图 / 放大"
+            spellCheck={false}
+          />
+        </label>
+        <button
+          className="icon-upload"
+          onClick={() => void uploadIcon()}
+          disabled={uploading}
+          title="上传自己的 PNG 图标"
+        >
+          <Upload size={13} />
+          {uploading ? '上传中...' : '上传图标'}
+        </button>
+      </div>
+      <div className="icon-picker-status">
+        {status} · 开源图标库共 {allCount} 张（Tabler Icons · MIT，可上传自定义 PNG）
+      </div>
+      <div className="icon-grid">
+        {hits.map((hit) => (
+          <button
+            key={hit.file}
+            className={`icon-cell${currentSmall ? (currentSmall === hit.file ? ' current' : '') : ''}`}
+            title={hit.file}
+            onClick={() => {
+              listIcons().then(
+                (icons) => onPick(pairSizes(hit.file, icons)),
+                () => onPick({ small: hit.file, large: hit.file }),
+              );
+            }}
+          >
+            <img src={hit.dataUrl} alt="" draggable={false} />
+            <span>{hit.file.replace(/^(dark)?images_/, '').replace(/\d+\.png$/, '')}</span>
+          </button>
+        ))}
+      </div>
+    </Modal>
   );
 }

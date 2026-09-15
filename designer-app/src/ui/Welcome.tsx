@@ -1,4 +1,5 @@
 import { Layers, MousePointerClick, PackagePlus, X } from 'lucide-react';
+import { Modal } from './Modal';
 
 const STEPS = [
   {
@@ -28,35 +29,38 @@ export function Welcome({
   onClose: () => void;
 }) {
   return (
-    <div className="next-modal welcome-modal" onClick={onClose}>
-      <div className="next-modal-card welcome-card" onClick={(event) => event.stopPropagation()}>
-        <button className="welcome-close" onClick={onClose} aria-label="关闭">
-          <X size={14} />
-        </button>
-        <div className="welcome-head">
-          <strong>欢迎使用 极思G GISpro 插件设计器</strong>
-          <span>三步做出你的第一个 ArcGIS Pro 功能区插件</span>
-        </div>
-        <div className="welcome-steps">
-          {STEPS.map((step) => (
-            <div className="welcome-step" key={step.title}>
-              <div className="welcome-step-icon">
-                <step.icon size={18} />
-              </div>
-              <div className="welcome-step-text">
-                <strong>{step.title}</strong>
-                <span>{step.body}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="welcome-actions">
-          <button className="primary" onClick={onOpenDemo}>
-            打开示例布局
-          </button>
-          <button onClick={onStartBlank}>从空白开始</button>
-        </div>
+    <Modal
+      label="欢迎使用 极思G GISpro 插件设计器"
+      className="welcome-modal"
+      cardClassName="welcome-card"
+      onClose={onClose}
+    >
+      <button className="welcome-close" onClick={onClose} aria-label="关闭">
+        <X size={14} />
+      </button>
+      <div className="welcome-head">
+        <strong>欢迎使用 极思G GISpro 插件设计器</strong>
+        <span>三步做出你的第一个 ArcGIS Pro 功能区插件</span>
       </div>
-    </div>
+      <div className="welcome-steps">
+        {STEPS.map((step) => (
+          <div className="welcome-step" key={step.title}>
+            <div className="welcome-step-icon">
+              <step.icon size={18} />
+            </div>
+            <div className="welcome-step-text">
+              <strong>{step.title}</strong>
+              <span>{step.body}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="welcome-actions">
+        <button className="primary" onClick={onOpenDemo}>
+          打开示例布局
+        </button>
+        <button onClick={onStartBlank}>从空白开始</button>
+      </div>
+    </Modal>
   );
 }
