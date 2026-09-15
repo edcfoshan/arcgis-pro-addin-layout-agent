@@ -324,7 +324,13 @@ export const parseImportedDocument = (raw: string): RibbonDocument | null => {
     ) {
       return null;
     }
-    return cloneDocumentWithTimestamp(data);
+    // 导入时补齐文档身份 id：手写/第三方 JSON 可能不带 metadata.id，而导出身份的
+    // GUID 由它派生——缺失会塌缩成常量种子，让不相关的设计共用同一个 <AddInInfo id>，
+    // 在 ArcGIS Pro 里互相覆盖。本应用产出的文档都已有 id，此处仅兜底。
+    return cloneDocumentWithTimestamp({
+      ...data,
+      metadata: { ...data.metadata, id: data.metadata.id || createId('doc') },
+    });
   } catch {
     return null;
   }
