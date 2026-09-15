@@ -1,32 +1,28 @@
 {
   "metadata": {
-    "id": "doc_88274635",
-    "name": "空白 Ribbon",
+    "id": "doc_all_controls_demo",
+    "name": "全控件演示",
     "app": "gispro-ribbon-designer",
     "schemaVersion": "1.0",
-    "lastUpdated": "2026-09-14T16:25:09.693Z"
+    "lastUpdated": "2026-09-13T16:30:20.480Z"
   },
   "tabs": [
     {
-      "id": "tab_24235e9e",
-      "caption": "自定义工具箱",
-      "keytip": "A",
+      "id": "tab_all_controls_demo",
+      "caption": "全控件演示",
+      "keytip": "Z",
       "groupIds": [
-        "group_480d244b"
+        "group_demo_01",
+        "group_demo_02",
+        "group_demo_03"
       ]
-    },
-    {
-      "id": "tab_2881f3a1",
-      "caption": "新页签 2",
-      "keytip": "T2",
-      "groupIds": []
     }
   ],
   "groups": [
     {
-      "id": "group_480d244b",
-      "tabId": "tab_24235e9e",
-      "caption": "新分组 1",
+      "id": "group_demo_01",
+      "tabId": "tab_all_controls_demo",
+      "caption": "命令按钮类",
       "keytip": "G1",
       "launcherButton": false,
       "sizePriorities": [
@@ -35,45 +31,154 @@
         120
       ],
       "subgroupIds": [
-        "subgroup_8290cb7a"
+        "subgroup_demo_01"
+      ]
+    },
+    {
+      "id": "group_demo_02",
+      "tabId": "tab_all_controls_demo",
+      "caption": "面板与画廊",
+      "keytip": "G2",
+      "launcherButton": false,
+      "sizePriorities": [
+        30,
+        80,
+        120
+      ],
+      "subgroupIds": [
+        "subgroup_demo_02"
+      ]
+    },
+    {
+      "id": "group_demo_03",
+      "tabId": "tab_all_controls_demo",
+      "caption": "输入与选择",
+      "keytip": "G3",
+      "launcherButton": false,
+      "sizePriorities": [
+        30,
+        80,
+        120
+      ],
+      "subgroupIds": [
+        "subgroup_demo_03"
       ]
     }
   ],
   "subgroups": [
     {
-      "id": "subgroup_8290cb7a",
-      "groupId": "group_480d244b",
+      "id": "subgroup_demo_01",
+      "groupId": "group_demo_01",
       "caption": "分组网格",
       "sizeMode": "AlwaysLarge",
       "verticalAlignment": "Top",
       "layout": {
         "row": 0,
-        "columns": 13,
+        "columns": 11,
         "rows": 3
       },
       "controlIds": [
-        "tool_7f407240",
-        "gallery_942761dd"
+        "button_demo_001",
+        "tool_demo_002",
+        "menu_demo_003",
+        "splitButton_demo_004",
+        "button_demo_005",
+        "tool_demo_006",
+        "menu_demo_007",
+        "splitButton_demo_008",
+        "button_demo_009",
+        "tool_demo_010",
+        "menu_demo_011"
+      ]
+    },
+    {
+      "id": "subgroup_demo_02",
+      "groupId": "group_demo_02",
+      "caption": "分组网格",
+      "sizeMode": "AlwaysLarge",
+      "verticalAlignment": "Top",
+      "layout": {
+        "row": 0,
+        "columns": 9,
+        "rows": 3
+      },
+      "controlIds": [
+        "toolPalette_demo_012",
+        "gallery_demo_013",
+        "toolPalette_demo_014",
+        "gallery_demo_015"
+      ]
+    },
+    {
+      "id": "subgroup_demo_03",
+      "groupId": "group_demo_03",
+      "caption": "分组网格",
+      "sizeMode": "AlwaysLarge",
+      "verticalAlignment": "Top",
+      "layout": {
+        "row": 0,
+        "columns": 8,
+        "rows": 3
+      },
+      "controlIds": [
+        "comboBox_demo_016",
+        "editBox_demo_017",
+        "comboBox_demo_018",
+        "editBox_demo_019",
+        "checkBox_demo_020",
+        "checkBox_demo_021"
       ]
     }
   ],
   "controls": [
     {
-      "id": "tool_7f407240",
-      "subgroupId": "subgroup_8290cb7a",
-      "type": "tool",
-      "caption": "交互工具",
-      "tooltip": "激活地图交互工具",
+      "id": "button_demo_001",
+      "subgroupId": "subgroup_demo_01",
+      "type": "button",
+      "caption": "按钮·大",
+      "tooltip": "演示控件:按钮·大(类型 button,尺寸 large)",
       "condition": "",
-      "size": "middle",
+      "size": "large",
       "supportedSizes": [
         "small",
         "middle",
         "large"
       ],
       "icon": {
-        "small": "",
-        "large": ""
+        "small": "images_addarea16.png",
+        "large": "images_addarea32.png"
+      },
+      "behavior": {
+        "commandType": "button",
+        "className": "ExportCommand",
+        "target": "currentView",
+        "arguments": {}
+      },
+      "eventBindings": [],
+      "aiNotes": "全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。",
+      "layout": {
+        "x": 0,
+        "y": 0,
+        "w": 2,
+        "h": 3
+      }
+    },
+    {
+      "id": "tool_demo_002",
+      "subgroupId": "subgroup_demo_01",
+      "type": "tool",
+      "caption": "交互工具·大",
+      "tooltip": "演示控件:交互工具·大(类型 tool,尺寸 large)",
+      "condition": "",
+      "size": "large",
+      "supportedSizes": [
+        "small",
+        "middle",
+        "large"
+      ],
+      "icon": {
+        "small": "images_addfilter16.png",
+        "large": "images_addfilter32.png"
       },
       "behavior": {
         "commandType": "tool",
@@ -82,20 +187,179 @@
         "arguments": {}
       },
       "eventBindings": [],
-      "aiNotes": "进入地图交互模式的工具。",
+      "aiNotes": "全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。",
       "layout": {
-        "x": 1,
+        "x": 2,
+        "y": 0,
+        "w": 2,
+        "h": 3
+      }
+    },
+    {
+      "id": "menu_demo_003",
+      "subgroupId": "subgroup_demo_01",
+      "type": "menu",
+      "caption": "菜单·大",
+      "tooltip": "演示控件:菜单·大(类型 menu,尺寸 large)",
+      "condition": "",
+      "size": "large",
+      "supportedSizes": [
+        "small",
+        "middle",
+        "large"
+      ],
+      "icon": {
+        "small": "images_addin16.png",
+        "large": "images_addin32.png"
+      },
+      "behavior": {
+        "commandType": "menu",
+        "className": "OptionsMenu",
+        "target": "menu",
+        "arguments": {}
+      },
+      "eventBindings": [],
+      "aiNotes": "全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。",
+      "layout": {
+        "x": 4,
+        "y": 0,
+        "w": 2,
+        "h": 2
+      }
+    },
+    {
+      "id": "splitButton_demo_004",
+      "subgroupId": "subgroup_demo_01",
+      "type": "splitButton",
+      "caption": "分裂按钮·大",
+      "tooltip": "演示控件:分裂按钮·大(类型 splitButton,尺寸 large)",
+      "condition": "",
+      "size": "large",
+      "supportedSizes": [
+        "middle",
+        "large"
+      ],
+      "icon": {
+        "small": "images_addlist16.png",
+        "large": "images_addlist32.png"
+      },
+      "behavior": {
+        "commandType": "splitButton",
+        "className": "AddLayerSplitButton",
+        "target": "menu",
+        "arguments": {}
+      },
+      "eventBindings": [],
+      "aiNotes": "全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。",
+      "layout": {
+        "x": 6,
+        "y": 0,
+        "w": 2,
+        "h": 2
+      }
+    },
+    {
+      "id": "button_demo_005",
+      "subgroupId": "subgroup_demo_01",
+      "type": "button",
+      "caption": "按钮·中",
+      "tooltip": "演示控件:按钮·中(类型 button,尺寸 middle)",
+      "condition": "",
+      "size": "middle",
+      "supportedSizes": [
+        "small",
+        "middle",
+        "large"
+      ],
+      "icon": {
+        "small": "images_addline16.png",
+        "large": "images_addline32.png"
+      },
+      "behavior": {
+        "commandType": "button",
+        "className": "ExportCommand",
+        "target": "currentView",
+        "arguments": {}
+      },
+      "eventBindings": [],
+      "aiNotes": "全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。",
+      "layout": {
+        "x": 8,
         "y": 0,
         "w": 2,
         "h": 1
       }
     },
     {
-      "id": "gallery_942761dd",
-      "subgroupId": "subgroup_8290cb7a",
-      "type": "gallery",
-      "caption": "画廊",
-      "tooltip": "从图块中选择样式",
+      "id": "tool_demo_006",
+      "subgroupId": "subgroup_demo_01",
+      "type": "tool",
+      "caption": "交互工具·中",
+      "tooltip": "演示控件:交互工具·中(类型 tool,尺寸 middle)",
+      "condition": "",
+      "size": "middle",
+      "supportedSizes": [
+        "small",
+        "middle",
+        "large"
+      ],
+      "icon": {
+        "small": "images_addquery16.png",
+        "large": "images_addquery32.png"
+      },
+      "behavior": {
+        "commandType": "tool",
+        "className": "SelectTool",
+        "target": "map",
+        "arguments": {}
+      },
+      "eventBindings": [],
+      "aiNotes": "全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。",
+      "layout": {
+        "x": 8,
+        "y": 1,
+        "w": 2,
+        "h": 1
+      }
+    },
+    {
+      "id": "menu_demo_007",
+      "subgroupId": "subgroup_demo_01",
+      "type": "menu",
+      "caption": "菜单·中",
+      "tooltip": "演示控件:菜单·中(类型 menu,尺寸 middle)",
+      "condition": "",
+      "size": "middle",
+      "supportedSizes": [
+        "small",
+        "middle",
+        "large"
+      ],
+      "icon": {
+        "small": "images_addnotebook16.png",
+        "large": "images_addnotebook32.png"
+      },
+      "behavior": {
+        "commandType": "menu",
+        "className": "OptionsMenu",
+        "target": "menu",
+        "arguments": {}
+      },
+      "eventBindings": [],
+      "aiNotes": "全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。",
+      "layout": {
+        "x": 4,
+        "y": 2,
+        "w": 2,
+        "h": 1
+      }
+    },
+    {
+      "id": "splitButton_demo_008",
+      "subgroupId": "subgroup_demo_01",
+      "type": "splitButton",
+      "caption": "分裂按钮·中",
+      "tooltip": "演示控件:分裂按钮·中(类型 splitButton,尺寸 middle)",
       "condition": "",
       "size": "middle",
       "supportedSizes": [
@@ -103,8 +367,166 @@
         "large"
       ],
       "icon": {
-        "small": "",
-        "large": ""
+        "small": "images_addsearch16.png",
+        "large": "images_addsearch32.png"
+      },
+      "behavior": {
+        "commandType": "splitButton",
+        "className": "AddLayerSplitButton",
+        "target": "menu",
+        "arguments": {}
+      },
+      "eventBindings": [],
+      "aiNotes": "全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。",
+      "layout": {
+        "x": 6,
+        "y": 2,
+        "w": 2,
+        "h": 1
+      }
+    },
+    {
+      "id": "button_demo_009",
+      "subgroupId": "subgroup_demo_01",
+      "type": "button",
+      "caption": "按钮·小",
+      "tooltip": "演示控件:按钮·小(类型 button,尺寸 small)",
+      "condition": "",
+      "size": "small",
+      "supportedSizes": [
+        "small",
+        "middle",
+        "large"
+      ],
+      "icon": {
+        "small": "images_addpoint16.png",
+        "large": "images_addpoint32.png"
+      },
+      "behavior": {
+        "commandType": "button",
+        "className": "ExportCommand",
+        "target": "currentView",
+        "arguments": {}
+      },
+      "eventBindings": [],
+      "aiNotes": "全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。",
+      "layout": {
+        "x": 10,
+        "y": 0,
+        "w": 1,
+        "h": 1
+      }
+    },
+    {
+      "id": "tool_demo_010",
+      "subgroupId": "subgroup_demo_01",
+      "type": "tool",
+      "caption": "交互工具·小",
+      "tooltip": "演示控件:交互工具·小(类型 tool,尺寸 small)",
+      "condition": "",
+      "size": "small",
+      "supportedSizes": [
+        "small",
+        "middle",
+        "large"
+      ],
+      "icon": {
+        "small": "images_addraster16.png",
+        "large": "images_addraster32.png"
+      },
+      "behavior": {
+        "commandType": "tool",
+        "className": "SelectTool",
+        "target": "map",
+        "arguments": {}
+      },
+      "eventBindings": [],
+      "aiNotes": "全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。",
+      "layout": {
+        "x": 10,
+        "y": 1,
+        "w": 1,
+        "h": 1
+      }
+    },
+    {
+      "id": "menu_demo_011",
+      "subgroupId": "subgroup_demo_01",
+      "type": "menu",
+      "caption": "菜单·小",
+      "tooltip": "演示控件:菜单·小(类型 menu,尺寸 small)",
+      "condition": "",
+      "size": "small",
+      "supportedSizes": [
+        "small",
+        "middle",
+        "large"
+      ],
+      "icon": {
+        "small": "images_addcamera16.png",
+        "large": "images_addcamera32.png"
+      },
+      "behavior": {
+        "commandType": "menu",
+        "className": "OptionsMenu",
+        "target": "menu",
+        "arguments": {}
+      },
+      "eventBindings": [],
+      "aiNotes": "全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。",
+      "layout": {
+        "x": 8,
+        "y": 2,
+        "w": 1,
+        "h": 1
+      }
+    },
+    {
+      "id": "toolPalette_demo_012",
+      "subgroupId": "subgroup_demo_02",
+      "type": "toolPalette",
+      "caption": "工具板·大",
+      "tooltip": "演示控件:工具板·大(类型 toolPalette,尺寸 large)",
+      "condition": "",
+      "size": "large",
+      "supportedSizes": [
+        "middle",
+        "large"
+      ],
+      "icon": {
+        "small": "images_addguides16.png",
+        "large": "images_addguides32.png"
+      },
+      "behavior": {
+        "commandType": "toolPalette",
+        "className": "DrawPalette",
+        "target": "map",
+        "arguments": {}
+      },
+      "eventBindings": [],
+      "aiNotes": "全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。",
+      "layout": {
+        "x": 0,
+        "y": 0,
+        "w": 3,
+        "h": 3
+      }
+    },
+    {
+      "id": "gallery_demo_013",
+      "subgroupId": "subgroup_demo_02",
+      "type": "gallery",
+      "caption": "画廊·大",
+      "tooltip": "演示控件:画廊·大(类型 gallery,尺寸 large)",
+      "condition": "",
+      "size": "large",
+      "supportedSizes": [
+        "middle",
+        "large"
+      ],
+      "icon": {
+        "small": "images_addcomments16.png",
+        "large": "images_addcomments32.png"
       },
       "behavior": {
         "commandType": "gallery",
@@ -113,11 +535,259 @@
         "arguments": {}
       },
       "eventBindings": [],
-      "aiNotes": "用于样式、模板或符号的可视化选择。",
+      "aiNotes": "全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。",
       "layout": {
         "x": 3,
         "y": 0,
         "w": 3,
+        "h": 3
+      }
+    },
+    {
+      "id": "toolPalette_demo_014",
+      "subgroupId": "subgroup_demo_02",
+      "type": "toolPalette",
+      "caption": "工具板·中",
+      "tooltip": "演示控件:工具板·中(类型 toolPalette,尺寸 middle)",
+      "condition": "",
+      "size": "middle",
+      "supportedSizes": [
+        "middle",
+        "large"
+      ],
+      "icon": {
+        "small": "images_addvoxel16.png",
+        "large": "images_addvoxel32.png"
+      },
+      "behavior": {
+        "commandType": "toolPalette",
+        "className": "DrawPalette",
+        "target": "map",
+        "arguments": {}
+      },
+      "eventBindings": [],
+      "aiNotes": "全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。",
+      "layout": {
+        "x": 6,
+        "y": 0,
+        "w": 3,
+        "h": 1
+      }
+    },
+    {
+      "id": "gallery_demo_015",
+      "subgroupId": "subgroup_demo_02",
+      "type": "gallery",
+      "caption": "画廊·中",
+      "tooltip": "演示控件:画廊·中(类型 gallery,尺寸 middle)",
+      "condition": "",
+      "size": "middle",
+      "supportedSizes": [
+        "middle",
+        "large"
+      ],
+      "icon": {
+        "small": "images_addcontent16.png",
+        "large": "images_addcontent32.png"
+      },
+      "behavior": {
+        "commandType": "gallery",
+        "className": "FillStyleGallery",
+        "target": "selection",
+        "arguments": {}
+      },
+      "eventBindings": [],
+      "aiNotes": "全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。",
+      "layout": {
+        "x": 6,
+        "y": 1,
+        "w": 3,
+        "h": 1
+      }
+    },
+    {
+      "id": "comboBox_demo_016",
+      "subgroupId": "subgroup_demo_03",
+      "type": "comboBox",
+      "caption": "下拉框·大",
+      "tooltip": "演示控件:下拉框·大(类型 comboBox,尺寸 large)",
+      "condition": "",
+      "size": "large",
+      "supportedSizes": [
+        "middle",
+        "large"
+      ],
+      "icon": {
+        "small": "images_addallvalues16.png",
+        "large": "images_addallvalues32.png"
+      },
+      "behavior": {
+        "commandType": "comboBox",
+        "className": "AdminSelector",
+        "target": "selection",
+        "arguments": {}
+      },
+      "eventBindings": [],
+      "aiNotes": "全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。",
+      "layout": {
+        "x": 0,
+        "y": 0,
+        "w": 4,
+        "h": 1
+      }
+    },
+    {
+      "id": "editBox_demo_017",
+      "subgroupId": "subgroup_demo_03",
+      "type": "editBox",
+      "caption": "输入框·大",
+      "tooltip": "演示控件:输入框·大(类型 editBox,尺寸 large)",
+      "condition": "",
+      "size": "large",
+      "supportedSizes": [
+        "middle",
+        "large"
+      ],
+      "icon": {
+        "small": "images_addquerylayer16.png",
+        "large": "images_addquerylayer32.png"
+      },
+      "behavior": {
+        "commandType": "editBox",
+        "className": "PathEditor",
+        "target": "form",
+        "arguments": {}
+      },
+      "eventBindings": [],
+      "aiNotes": "全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。",
+      "layout": {
+        "x": 4,
+        "y": 0,
+        "w": 4,
+        "h": 1
+      }
+    },
+    {
+      "id": "comboBox_demo_018",
+      "subgroupId": "subgroup_demo_03",
+      "type": "comboBox",
+      "caption": "下拉框·中",
+      "tooltip": "演示控件:下拉框·中(类型 comboBox,尺寸 middle)",
+      "condition": "",
+      "size": "middle",
+      "supportedSizes": [
+        "middle",
+        "large"
+      ],
+      "icon": {
+        "small": "images_addattachments16.png",
+        "large": "images_addattachments32.png"
+      },
+      "behavior": {
+        "commandType": "comboBox",
+        "className": "AdminSelector",
+        "target": "selection",
+        "arguments": {}
+      },
+      "eventBindings": [],
+      "aiNotes": "全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。",
+      "layout": {
+        "x": 0,
+        "y": 1,
+        "w": 3,
+        "h": 1
+      }
+    },
+    {
+      "id": "editBox_demo_019",
+      "subgroupId": "subgroup_demo_03",
+      "type": "editBox",
+      "caption": "输入框·中",
+      "tooltip": "演示控件:输入框·中(类型 editBox,尺寸 middle)",
+      "condition": "",
+      "size": "middle",
+      "supportedSizes": [
+        "middle",
+        "large"
+      ],
+      "icon": {
+        "small": "images_addlayerfrompath16.png",
+        "large": "images_addlayerfrompath32.png"
+      },
+      "behavior": {
+        "commandType": "editBox",
+        "className": "PathEditor",
+        "target": "form",
+        "arguments": {}
+      },
+      "eventBindings": [],
+      "aiNotes": "全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。",
+      "layout": {
+        "x": 3,
+        "y": 1,
+        "w": 3,
+        "h": 1
+      }
+    },
+    {
+      "id": "checkBox_demo_020",
+      "subgroupId": "subgroup_demo_03",
+      "type": "checkBox",
+      "caption": "复选框·中",
+      "tooltip": "演示控件:复选框·中(类型 checkBox,尺寸 middle)",
+      "condition": "",
+      "size": "middle",
+      "supportedSizes": [
+        "small",
+        "middle"
+      ],
+      "icon": {
+        "small": "images_addsimplelayer16.png",
+        "large": "images_addsimplelayer32.png"
+      },
+      "behavior": {
+        "commandType": "checkBox",
+        "className": "ToggleLabel",
+        "target": "settings",
+        "arguments": {}
+      },
+      "eventBindings": [],
+      "aiNotes": "全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。",
+      "layout": {
+        "x": 6,
+        "y": 1,
+        "w": 2,
+        "h": 1
+      }
+    },
+    {
+      "id": "checkBox_demo_021",
+      "subgroupId": "subgroup_demo_03",
+      "type": "checkBox",
+      "caption": "复选框·小",
+      "tooltip": "演示控件:复选框·小(类型 checkBox,尺寸 small)",
+      "condition": "",
+      "size": "small",
+      "supportedSizes": [
+        "small",
+        "middle"
+      ],
+      "icon": {
+        "small": "images_addxyevent16.png",
+        "large": "images_addxyevent32.png"
+      },
+      "behavior": {
+        "commandType": "checkBox",
+        "className": "ToggleLabel",
+        "target": "settings",
+        "arguments": {}
+      },
+      "eventBindings": [],
+      "aiNotes": "全控件演示:用于在 ArcGIS Pro 中人工验收每种类型/尺寸的渲染。",
+      "layout": {
+        "x": 0,
+        "y": 2,
+        "w": 1,
         "h": 1
       }
     }

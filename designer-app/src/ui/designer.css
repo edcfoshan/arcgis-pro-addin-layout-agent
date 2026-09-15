@@ -422,36 +422,6 @@ body,
   white-space: nowrap;
 }
 
-.next-export-bar {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  flex: 0 0 auto;
-  padding: var(--sp-2) var(--sp-5);
-  border-bottom: 1px solid var(--border-soft);
-  background: var(--bg-chrome);
-  color: var(--ink-2);
-  font-size: var(--fs-base);
-}
-
-.next-export-bar input {
-  flex: 1 1 auto;
-  height: var(--h-ctl);
-  padding: 0 var(--sp-4);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg-surface);
-  color: var(--ink);
-  font: inherit;
-  transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
-}
-
-.next-export-bar input:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-focus);
-}
-
 /* ============ 06 画布 ============ */
 .next-canvas-row {
   flex: 1 1 auto;
@@ -1197,6 +1167,34 @@ body,
 
 .next-modal-actions {
   margin: var(--sp-5) 0 0;
+}
+
+/* 小型弹窗(导出目录设置) */
+.next-modal-card.small {
+  width: min(560px, 100%);
+}
+
+.target-dir-row {
+  display: flex;
+  gap: var(--sp-3);
+}
+
+.next-text-input {
+  flex: 1 1 auto;
+  height: var(--h-ctl);
+  padding: 0 var(--sp-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-surface);
+  color: var(--ink);
+  font: inherit;
+  transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+}
+
+.next-text-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-focus);
 }
 
 /* 验算对比 */

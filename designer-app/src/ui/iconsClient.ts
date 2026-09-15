@@ -25,6 +25,11 @@ export function listIcons(): Promise<IconEntry[]> {
   return allIconsPromise;
 }
 
+/** 导入包落盘新图标后调用,让 IconPicker 重新拉取列表 */
+export function invalidateIconList(): void {
+  allIconsPromise = null;
+}
+
 export async function searchIcons(query: string, theme = 'light', limit = 120): Promise<IconHit[]> {
   const hits = await invoke<IconHit[]>('search_icons', {
     query,

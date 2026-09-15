@@ -32,6 +32,11 @@ cargo test --test validate_layout_test          # 验算管线测试(组 CaseDir
 cargo test --test validate_layout_test -- --ignored --nocapture  # 端到端:真启动/复用 Pro 截图
 cargo test --test export_addin_test build_all_controls_demo_package -- --ignored --nocapture
                                     # 全控件演示包:9 类型×各尺寸 21 控件,产出 00测试包/AllControls-Demo-*.esriAddInX
+cargo test --test import_addin_test # 第三方包导入链路:解包 DAML/图标落盘(imp_ 前缀)/损坏包优雅失败
+
+# DAML 逆向解析测试(node 可直跑 core/damlImport.ts)
+node --experimental-strip-types tools/test-daml-roundtrip.mts        # 自家 demo 包往返(21/21 逐格一致)
+node --experimental-strip-types tools/smoke-import-real-packages.mts # 真包冒烟(CC工具箱等,含损坏包优雅失败)
 
 # 全控件演示布局生成(上面演示包测试的前置)
 node --experimental-strip-types tools/generate-all-controls-demo.mts
@@ -121,7 +126,7 @@ designer.css 已全量 token 化(`:root` 约 40 个语义 token:背景 5 层级/
 
 ## Rust 后端(designer-app/src-tauri)
 
-命令:`list_icons`、`search_icons`、`get_icon_data_url`、`write_text_file`、`get_default_target_dir`(下发 REPO_ROOT 派生的默认导出目录)、`export_addin`(薄壳,内部调 `pub fn run_export_addin` 便于集成测试直接调用)、`validate_layout`(一键验算:打包→组 CaseDir 到 `validation-runs/app`→跑 pro-ui-check→截图转 dataURL 回传,实逻辑在 `pub fn run_validate_layout`)。依赖编译期常量 `REPO_ROOT`,可用环境变量 `ICON_CACHE_DIR` 覆盖图标目录。
+命令:`list_icons`、`search_icons`、`get_icon_data_url`、`write_text_file`、`get_default_target_dir`(下发 REPO_ROOT 派生的默认导出目录)、`export_addin`(薄壳,内部调 `pub fn run_export_addin` 便于集成测试直接调用)、`validate_layout`(一键验算:打包→组 CaseDir 到 `validation-runs/app`→跑 pro-ui-check→截图转 dataURL 回传,实逻辑在 `pub fn run_validate_layout`)、`open_import_file`(第三方导入:解 .esriAddInX/.daml/.json → DAML 文本 + 图标落盘,实逻辑在 `pub fn run_open_import_file`)。依赖编译期常量 `REPO_ROOT`,可用环境变量 `ICON_CACHE_DIR`/`ICON_IMPORT_DIR` 覆盖图标目录。图标查找是**双目录**:导入目录 `tools/icon-cache-import/`(gitignore,与主缓存撞名一律加 `imp_` 前缀)优先于 vendored 主缓存;DAML→RibbonDocument 解析在前端 `core/damlImport.ts`(自动装箱、外部引用占位、splitButton/palette 从首子声明补齐)。
 
 ## 已知约束与坑(Windows 环境)
 
@@ -136,4 +141,6 @@ designer.css 已全量 token 化(`:root` 约 40 个语义 token:背景 5 层级/
 - 里程碑路线(Tauri 重构共识):M1 设计器+图标 ✅ → M2 一键验算 ✅(应用内「验算」按钮,Pro 截图回传与画布并排对比)→ M3 命令事件+C# 模式库(首批方向:数据加载/图层管理、地图浏览、数据编辑)→ M4 Dockpane 模板 → M5 AI 视觉评审闭环(经 `claude -p`,结构化差异 JSON)
 - 导出目录默认指向验算插件的 `bin/Debug/net8.0-windows7.0`(由 `get_default_target_dir` 动态下发,前端不写死路径),安装包文件名带版本号以防 Pro 复用旧包
 - `validation-runs/`、`00测试包/`、根目录 `designer-app.exe`、`bin/obj` 均已 gitignore;但仓库历史里 **bin/obj 产物曾被提交跟踪**,git status 里它们的 M 是构建噪音,提交时避开
+- 2026-09-15 导入导出规范化:工具栏收纳为「文件 ▾ 菜单 + 打包 + 验算」三项;JSON 入口**彻底隐藏**(拖 .json 文件仍静默解析);第三方 add-in 导入(拖拽到窗口 / 菜单打开文件):.esriAddInX/.daml 尽力解析子集(结构还原+自动装箱+外部引用占位),包内图标提取到 icon-cache-import
+- `D:\00安装包\AlailaiPro.esriAddInX` 是**全零损坏文件**(308KB 全 0x00),只用作优雅失败测试用例;真包冒烟样本:CC工具箱 2.1.3(38MB,图标在 Data/Images/)、Documents\ArcGIS\AddIns 下的 GisProAddinWorkbench/SimpleAddin
 - UI 文案、控件库、代码注释均为中文;与用户交流用中文

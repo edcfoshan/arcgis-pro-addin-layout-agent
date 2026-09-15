@@ -8,15 +8,13 @@ import {
 } from 'react';
 import {
   Camera,
+  ChevronDown,
   Copy,
-  Download,
-  FileJson,
-  FolderInput,
+  FolderOpen,
   Image as ImageIcon,
   Package,
   Plus,
   Trash2,
-  Upload,
   X,
 } from 'lucide-react';
 import { CONTROL_LIBRARY, SIZE_LABELS } from '../core/library';
@@ -42,8 +40,12 @@ import type {
 } from '../core/types';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { getCurrentWebview } from '@tauri-apps/api/webview';
+import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
+import { parseDamlToDocument } from '../core/damlImport';
 import { ControlMock } from './ControlMock';
 import { IconPicker, type IconSelection } from './IconPicker';
+import { invalidateIconList } from './iconsClient';
 import {
   DEFAULT_GROUP_COLS,
   FIXED_GROUP_ROWS,
@@ -112,6 +114,19 @@ interface ValidationReportJson {
   screenshot?: string;
 }
 
+interface ImportedIcon {
+  damlName: string;
+  file: string;
+}
+
+interface ImportedPackage {
+  kind: string;
+  packageName: string;
+  damlText: string;
+  jsonText: string;
+  icons: ImportedIcon[];
+}
+
 interface ValidationOutcome {
   screenshotDataUrl: string;
   reportJson: ValidationReportJson;
@@ -157,8 +172,8 @@ export default function Designer() {
   const [ghostPos, setGhostPos] = useState<GhostPos>({ x: 0, y: 0 });
   const [hover, setHover] = useState<HoverTarget | null>(null);
   const [toast, setToast] = useState('');
-  const [importOpen, setImportOpen] = useState(false);
-  const [importText, setImportText] = useState('');
+  const [fileMenu, setFileMenu] = useState<{ x: number; y: number } | null>(null);
+  const [targetDirOpen, setTargetDirOpen] = useState(false);
   const [iconPickerFor, setIconPickerFor] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [targetDir, setTargetDir] = useState(
@@ -216,7 +231,6 @@ export default function Designer() {
   );
   const selectedControl =
     document.controls.find((control) => control.id === selectedControlId) ?? null;
-  const json = useMemo(() => JSON.stringify(document, null, 2), [document]);
 
   const applyTargetDir = () => {
     const next = targetDirDraft.trim();
@@ -226,6 +240,7 @@ export default function Designer() {
     }
     setTargetDir(next);
     setTargetDirDraft(next);
+    setTargetDirOpen(false);
     showToast(`导出目录已设为 ${next}`);
   };
 
@@ -556,22 +571,102 @@ export default function Designer() {
     });
   };
 
-  const importJson = () => {
-    const parsed = parseImportedDocument(importText);
-    if (!parsed) {
-      showToast('导入失败：JSON 结构不符合当前 schema');
+  // ===== 文件导入(菜单「打开文件…」与窗口拖放的统一入口) =====
+  const applyImportedDocument = (next: RibbonDocument, message: string) => {
+    setDocument(normalizeDocumentLayouts(next, 'Large'));
+    setActiveTabId(next.tabs[0]?.id ?? '');
+    setSelectedControlId(null);
+    showToast(message);
+  };
+
+  const importFromPath = async (path: string) => {
+    if (!path) return;
+    if (busy) {
+      showToast('已有任务进行中,请稍候');
       return;
     }
-    setDocument(normalizeDocumentLayouts(parsed, 'Large'));
-    setActiveTabId(parsed.tabs[0]?.id ?? '');
-    setSelectedControlId(null);
-    setImportOpen(false);
-    showToast('已导入 JSON');
+    const ext = path.toLowerCase().split('.').pop();
+    if (!ext || !['esriaddinx', 'daml', 'json'].includes(ext)) {
+      showToast('不支持的文件类型(支持 .esriAddInX / .daml / .json)');
+      return;
+    }
+    setBusy(`正在导入 ${path.split(/[\\/]/).pop() ?? path}`);
+    try {
+      const pkg = await invoke<ImportedPackage>('open_import_file', { path });
+      if (pkg.kind === 'json') {
+        const parsed = parseImportedDocument(pkg.jsonText);
+        if (!parsed) {
+          showToast('导入失败:JSON 结构不符合当前 schema');
+          return;
+        }
+        applyImportedDocument(parsed, `已导入 JSON:${parsed.tabs.length} 个页签`);
+        return;
+      }
+      const iconMap = Object.fromEntries(pkg.icons.map((icon) => [icon.damlName, icon.file]));
+      const { document: imported, stats } = parseDamlToDocument(pkg.damlText, {
+        packageName: pkg.packageName,
+        iconMap,
+      });
+      if (!stats.controls && !stats.groups) {
+        showToast('导入失败:未在 DAML 中发现分组/控件');
+        return;
+      }
+      applyImportedDocument(
+        imported,
+        `导入成功:${stats.tabs} 页签 · ${stats.groups} 分组 · ${stats.controls} 控件` +
+          (stats.placeholders ? `,${stats.placeholders} 个外部引用显示为占位` : '') +
+          (stats.unplacedControls ? `,${stats.unplacedControls} 个控件无空位` : ''),
+      );
+      invalidateIconList();
+    } catch (error) {
+      showToast(`导入失败:${String(error)}`);
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const importFromPathRef = useRef(importFromPath);
+  importFromPathRef.current = importFromPath;
+
+  // 窗口拖放导入(.esriAddInX / .daml / .json);浏览器直渲无 Tauri 环境时跳过
+  useEffect(() => {
+    if (!appWindow) return;
+    let unlisten: (() => void) | undefined;
+    let cancelled = false;
+    void getCurrentWebview()
+      .onDragDropEvent((event) => {
+        if (event.payload.type === 'drop') {
+          void importFromPathRef.current(event.payload.paths[0] ?? '');
+        }
+      })
+      .then((fn) => {
+        if (cancelled) fn();
+        else unlisten = fn;
+      });
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, []);
+
+  const pickImportFile = async () => {
+    if (!appWindow) {
+      showToast('请在桌面应用中使用文件选择');
+      return;
+    }
+    const picked = await openFileDialog({
+      multiple: false,
+      filters: [
+        { name: 'Add-in 包 / DAML / 布局 JSON', extensions: ['esriAddInX', 'daml', 'json'] },
+      ],
+    }).catch(() => null);
+    if (typeof picked === 'string' && picked) void importFromPath(picked);
   };
 
   const exportArtifactsFile = async (filename: string, content: string, label: string) => {
     const dir = targetDir.trim();
     if (!dir) {
+      setTargetDirOpen(true);
       showToast('请先设置导出目录');
       return;
     }
@@ -586,15 +681,13 @@ export default function Designer() {
     }
   };
 
-  const exportJson = () =>
-    exportArtifactsFile(`${document.metadata.name || 'ribbon-layout'}.json`, json, 'JSON');
-
   const exportDaml = () =>
     exportArtifactsFile('Config.daml', buildConfigDaml(document), 'Config.daml');
 
   const exportPackage = async () => {
     const dir = targetDir.trim();
     if (!dir) {
+      setTargetDirOpen(true);
       showToast('请先设置导出目录');
       return;
     }
@@ -771,15 +864,18 @@ export default function Designer() {
   }, [drag, showToast]);
 
   useEffect(() => {
-    if (!contextMenu) return;
-    const close = () => setContextMenu(null);
+    if (!contextMenu && !fileMenu) return;
+    const close = () => {
+      setContextMenu(null);
+      setFileMenu(null);
+    };
     window.addEventListener('click', close);
     window.addEventListener('contextmenu', close);
     return () => {
       window.removeEventListener('click', close);
       window.removeEventListener('contextmenu', close);
     };
-  }, [contextMenu]);
+  }, [contextMenu, fileMenu]);
 
   return (
     <div className="next-shell">
@@ -862,17 +958,16 @@ export default function Designer() {
             </div>
             <div className="next-toolbar-right">
               <span className="draft-status">{busy || '本地草稿自动保存'}</span>
-              <button onClick={() => setImportOpen(true)}>
-                <Upload size={14} />
-                导入
-              </button>
-              <button onClick={() => void exportJson()}>
-                <FileJson size={14} />
-                导出 JSON
-              </button>
-              <button onClick={() => void exportDaml()}>
-                <Download size={14} />
-                Config.daml
+              <button
+                onClick={(event) => {
+                  event.stopPropagation();
+                  const rect = event.currentTarget.getBoundingClientRect();
+                  setFileMenu({ x: rect.left, y: rect.bottom + 4 });
+                }}
+              >
+                <FolderOpen size={14} />
+                文件
+                <ChevronDown size={12} />
               </button>
               <button className="primary" onClick={() => void exportPackage()}>
                 <Package size={14} />
@@ -884,17 +979,6 @@ export default function Designer() {
               </button>
             </div>
           </section>
-
-          <div className="next-export-bar">
-            <label htmlFor="target-dir-input">导出目录</label>
-            <input
-              id="target-dir-input"
-              value={targetDirDraft}
-              onChange={(event) => setTargetDirDraft(event.target.value)}
-              spellCheck={false}
-            />
-            <button onClick={applyTargetDir}>应用</button>
-          </div>
 
           <main className="next-canvas-row">
             <section className="next-canvas">
@@ -1041,28 +1125,66 @@ export default function Designer() {
         onPick={applyIconSelection}
       />
 
-      {importOpen ? (
-        <div className="next-modal" onClick={() => setImportOpen(false)}>
-          <div className="next-modal-card" onClick={(event) => event.stopPropagation()}>
+      {fileMenu ? (
+        <div className="context-menu" style={{ left: fileMenu.x, top: fileMenu.y }}>
+          <div className="context-menu-title">文件</div>
+          <button
+            onClick={() => {
+              setFileMenu(null);
+              void pickImportFile();
+            }}
+          >
+            打开文件…(.esriAddInX / .daml / .json,也可直接拖入窗口)
+          </button>
+          <button
+            onClick={() => {
+              setFileMenu(null);
+              void exportDaml();
+            }}
+          >
+            导出 Config.daml
+          </button>
+          <button
+            onClick={() => {
+              setFileMenu(null);
+              setTargetDirOpen(true);
+            }}
+          >
+            导出目录…
+          </button>
+        </div>
+      ) : null}
+
+      {targetDirOpen ? (
+        <div className="next-modal" onClick={() => setTargetDirOpen(false)}>
+          <div className="next-modal-card small" onClick={(event) => event.stopPropagation()}>
             <div className="next-modal-head">
-              <strong>导入 Ribbon JSON</strong>
-              <button onClick={() => setImportOpen(false)}>
+              <strong>导出目录</strong>
+              <button onClick={() => setTargetDirOpen(false)}>
                 <X size={14} />
               </button>
             </div>
-            <textarea
-              value={importText}
-              rows={18}
-              onChange={(event) => setImportText(event.target.value)}
-              placeholder="粘贴导出的 JSON，或先点“载入当前 JSON”再修改。"
-            />
-            <div className="next-modal-actions">
-              <button onClick={() => setImportText(json)}>
-                <FolderInput size={14} />
-                载入当前 JSON
+            <div className="target-dir-row">
+              <input
+                className="next-text-input"
+                value={targetDirDraft}
+                onChange={(event) => setTargetDirDraft(event.target.value)}
+                spellCheck={false}
+                placeholder="安装包与 Config.daml 的输出目录"
+              />
+              <button
+                onClick={() => {
+                  void openFileDialog({ directory: true }).then((dir) => {
+                    if (typeof dir === 'string' && dir) setTargetDirDraft(dir);
+                  });
+                }}
+              >
+                浏览…
               </button>
-              <button className="primary" onClick={importJson}>
-                应用导入
+            </div>
+            <div className="next-modal-actions">
+              <button className="primary" onClick={applyTargetDir}>
+                应用
               </button>
             </div>
           </div>

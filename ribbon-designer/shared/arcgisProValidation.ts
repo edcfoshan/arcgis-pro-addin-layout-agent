@@ -68,6 +68,7 @@ interface GeneratedSplitButton {
 interface GeneratedToolPalette {
   id: string;
   caption: string;
+  tooltip: string;
   size: RibbonControlSize;
   childIds: string[];
 }
@@ -381,6 +382,7 @@ const buildArtifactsModel = (document: RibbonDocument, options: Required<ArcGISP
         toolPalettes.push({
           id: paletteId,
           caption: control.caption || fallbackCaptionByType.toolPalette,
+          tooltip: buildTooltipText(control),
           size: control.size,
           childIds,
         });
@@ -559,6 +561,7 @@ const renderConfigDaml = (
     .map((menu) =>
       [
         `<menu id="${menu.id}" caption="${xmlEscape(menu.caption)}" keytip="${xmlEscape(menu.keytip)}"${iconAttrs(menu)}>`,
+        menu.tooltip ? indent(1, renderTooltip(menu.caption, menu.tooltip)) : '',
         ...menu.childIds.map((childId) => indent(1, `<button refID="${childId}" />`)),
         `</menu>`,
       ].join('\n'),
@@ -580,6 +583,7 @@ const renderConfigDaml = (
     .map((palette) =>
       [
         `<toolPalette id="${palette.id}" caption="${xmlEscape(palette.caption)}" showItemCaption="true" itemWidth="96" itemHeight="64" itemsInRow="2">`,
+        palette.tooltip ? indent(1, renderTooltip(palette.caption, palette.tooltip)) : '',
         ...palette.childIds.map((childId) => indent(1, `<tool refID="${childId}" />`)),
         `</toolPalette>`,
       ].join('\n'),
