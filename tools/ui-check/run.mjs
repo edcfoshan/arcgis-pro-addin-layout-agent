@@ -21,10 +21,11 @@ if (!targets.length) {
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: VIEWPORT });
 
-// 起始状态必须确定：跳过欢迎浮层、固定浅色主题、清掉上次会话。
-// 不清 localStorage 全量是因为「主题」「欢迎」这两项本身就要固定，
-// 其余草稿槽由各检查自己按需铺设。
+// 起始状态必须确定：每个检查都从「空 localStorage + 欢迎浮层已读 + 浅色主题」出发。
+// 必须先 clear：设计器启动会恢复项目会话与每项目草稿槽（PROJECTS_STORAGE_KEY / draftKey），
+// 而所有检查共用同一个 context，前一个检查动过的文档会泄漏进后一个检查。
 await page.addInitScript(() => {
+  localStorage.clear();
   localStorage.setItem('gispro-ribbon-designer-welcome-seen', '1');
   localStorage.setItem('gispro-ribbon-designer-theme', 'light');
 });
