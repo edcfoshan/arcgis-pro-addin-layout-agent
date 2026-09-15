@@ -1744,9 +1744,21 @@ export default function Designer() {
                 ) : (
                   <span
                     className="next-project-name"
+                    role="button"
+                    tabIndex={0}
+                    title={`${projectTitle(project)}（F2 或双击改名）`}
                     onDoubleClick={(event) => {
                       event.stopPropagation();
                       setRenamingProjectId(project.id);
+                    }}
+                    // 键盘必须能不借助鼠标进改名态，否则改名只有鼠标可达（WCAG 2.1.1）。
+                    // F2 是 Windows 资源管理器的重命名约定；Enter/Space 是 role="button" 的契约。
+                    onKeyDown={(event) => {
+                      if (event.key === 'F2' || event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        setRenamingProjectId(project.id);
+                      }
                     }}
                   >
                     {projectTitle(project)}

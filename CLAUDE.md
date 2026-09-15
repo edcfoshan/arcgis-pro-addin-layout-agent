@@ -127,7 +127,8 @@ designer.css 全量 token 化(`:root` ~40 语义 token),浅色基准还原 ArcGI
 - 占格图示边框对比度(2.00:1 浅 / 2.25:1 暗,低于 WCAG 1.4.11 的 3:1)——2026-09-15 已修(边框改 `--ink-3`)并纳入 `tools/ui-check/checks/40-library-mock.mjs`,该断言从解析后的颜色自算比值,**浅色与暗色两档都要咬住**
 - 画布页签条用了 `role="tab"`/`role="tablist"`,但**没有方向键导航、也没做 roving tabindex**,不合 ARIA tabs pattern(**仍未修**)
 - 分隔条的 `aria-valuenow` 报的是用户偏好而非当前渲染高度——有意的、已在代码注释里写明理由的取舍(**未改**)
-- 侧栏的「项目行 / 项目→页签」两级导航都是 `<div onClick>`(`.next-project-item`/`.next-tab-item`,无 `role`/`tabIndex`/键盘处理),项目改名入口也只有 `.next-project-name` 的 `onDoubleClick`——切项目、切非激活项目的页签、进改名都只有鼠标走得到(画布页签条只覆盖当前激活项目)(**仍未修**)
+- 侧栏的「项目行 / 项目→页签」两级导航都是 `<div onClick>`(`.next-project-item`/`.next-tab-item`,无 `role`/`tabIndex`/键盘处理)——切项目、切非激活项目的页签仍只有鼠标走得到(画布页签条只覆盖当前激活项目)(**仍未修**;这两级导航的来源早于 2026-09-15 那轮 UI 工作,不在该轮范围内)
+- 项目改名入口原先只有 `.next-project-name` 的 `onDoubleClick`,键盘用户改不了名(WCAG 2.1.1)——2026-09-15 **已修**:该元素补上 `role="button"`/`tabIndex={0}`,**按 F2**(Windows 重命名约定;Enter/Space 是 role=button 的契约)进改名态(该元素是 span,够不到 `.next-shell button:focus-visible`,故 `.next-project-name:focus-visible` 自出一圈焦点环),`checks/12-project-rename.mjs` 有断言守着,**拿掉 F2/tabIndex 就会 FAIL,别删**
 
 ## 图标系统(Tabler,2026-09-15 换血)
 

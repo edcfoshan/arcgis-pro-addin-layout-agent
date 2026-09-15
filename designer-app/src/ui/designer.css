@@ -458,6 +458,12 @@ body,
   white-space: nowrap;
 }
 
+/* 名称可聚焦（F2 进改名态）。它是 span，够不到 .next-shell button:focus-visible，得自己出焦点环 */
+.next-project-name:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -1px;
+}
+
 .next-project-name-input {
   flex: 1 1 auto;
   min-width: 0;

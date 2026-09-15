@@ -32,6 +32,36 @@ export default async function (page) {
   });
   eq(draftName, NEW_NAME, '草稿槽 metadata.name');
 
+  // 键盘路径：项目名必须能聚焦，聚焦后按 F2 进入改名态——否则改名只有鼠标可达，
+  // 是 WCAG 2.1.1（键盘）Level A 失败。这条断言的作用就是「有人把 F2/tabIndex 拿掉就 FAIL」。
+  const KBD_NAME = '键盘改的名';
+  await page.locator('.next-project-name').first().press('F2');
+  const kbdInput = page.locator('input[aria-label="项目名称"]');
+  eq(await kbdInput.count(), 1, '聚焦项目名后按 F2 应出现项目名输入框（键盘进入改名态）');
+  await kbdInput.fill(KBD_NAME);
+  await kbdInput.press('Enter');
+  await page.waitForTimeout(200);
+  eq(await page.locator('.next-project-name').first().innerText(), KBD_NAME, 'F2 改名后侧栏项目名');
+  eq(
+    await kbdInput.count(),
+    0,
+    'Enter 提交后应退出改名态',
+  );
+
+  // Escape 取消：改名态关闭，且名字保持原值（不能把半截输入提交掉）
+  await page.locator('.next-project-name').first().press('F2');
+  const escInput = page.locator('input[aria-label="项目名称"]');
+  eq(await escInput.count(), 1, '第二次 F2 也应进入改名态');
+  await escInput.fill('不该被保存的名字');
+  await escInput.press('Escape');
+  await page.waitForTimeout(200);
+  eq(await page.locator('input[aria-label="项目名称"]').count(), 0, 'Escape 应关闭改名输入框');
+  eq(
+    await page.locator('.next-project-name').first().innerText(),
+    KBD_NAME,
+    'Escape 取消后项目名不应改变',
+  );
+
   // 空名必须回退，不允许出现空标题
   const input2 = page.locator('.next-project-name').first();
   await input2.dblclick();
