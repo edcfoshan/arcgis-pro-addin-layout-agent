@@ -65,8 +65,10 @@ export interface RibbonControl {
   condition: string;
   size: RibbonControlSize;
   supportedSizes: RibbonControlSize[];
-  /** menuStyle 按钮板(buttonPalette menuStyle)等 Pro 变体:占 1 列×3 行的窄竖条 */
-  variant?: 'menuStyle';
+  /** menuStyle 按钮板(buttonPalette menuStyle)与摊开式画廊(gallery inline)等 Pro 变体 */
+  variant?: 'menuStyle' | 'inline';
+  /** 组内前置分隔线(DAML separator="true",官方语义:在组内同类控件间画分隔) */
+  separator?: boolean;
   children?: ControlChild[];
   icon: {
     small: string;

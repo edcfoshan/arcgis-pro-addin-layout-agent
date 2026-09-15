@@ -8,6 +8,7 @@ import {
   FileText,
   FolderPlus,
   Layers,
+  MoreHorizontal,
   MousePointer2,
   PanelTop,
   Pencil,
@@ -138,6 +139,7 @@ export function ControlMock({
   iconFile,
   mode = 'canvas',
   variant,
+  separator,
   children,
 }: {
   type: RibbonControl['type'];
@@ -146,10 +148,11 @@ export function ControlMock({
   iconFile?: string;
   mode?: 'canvas' | 'library';
   variant?: RibbonControl['variant'];
+  separator?: boolean;
   children?: ControlChild[];
 }) {
   const label = size === 'small' && caption.length > 3 ? caption.slice(0, 3) : caption;
-  const className = `next-control-mock mode-${mode} next-${type} size-${size}`;
+  const className = `next-control-mock mode-${mode} next-${type} size-${size}${separator ? ' has-separator' : ''}`;
 
   if (type === 'comboBox') {
     return (
@@ -184,6 +187,22 @@ export function ControlMock({
   }
 
   if (type === 'gallery') {
+    // 摊开式(inline="true"):内容横铺 + more 按钮,不收进下拉;下拉式仍是窄条+箭头
+    if (variant === 'inline') {
+      return (
+        <div className={className}>
+          <div className="pro-gallery-strip">
+            {Array.from({ length: size === 'large' ? 8 : 5 }).map((_, index) => (
+              <span key={index} className={`tone-${index % 4}`} />
+            ))}
+            <span className="gallery-more">
+              <MoreHorizontal size={10} />
+            </span>
+          </div>
+          {size === 'large' ? <span className="pro-label">{label}</span> : null}
+        </div>
+      );
+    }
     return (
       <div className={className}>
         <div className="pro-gallery-strip">

@@ -123,7 +123,7 @@ export const CONTROL_LIBRARY: LibraryControlDefinition[] = [
     type: 'comboBox',
     label: '下拉框',
     shortDescription: '从列表中选择一个值，也可以动态加载。',
-    supportedSizes: ['middle', 'large'],
+    supportedSizes: ['small', 'middle', 'large'],
     defaultCaption: '行政区划',
     defaultTooltip: '从列表中选择值',
     defaultBehavior: {

@@ -76,7 +76,7 @@ RibbonDocument (JSON)
 
 ## 数据模型与布局规则
 
-`RibbonDocument → tabs → groups → subgroups → controls`。subgroup 是内部兼容层,每 group 一网格;`control.layout {x,y,w,h}` 网格单位 `RIBBON_CELL=32px`,分组高 3 行、横向扩列(3–30 列)。占格 `getFootprint(type,size,variant)`;`variant='menuStyle'` 实测为带下拉箭头大按钮(2×3/2×1),勿改竖条形态。容器控件递归 `children` 不进网格。`normalizeDocumentLayouts` 尊重有效已存 layout,无效才找空位——保持此行为。
+`RibbonDocument → tabs → groups → subgroups → controls`。subgroup 是内部兼容层,每 group 一网格;`control.layout {x,y,w,h}` 网格单位 `RIBBON_CELL=32px`,分组高 3 行、横向扩列(3–30 列)。占格 `getFootprint(type,size,variant)`;`variant='menuStyle'` 实测为带下拉箭头大按钮(2×3/2×1),勿改竖条形态;`variant='inline'` 为摊开式画廊(gallery `inline="true"`,5×3/5×1,占格待实机校准);comboBox/editBox `small` 为窄横框 2×1(待实机校准)。组内引用的 `separator="true"`(前置分隔线)已支持,导出对全部叶子类型透传;gallery 导出**显式写 inline**(true/false),不依赖 Pro 默认值。控件尺寸枚举 `small|middle|large` 与 Pro DAML 值域一字不差(Esri 核心 DAML 即用 `size="middle"`,勿改成 medium)。容器控件递归 `children` 不进网格。`normalizeDocumentLayouts` 尊重有效已存 layout,无效才找空位——保持此行为。
 
 打包链手写 layout JSON 硬契约:每控件必填 `tooltip`/`aiNotes`(字符串)、`behavior{className,target,arguments:{}}`;`metadata.lastUpdated` 可 Date.parse;group.subgroupIds 含全部控件 subgroupId。
 

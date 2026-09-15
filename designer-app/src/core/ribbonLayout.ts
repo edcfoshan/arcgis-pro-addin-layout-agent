@@ -35,9 +35,15 @@ export const getFootprint = (
   size: RibbonControlSize,
   variant?: RibbonControl['variant'],
 ): Footprint => {
-  if (size === 'small') return { w: 1, h: 1 };
   // menuStyle 按钮板在 Pro 实测渲染为带下拉箭头的大按钮(用户实机观察 2026-09-15),占格同 button
   if (variant === 'menuStyle') return size === 'large' ? { w: 2, h: 3 } : { w: 2, h: 1 };
+  // 摊开式画廊(inline="true"):内容横铺不收进下拉,占格显著宽于下拉式;待 pro-ui-check 实机校准
+  if (type === 'gallery' && variant === 'inline') {
+    return size === 'large' ? { w: 5, h: 3 } : { w: 5, h: 1 };
+  }
+  // comboBox 小窗体形态(官方 toolbar 示例存在 size="small"),是窄横框而非 1×1 图标格;待实机校准
+  if ((type === 'comboBox' || type === 'editBox') && size === 'small') return { w: 2, h: 1 };
+  if (size === 'small') return { w: 1, h: 1 };
   if (type === 'comboBox' || type === 'editBox') return size === 'large' ? { w: 4, h: 1 } : { w: 3, h: 1 };
   if (type === 'gallery' || type === 'toolPalette') return size === 'large' ? { w: 3, h: 3 } : { w: 3, h: 1 };
   if (type === 'menu' || type === 'splitButton') return size === 'large' ? { w: 2, h: 2 } : { w: 2, h: 1 };

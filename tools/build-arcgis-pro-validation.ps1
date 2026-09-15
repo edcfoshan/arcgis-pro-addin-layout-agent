@@ -32,7 +32,12 @@ function Stage-AddInArchive {
     }
     Copy-Item (Join-Path $binDir 'Layout\current-layout.json') (Join-Path $staging 'Install\Layout') -Force
 
-    Compress-Archive -Path (Join-Path $staging '*') -DestinationPath (Join-Path $binDir "$assemblyName.esriAddinX") -Force
+    # PS5.1 Compress-Archive 只认 .zip 扩展:先压 zip 再改名(等价产物)
+    $zipPath = Join-Path $binDir "$assemblyName.zip"
+    Compress-Archive -Path (Join-Path $staging '*') -DestinationPath $zipPath -Force
+    $addinPath = Join-Path $binDir "$assemblyName.esriAddinX"
+    if (Test-Path $addinPath) { Remove-Item $addinPath -Force }
+    Rename-Item -Path $zipPath -NewName "$assemblyName.esriAddinX"
     Write-Host "Staged add-in archive: $staging"
 }
 

@@ -89,6 +89,7 @@ interface GeneratedGroupItem {
   refId: string;
   size?: RibbonControlSize;
   variant?: RibbonControl['variant'];
+  separator?: boolean;
 }
 
 interface GeneratedGroup {
@@ -369,32 +370,32 @@ const buildArtifactsModel = (document: RibbonDocument, options: Required<ArcGISP
     switch (control.type) {
       case 'button': {
         const leaf = registerLeaf(control, 'button');
-        leafByControlId.set(control.id, { kind: 'button', refId: leaf.id, size: control.size });
+        leafByControlId.set(control.id, { kind: 'button', refId: leaf.id, size: control.size, separator: control.separator });
         break;
       }
       case 'tool': {
         const leaf = registerLeaf(control, 'tool');
-        leafByControlId.set(control.id, { kind: 'tool', refId: leaf.id, size: control.size });
+        leafByControlId.set(control.id, { kind: 'tool', refId: leaf.id, size: control.size, separator: control.separator });
         break;
       }
       case 'comboBox': {
         const leaf = registerLeaf(control, 'comboBox');
-        leafByControlId.set(control.id, { kind: 'comboBox', refId: leaf.id, size: control.size });
+        leafByControlId.set(control.id, { kind: 'comboBox', refId: leaf.id, size: control.size, separator: control.separator });
         break;
       }
       case 'editBox': {
         const leaf = registerLeaf(control, 'editBox');
-        leafByControlId.set(control.id, { kind: 'editBox', refId: leaf.id, size: control.size });
+        leafByControlId.set(control.id, { kind: 'editBox', refId: leaf.id, size: control.size, separator: control.separator });
         break;
       }
       case 'checkBox': {
         const leaf = registerLeaf(control, 'checkBox');
-        leafByControlId.set(control.id, { kind: 'checkBox', refId: leaf.id, size: control.size });
+        leafByControlId.set(control.id, { kind: 'checkBox', refId: leaf.id, size: control.size, separator: control.separator });
         break;
       }
       case 'gallery': {
         const leaf = registerLeaf(control, 'gallery');
-        leafByControlId.set(control.id, { kind: 'gallery', refId: leaf.id, size: control.size });
+        leafByControlId.set(control.id, { kind: 'gallery', refId: leaf.id, size: control.size, variant: control.variant, separator: control.separator });
         break;
       }
       case 'menu': {
@@ -428,7 +429,7 @@ const buildArtifactsModel = (document: RibbonDocument, options: Required<ArcGISP
           largeImage: control.icon?.large?.endsWith('.png') ? control.icon.large : undefined,
           childRefs,
         });
-        leafByControlId.set(control.id, { kind: 'menu', refId: menuId, size: control.size });
+        leafByControlId.set(control.id, { kind: 'menu', refId: menuId, size: control.size, separator: control.separator });
         break;
       }
       case 'splitButton': {
@@ -484,7 +485,7 @@ const buildArtifactsModel = (document: RibbonDocument, options: Required<ArcGISP
           primaryId,
           childRefs,
         });
-        leafByControlId.set(control.id, { kind: 'splitButton', refId: splitId, size: control.size });
+        leafByControlId.set(control.id, { kind: 'splitButton', refId: splitId, size: control.size, separator: control.separator });
         break;
       }
       case 'toolPalette': {
@@ -519,6 +520,7 @@ const buildArtifactsModel = (document: RibbonDocument, options: Required<ArcGISP
           refId: paletteId,
           size: control.size,
           variant: control.variant,
+          separator: control.separator,
         });
         break;
       }
@@ -617,27 +619,30 @@ const renderLeafControl = (control: GeneratedLeafControl) => {
 
 const renderGroupItem = (item: GeneratedGroupItem) => {
   const sizeAttr = item.size ? ` size="${item.size}"` : '';
+  // separator 是组内引用的通用属性(官方:segregate controls in the same group)
+  const sepAttr = item.separator ? ' separator="true"' : '';
   switch (item.kind) {
     case 'button':
-      return `<button refID="${item.refId}"${sizeAttr} />`;
+      return `<button refID="${item.refId}"${sizeAttr}${sepAttr} />`;
     case 'tool':
-      return `<tool refID="${item.refId}"${sizeAttr} />`;
+      return `<tool refID="${item.refId}"${sizeAttr}${sepAttr} />`;
     case 'menu':
-      return `<menu refID="${item.refId}"${sizeAttr} />`;
+      return `<menu refID="${item.refId}"${sizeAttr}${sepAttr} />`;
     case 'splitButton':
-      return `<splitButton refID="${item.refId}"${sizeAttr} />`;
+      return `<splitButton refID="${item.refId}"${sizeAttr}${sepAttr} />`;
     case 'comboBox':
-      return `<comboBox refID="${item.refId}"${sizeAttr} />`;
+      return `<comboBox refID="${item.refId}"${sizeAttr}${sepAttr} />`;
     case 'editBox':
-      return `<editBox refID="${item.refId}"${sizeAttr} />`;
+      return `<editBox refID="${item.refId}"${sizeAttr}${sepAttr} />`;
     case 'checkBox':
-      return `<checkBox refID="${item.refId}"${sizeAttr} />`;
+      return `<checkBox refID="${item.refId}"${sizeAttr}${sepAttr} />`;
     case 'gallery':
-      return `<gallery refID="${item.refId}"${sizeAttr} />`;
+      // inline 显式写出,不依赖 Pro 端默认值:摊开式 true / 下拉式 false,保证设计器所见即 Pro 所得
+      return `<gallery refID="${item.refId}"${sizeAttr}${sepAttr} inline="${item.variant === 'inline'}" />`;
     case 'toolPalette':
       return item.variant === 'menuStyle'
-        ? `<buttonPalette refID="${item.refId}"${sizeAttr} />`
-        : `<toolPalette refID="${item.refId}"${sizeAttr} />`;
+        ? `<buttonPalette refID="${item.refId}"${sizeAttr}${sepAttr} />`
+        : `<toolPalette refID="${item.refId}"${sizeAttr}${sepAttr} />`;
     default:
       return '';
   }

@@ -30,7 +30,7 @@ const SUPPORTED_SIZES: Record<ControlType, RibbonControlSize[]> = {
   toolPalette: ['middle', 'large'],
   menu: ['small', 'middle', 'large'],
   gallery: ['middle', 'large'],
-  comboBox: ['middle', 'large'],
+  comboBox: ['small', 'middle', 'large'],
   editBox: ['middle', 'large'],
   checkBox: ['small', 'middle'],
 };
@@ -421,6 +421,11 @@ export function parseDamlToDocument(
                 condition: decl?.condition ?? '',
                 size: rawSize,
                 supportedSizes: supported.includes(rawSize) ? supported : [...supported, rawSize],
+                separator: (child.attrs.separator ?? '').toLowerCase() === 'true',
+                variant:
+                  type === 'gallery' && (child.attrs.inline ?? '').toLowerCase() === 'true'
+                    ? 'inline'
+                    : undefined,
                 icon: { small: mapIcon(iconSmallRaw), large: mapIcon(iconLargeRaw) },
                 behavior: {
                   commandType: type,

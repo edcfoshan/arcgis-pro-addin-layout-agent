@@ -792,7 +792,9 @@ export default function Designer() {
   };
 
   const updateControl = (controlId: string, patch: Partial<RibbonControl>) => {
-    if (patch.size) {
+    // 尺寸或变体(如画廊 下拉↔摊开)变化都会改变占格,走同一条重排路径;
+    // variant 清除时值为 undefined,须用键存在性区分「没改」与「改成无」
+    if (patch.size || 'variant' in patch) {
       let rejected = false;
       commit((current) => {
         const control = current.controls.find((item) => item.id === controlId);
@@ -804,7 +806,9 @@ export default function Designer() {
         const layout = getSubgroupLayout(current, subgroup, 'Large').filter(
           (item) => item.i !== control.id,
         );
-        const footprint = getFootprint(control.type, patch.size as RibbonControlSize, control.variant);
+        const nextSize = (patch.size ?? control.size) as RibbonControlSize;
+        const nextVariant = 'variant' in patch ? patch.variant : control.variant;
+        const footprint = getFootprint(control.type, nextSize, nextVariant);
         const currentLayout = control.layout ?? { x: 0, y: 0 };
         const candidate = {
           i: control.id,
@@ -2363,6 +2367,7 @@ function RibbonGroupGrid({
               size={control.size}
               iconFile={control.icon.small || undefined}
               variant={control.variant}
+              separator={control.separator}
               children={control.children}
             />
           </button>
@@ -2447,6 +2452,32 @@ function Inspector({
             ))}
           </select>
         </label>
+        {control.type === 'gallery' ? (
+          <label>
+            画廊形态
+            <select
+              value={control.variant === 'inline' ? 'inline' : ''}
+              onChange={(event) =>
+                onUpdate(control.id, {
+                  variant: event.target.value === 'inline' ? 'inline' : undefined,
+                })
+              }
+            >
+              <option value="">下拉式(inline=false)</option>
+              <option value="inline">摊开式(inline=true)</option>
+            </select>
+          </label>
+        ) : null}
+        {!isContainer ? (
+          <label className="checkbox-line">
+            <input
+              type="checkbox"
+              checked={Boolean(control.separator)}
+              onChange={(event) => onUpdate(control.id, { separator: event.target.checked })}
+            />
+            前置分隔线
+          </label>
+        ) : null}
         <div className="icon-bindings">
           <span>图标</span>
           <button className="icon-slot" onClick={() => onOpenIcons()} title="打开图标选择器">

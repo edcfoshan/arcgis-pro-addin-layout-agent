@@ -994,6 +994,24 @@ body,
   grid-row: 1 / span 2;
 }
 
+/* 摊开式画廊的 more 按钮(⋯),对齐 Pro 的行尾更多入口 */
+.gallery-more {
+  display: grid;
+  place-items: center;
+  color: var(--ink-3);
+}
+
+/* 组内前置分隔线(DAML separator="true"):控件 mock 左缘一条浅竖线 */
+.next-control-mock.has-separator {
+  border-left: 1px solid var(--border);
+  padding-left: var(--sp-3);
+}
+
+.next-control-mock.has-separator.mode-library {
+  border-left: 0;
+  padding-left: 0;
+}
+
 /* 工具板:2×2 带边格,hover 有浅蓝反馈 */
 .pro-tool-palette {
   display: grid;
@@ -1182,6 +1200,19 @@ body,
   gap: var(--sp-2);
   color: var(--ink-2);
   font-size: var(--fs-base);
+}
+
+/* 行内复选(前置分隔线):checkbox 与文案同排 */
+.next-form label.checkbox-line {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.next-form label.checkbox-line input {
+  width: auto;
+  flex: 0 0 auto;
+  accent-color: var(--accent);
 }
 
 .next-form input,
