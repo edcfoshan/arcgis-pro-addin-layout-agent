@@ -445,6 +445,18 @@ body,
   white-space: nowrap;
 }
 
+.next-project-name-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: var(--h-ctl-sm);
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--bg-surface);
+  color: inherit;
+  font: inherit;
+}
+
 .next-tab-add {
   display: flex;
   align-items: center;

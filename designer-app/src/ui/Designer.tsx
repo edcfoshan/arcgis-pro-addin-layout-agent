@@ -195,6 +195,7 @@ const LIBRARY_CATEGORIES: {
 // 项目 = 一个 .json 文档 = 一个 addin 包(IDE 多开文件式);侧栏两级:项目 → 页签
 interface ProjectEntry {
   id: string;
+  name: string;
   document: RibbonDocument;
   filePath: string | null;
   dirty: boolean;
@@ -204,6 +205,7 @@ interface ProjectEntry {
 
 interface StoredProjectMeta {
   id: string;
+  name: string;
   filePath: string | null;
   dirty: boolean;
   activeTabId: string;
@@ -217,9 +219,10 @@ interface StoredSession {
 
 const makeProjectEntry = (
   document: RibbonDocument,
-  opts: { id?: string; filePath?: string | null; dirty?: boolean } = {},
+  opts: { id?: string; name?: string; filePath?: string | null; dirty?: boolean } = {},
 ): ProjectEntry => ({
   id: opts.id ?? createId('proj'),
+  name: opts.name ?? document.metadata.name ?? '未命名',
   document,
   filePath: opts.filePath ?? null,
   dirty: opts.dirty ?? true,
@@ -247,6 +250,8 @@ const loadInitialSession = (): { projects: ProjectEntry[]; activeProjectId: stri
           return [
             {
               id: meta.id,
+              // 老会话没有 name 字段,回退到当时的显示名(metadata.name),避免升级后全变「未命名」
+              name: meta.name ?? document.metadata.name,
               document,
               filePath: meta.filePath ?? null,
               dirty: meta.dirty ?? true,
@@ -310,6 +315,7 @@ export default function Designer() {
     () => localStorage.getItem(LAST_EXPORT_DIR_STORAGE_KEY) || '',
   );
   const [pendingCloseProjectId, setPendingCloseProjectId] = useState<string | null>(null);
+  const [renamingProjectId, setRenamingProjectId] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<'clear' | null>(null);
   const [showWelcome, setShowWelcome] = useState(
     () => !localStorage.getItem(WELCOME_SEEN_STORAGE_KEY),
@@ -396,6 +402,8 @@ export default function Designer() {
     }
     const entry = makeProjectEntry(base, {
       filePath: opts.filePath ?? null,
+      // 从 .json 打开时,项目名以文件名为初值;此后保存/另存为不再改写它
+      name: opts.filePath ? splitPath(opts.filePath).name.replace(/\.json$/i, '') : undefined,
       dirty: doc ? !opts.filePath : false,
     });
     setProjects((current) => [...current, entry]);
@@ -505,6 +513,7 @@ export default function Designer() {
       activeProjectId,
       projects: projects.map((project) => ({
         id: project.id,
+        name: project.name,
         filePath: project.filePath,
         dirty: project.dirty,
         activeTabId: project.activeTabId,
@@ -552,11 +561,10 @@ export default function Designer() {
   const selectedControl =
     document.controls.find((control) => control.id === selectedControlId) ?? null;
 
-  // 侧栏/标题栏共用的项目显示名:落盘 = 文件名去扩展名;未落盘 = metadata.name
-  const projectTitle = (project: ProjectEntry) =>
-    project.filePath
-      ? splitPath(project.filePath).name.replace(/\.json$/i, '')
-      : project.document.metadata.name || '未命名';
+  // 项目名是独立的用户可编辑字段，恒显示它——不再回退到文件名。
+  // 原因：metadata.name 同时是导出包里 <AddInInfo>/<Name> 的插件名，
+  // 若被文件名顶掉，用户改的名一保存就失效（见 spec §2.1 / D3）。
+  const projectTitle = (project: ProjectEntry) => project.name || '未命名';
   const activeProjectTitle = projectTitle(activeProject);
 
   // undo/redo 按钮状态 = 激活项目的独立历史栈(historyTick 触发重渲染时重读)
@@ -568,6 +576,25 @@ export default function Designer() {
     libCategory === 'all'
       ? CONTROL_LIBRARY
       : CONTROL_LIBRARY.filter((item) => LIBRARY_CATEGORY[item.type] === libCategory);
+
+  // 改名：同步 entry.name 与 document.metadata.name。
+  // 空名回退「未命名」，不允许产生空标题。
+  // 项目名属项目元数据，不进文档 undo 栈（undo 管的是画布内容）。
+  const commitProjectName = (projectId: string, raw: string) => {
+    setRenamingProjectId(null);
+    const entry = projectsRef.current.find((project) => project.id === projectId);
+    if (!entry) return;
+    const next = raw.trim() || '未命名';
+    if (entry.name === next) return;
+    updateProject(projectId, {
+      name: next,
+      dirty: true,
+      document: {
+        ...entry.document,
+        metadata: { ...entry.document.metadata, name: next },
+      },
+    });
+  };
 
   // 新增页签(可作用于非激活项目:该项目的独立历史栈照常入栈)
   const addTabTo = (projectId: string) => {
@@ -1001,7 +1028,9 @@ export default function Designer() {
       dirty: false,
       document: {
         ...entry.document,
-        metadata: { ...entry.document.metadata, name: name.replace(/\.json$/i, '') },
+        // 保存不再用文件名覆盖 metadata.name（拆雷甲）：
+        // 项目名是用户资产，也是导出包的插件名，不能被文件系统命名绑架。
+        metadata: entry.document.metadata,
       },
     });
     rememberRecentFile(saved);
@@ -1609,7 +1638,31 @@ export default function Designer() {
                 >
                   {project.collapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
                 </button>
-                <span className="next-project-name">{projectTitle(project)}</span>
+                {renamingProjectId === project.id ? (
+                  <input
+                    className="next-project-name-input"
+                    aria-label="项目名称"
+                    autoFocus
+                    defaultValue={projectTitle(project)}
+                    onBlur={(event) => commitProjectName(project.id, event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        commitProjectName(project.id, event.currentTarget.value);
+                      }
+                      if (event.key === 'Escape') setRenamingProjectId(null);
+                    }}
+                  />
+                ) : (
+                  <span
+                    className="next-project-name"
+                    onDoubleClick={(event) => {
+                      event.stopPropagation();
+                      setRenamingProjectId(project.id);
+                    }}
+                  >
+                    {projectTitle(project)}
+                  </span>
+                )}
                 {project.dirty ? <span className="dirty-dot" title="有未保存到文件的修改" /> : null}
                 <button
                   className="next-tab-delete"
