@@ -87,4 +87,38 @@ export default async function (page) {
   await page.keyboard.press('Escape');
   await page.waitForTimeout(200);
   ok((await page.locator('.next-outline').count()) === 1, '取消选中后应回到结构树');
+
+  // 超长标题必须真的画出省略号。
+  // ⚠️ 只断言 scrollWidth > clientWidth 是不够的：那只证明「溢出了」，证明不了省略号被绘制 ——
+  // 文字一旦成为匿名 flex item（标签按钮 display:flex/inline-flex），text-overflow 就失效，
+  // 同样是溢出、同样像被截断，实际却是硬裁。故做像素 A/B：把同一元素临时改成 text-overflow:clip
+  // 再截一张，两张图必须不同；只要省略号没画出来，两者就会逐字节相同。
+  const LONG_CAPTION = '很长的页签标题'.repeat(6);
+  await page.locator('input[aria-label="页签名称"]').first().fill(LONG_CAPTION);
+  await page.waitForTimeout(250);
+  const longLabel = page
+    .locator('.next-outline-tab .next-outline-label')
+    .filter({ hasText: '很长的页签标题' })
+    .first();
+  ok((await longLabel.count()) === 1, '改名后的页签应出现在结构树里');
+  const metrics = await longLabel.evaluate((el) => ({
+    scrollW: el.scrollWidth,
+    clientW: el.clientWidth,
+    display: getComputedStyle(el).display,
+  }));
+  ok(
+    metrics.scrollW > metrics.clientW,
+    `断言前提不成立：长标题没有溢出（scrollW ${metrics.scrollW} / clientW ${metrics.clientW}，display ${metrics.display}）`,
+  );
+
+  const withEllipsis = await longLabel.screenshot();
+  await longLabel.evaluate((el) => {
+    el.style.textOverflow = 'clip';
+  });
+  await page.waitForTimeout(150);
+  const withClip = await longLabel.screenshot();
+  ok(
+    !withEllipsis.equals(withClip),
+    '省略号必须真的绘制：标签一旦回到 display:flex/inline-flex，text-overflow 失效、文字被硬裁（两张截图逐字节相同）',
+  );
 }
