@@ -10,6 +10,28 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-15-designer-ui-publishable-design.md`
 
+## ⚠️ 抬头说明：本计划的部分内容已被执行期修订取代
+
+这份计划是执行前的设计，落地时若干处按实际情况改了。**下面的任务正文保持原样（它是历史记录），
+但把这几处当作「照做会出问题」的先看这一节**——不要照着已经被取代的写法改代码：
+
+1. **Task 8 的 `PALETTE_MIN/MAX` 写法**：常量确实按计划挪到了模块级，但另外两处不同——
+   - 计划的 `nudgePaletteHeight` 是 `setPaletteHeight((current) => clampPalette(current + delta))`，
+     实际用的是**方向锚点**（`applyPaletteResize(delta, growBase, shrinkBase)`）：变大方向锚「偏好与
+     生效高度的较大者」，被窗口钳住时才不会把用户偏好反降（否则 460 会被写成 224，换回大窗口拿不回来）。
+   - 计划里 `? raw : 320` 那个写死的默认值**已废除**：320 是按印象估的，实测内容要 450，默认配置
+     自己就把卡片裁掉。现在首次使用按真实内容高度量一次（上限仍 460），窗口放不下的部分由 CSS 的
+     `flex-shrink` 与 `--canvas-min-height` 两条不变量吃回去，JS 里不做「本屏可用高度」的算术。
+2. **Task 10 的「若 library 模式样式不对，就改 `.mode-library` 规则」**：⚠️ **照做会重新引入
+   已被 `41-drag-ghost.mjs` 抓住的幽灵缩水回归**。那条自动尺寸规则必须收窄到
+   `.library-mock-stage .next-control-mock`（只作用于舞台内）：拖拽幽灵也用 `mode-library`，
+   写成 `.next-control-mock.mode-library` 后同特异性下它会把幽灵一起改掉，幽灵会从 96×96
+   缩成内容尺寸。要改就改舞台内的那条，**不要放宽选择器**。
+3. **Task 9（P4 结构树）的「点击分组 → 选中分组」**：该能力在执行期的最终审查中**降级、不实现**，
+   spec P4 已同步改写（分组行是结构标签，分组级操作在画布的悬浮编辑条上）。计划本节的代码示例
+   本来就渲染成不可点的 `<div>`，与此一致；另外实际实现比计划多了「点控件先切到它所在的页签、
+   再滚动定位」，由 `30-outline.mjs` 守护。
+
 ## Global Constraints
 
 以下约束来自 spec §10，**每个任务都隐含包含**，违反即任务未完成：
