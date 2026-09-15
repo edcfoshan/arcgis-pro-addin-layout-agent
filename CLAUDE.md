@@ -26,7 +26,7 @@ npm run icons                # 生成 icons-tabler.zip(--if-missing 幂等;SVG �
 npx tsc --noEmit             # 类型检查
 npm run build                # tsc + vite build
 npm run tauri build          # 正式版:src-tauri/target/release/ + bundle/nsis;
-                             # 惯例:安装包(bundle/nsis/JisigG-GISpro-Addin-Designer_<版本>_x64-setup.exe)复制到 00测试包/(已 gitignore)
+                             # 惯例:改完代码要重新构建,安装包(bundle/nsis/JisigG-GISpro-Addin-Designer_<版本>_x64-setup.exe)复制到仓库根目录(用户要求,便于直接取用安装)
                              # 不做便携版:target/release/designer-app.exe 需带 icons-tabler.zip + 占位 DLL 才能用
                              # 需要 TAURI_SIGNING_PRIVATE_KEY 环境变量出更新签名产物
 
