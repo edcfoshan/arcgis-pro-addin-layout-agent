@@ -1539,7 +1539,7 @@ export default function Designer() {
   }, []);
 
   return (
-    <div className="next-shell">
+    <div className={`next-shell${drag ? ' dragging' : ''}`}>
       <a className="skip-link" href="#main-canvas">
         跳到画布
       </a>
@@ -2322,6 +2322,8 @@ function RibbonGroupView({
   return (
     <section
       className="next-group"
+      tabIndex={0}
+      aria-label={`分组 ${group.caption}`}
       style={{ '--group-cols': spec.cols } as CSSProperties}
       onContextMenu={(event) => {
         event.preventDefault();
@@ -2351,6 +2353,14 @@ function RibbonGroupView({
             <Trash2 size={12} />
           </button>
         ) : null}
+        <div className="next-group-batch">
+          <span>批量尺寸</span>
+          {(['large', 'middle', 'small'] as const).map((size) => (
+            <button key={size} onClick={() => onResizeGroup(group.id, size)}>
+              {SIZE_LABELS[size]}
+            </button>
+          ))}
+        </div>
       </div>
       <RibbonGroupGrid
         document={document}
@@ -2365,14 +2375,6 @@ function RibbonGroupView({
       />
       <div className="next-group-footer">
         <div className="next-group-caption">{group.caption}</div>
-        <div className="next-group-batch">
-          <span>批量尺寸</span>
-          {(['large', 'middle', 'small'] as const).map((size) => (
-            <button key={size} onClick={() => onResizeGroup(group.id, size)}>
-              {SIZE_LABELS[size]}
-            </button>
-          ))}
-        </div>
       </div>
     </section>
   );

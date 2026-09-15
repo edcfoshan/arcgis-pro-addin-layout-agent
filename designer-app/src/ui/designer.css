@@ -621,6 +621,7 @@ body,
 }
 
 .next-shell .next-canvas-tab:hover {
+  border-color: transparent;
   color: var(--ink);
   background: var(--bg-sunken);
 }
@@ -644,7 +645,9 @@ body,
   align-items: stretch;
   gap: var(--sp-4);
   min-height: 320px;
-  padding: var(--sp-5);
+  /* 顶部为悬浮编辑条留出空间（约 38px 高）：本容器是 overflow-y:hidden 的裁剪容器，
+     分组又紧贴它的顶边，不留空间时编辑条会被整条裁掉（实测 60px 里只剩 9px 可见）。 */
+  padding: calc(var(--sp-5) + 40px) var(--sp-5) var(--sp-5);
   overflow: auto hidden;
   background: linear-gradient(180deg, var(--bg-surface) 0, var(--bg-sunken) 78px, var(--bg-canvas) 100%);
 }
@@ -658,6 +661,7 @@ body,
 }
 
 .next-group {
+  position: relative;   /* 悬浮编辑条的定位基准 */
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -670,13 +674,44 @@ body,
   box-shadow: var(--shadow-1);
 }
 
+/* 分组编辑条：平时隐藏，悬停或获得焦点时浮现在分组框「上方外部」。
+   必须用 visibility 而非 display——display:none 会把按钮移出 tab 序，
+   键盘用户永远够不到（无障碍回归）。 */
 .next-group-tools {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  z-index: var(--z-pop);
+  display: flex;
+  align-items: center;
   gap: var(--sp-2);
   flex-wrap: wrap;
+  min-width: max-content;   /* 浮层保持单行：换行会让高度失控，顶部预留的空间算不准 */
   min-height: 28px;
   margin-bottom: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-2);
   color: var(--ink-2);
   font-size: var(--fs-sm);
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity var(--t-fast) var(--ease), visibility var(--t-fast) var(--ease);
+}
+
+.next-group:hover .next-group-tools,
+.next-group:focus-within .next-group-tools {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* 拖拽进行中抑制浮现，否则拖控件横穿分组时编辑条会一路闪烁 */
+.next-shell.dragging .next-group-tools {
+  visibility: hidden;
+  opacity: 0;
 }
 
 .next-group-tools input,
