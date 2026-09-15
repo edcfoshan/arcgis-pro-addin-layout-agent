@@ -1281,9 +1281,12 @@ body,
 .next-bottom-palette {
   flex: 0 0 auto;
   min-height: 0;
-  max-height: 176px;
+  /* 176px 是「卡片只有一行」的旧假设。9 种控件在常规宽度下必为两行
+     （P1 放大字号后实需约 260px），写死高度会让第二行永久不可达。
+     改为按视口比例设上限并允许纵向滚动，保证任何窗口尺寸下内容都够得到。 */
+  max-height: min(40vh, 280px);
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: auto;
   border-top: 1px solid var(--border);
   background: var(--bg-chrome);
   padding: var(--sp-3) var(--sp-5) var(--sp-4);
