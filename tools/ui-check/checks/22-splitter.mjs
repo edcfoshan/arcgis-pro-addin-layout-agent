@@ -8,7 +8,6 @@ const BASE = process.env.UI_CHECK_URL ?? 'http://localhost:1420';
 const PALETTE_KEY = 'gispro-ribbon-designer-palette-height';
 const PALETTE_MIN = 120;
 const PALETTE_MAX = 460;
-const PALETTE_DEFAULT = 320;
 
 // 控件库高度是「用户偏好」与「窗口给不给得起」的交集：渲染高度 = min(偏好, 本屏可用)。
 // 这里的「本屏可用」不由常量决定，所以下面按两档窗口实测，而不是只测常量上下界。
@@ -62,10 +61,23 @@ export default async function (page) {
     '分隔条应声明 aria-orientation="horizontal"',
   );
 
+  // 干净存储下首次进入：高度没有「默认常量」这回事，初值是按真实内容量出来的
+  // （钳在 120–460）。写死 320 的那版是按印象估的，实测内容要 450，估小了正好把卡片
+  // 裁掉一截。这里比「存下来的偏好」与「内容高度」——渲染高度在这一屏被窗口钳到 368
+  // （画布地板那条不变量），拿它比不出默认值对不对。
   const before = await paletteHeight();
+  const contentHeight = await page.evaluate(
+    () => document.querySelector('.next-bottom-palette').scrollHeight,
+  );
+  const defaultPreference = await page.evaluate((key) => Number(localStorage.getItem(key)), PALETTE_KEY);
   ok(
-    Math.abs(before - PALETTE_DEFAULT) < 2,
-    `首次进入控件库高度应为默认 ${PALETTE_DEFAULT}，实际 ${before}`,
+    Math.abs(defaultPreference - Math.min(contentHeight, PALETTE_MAX)) < 2,
+    `首次进入的默认高度应按内容自适应：期望 ${Math.min(contentHeight, PALETTE_MAX)}` +
+      `（内容 ${contentHeight} 钳在上限 ${PALETTE_MAX}），实际 ${defaultPreference}`,
+  );
+  ok(
+    before >= PALETTE_MIN - 0.5,
+    `首次进入控件库渲染高度 ${before} 低于下限 ${PALETTE_MIN}`,
   );
 
   // 下面这一段要验的是「常量的界」（120/460）。1360×860 下窗口只放得下约 368，

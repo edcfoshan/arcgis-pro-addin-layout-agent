@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -90,12 +91,13 @@ const WELCOME_SEEN_STORAGE_KEY = 'gispro-ribbon-designer-welcome-seen';
 const LIB_CATEGORY_STORAGE_KEY = 'gispro-ribbon-designer-lib-category';
 const PALETTE_HEIGHT_STORAGE_KEY = 'gispro-ribbon-designer-palette-height';
 
-// 控件库高度由用户拖分隔条决定，这里只给区间与初值：
-// 上限 460 是为 P5 的卡片 mock 留的高度（两行约 455px），下限 120 保证分类 segment
-// 加一行卡片仍看得见，默认 320 正好是两行紧凑卡的观看高度。
+// 控件库高度的区间。上限 460 是「一屏能看到的最大量」，下限 120 保证分类 segment
+// 加一行卡片仍看得见。
+// 没有「默认高度」这个常量：首次使用（没存过偏好）时的初值是量出来的内容高度 ——
+// 原先写死 320 是按印象估的，实测两行紧凑卡要 450，估小了正好把卡片裁掉，
+// 让「控件库被裁切」这个用户的头号痛点在我们自己的默认配置下重现。
 const PALETTE_HEIGHT_MIN = 120;
 const PALETTE_HEIGHT_MAX = 460;
-const PALETTE_HEIGHT_DEFAULT = 320;
 
 // 每项目一份的草稿槽 key(项目 id 分槽,旧版单份草稿用 STORAGE_KEY 迁移)
 const draftKey = (projectId: string) => `${STORAGE_KEY}-${projectId}`;
@@ -366,27 +368,42 @@ export default function Designer() {
     return saved === 'command' || saved === 'container' || saved === 'input' ? saved : 'all';
   });
   // 控件库高度：用户拖分隔条调出来，存 localStorage 跨会话记忆。
-  // 越界或读不到就回默认值（旧草稿、手工改坏的值都不会让布局炸掉）。
-  const [paletteHeight, setPaletteHeight] = useState<number>(() => {
+  // 越界或读不到就当作「没存过」（旧草稿、手工改坏的值都不会让布局炸掉），
+  // 由下面的首次测量补上内容高度。
+  const [paletteHeight, setPaletteHeight] = useState<number | null>(() => {
     const raw = Number(localStorage.getItem(PALETTE_HEIGHT_STORAGE_KEY));
     return Number.isFinite(raw) && raw >= PALETTE_HEIGHT_MIN && raw <= PALETTE_HEIGHT_MAX
       ? raw
-      : PALETTE_HEIGHT_DEFAULT;
+      : null;
   });
-
-  useEffect(() => {
-    localStorage.setItem(PALETTE_HEIGHT_STORAGE_KEY, String(Math.round(paletteHeight)));
-  }, [paletteHeight]);
 
   const clampPaletteHeight = (value: number) =>
     Math.min(PALETTE_HEIGHT_MAX, Math.max(PALETTE_HEIGHT_MIN, value));
+
+  // 没存过偏好（首次使用、刚清过存储）→ 首次加载量一次真实内容高度，作为初值。
+  // 用 useLayoutEffect 不是 useEffect：它要在首次绘制前把高度定下来，否则用户会先看到
+  // 一帧按内容撑开的控件库再跳回去。此刻元素还没有内联 height，clientHeight 由内容决定，
+  // scrollHeight 就是「装下所有卡片需要多高」。
+  // 只取内容高度、不在这里减去本屏的可用空间：上限归 PALETTE_HEIGHT_MAX，窗口放不下的部分
+  // 由 CSS 的 flex-shrink 吃回去（画布地板那条不变量），偏好本身不因窗口大小被改写。
+  useLayoutEffect(() => {
+    if (paletteHeight !== null) return;
+    const element = paletteRef.current;
+    if (!element) return;
+    setPaletteHeight(clampPaletteHeight(element.scrollHeight));
+  }, []);
+
+  useEffect(() => {
+    if (paletteHeight === null) return;
+    localStorage.setItem(PALETTE_HEIGHT_STORAGE_KEY, String(Math.round(paletteHeight)));
+  }, [paletteHeight]);
 
   // 生效高度 = 经过窗口钳制后真正渲染出来的高度。钳制由 CSS 的 flex 完成
   // （.next-canvas-row 的地板是 --canvas-min-height，控件库 flex-shrink 吸回不足的部分），
   // 所以状态里的「偏好」可能大于本屏放得下的量。
   const paletteRef = useRef<HTMLElement | null>(null);
   const effectivePaletteHeight = () =>
-    paletteRef.current?.getBoundingClientRect().height ?? paletteHeight;
+    paletteRef.current?.getBoundingClientRect().height ?? paletteHeight ?? PALETTE_HEIGHT_MIN;
 
   // 高度手势的唯一入口。锚点随方向变，两个 base 由调用方在合适时机取：
   // 键盘在按键那一刻取，拖拽在 pointerdown 那一刻取（拖拽过程中状态一直在变，现取会漂）。
@@ -400,7 +417,8 @@ export default function Designer() {
 
   const nudgePaletteHeight = (delta: number) => {
     const effective = effectivePaletteHeight();
-    applyPaletteResize(delta, Math.max(paletteHeight, effective), effective);
+    // paletteHeight 为 null 只在首次绘制前成立（布局副作用尚未落值），此刻拿当前渲染高度顶上。
+    applyPaletteResize(delta, Math.max(paletteHeight ?? effective, effective), effective);
   };
 
   // 拖分隔条改高度。指针捕获挂在分隔条上，pointermove/pointerup 仍会冒泡到 window，
@@ -411,7 +429,7 @@ export default function Designer() {
     const pointerId = event.pointerId;
     const startY = event.clientY;
     const startEffective = effectivePaletteHeight();
-    const startGrowBase = Math.max(paletteHeight, startEffective);
+    const startGrowBase = Math.max(paletteHeight ?? startEffective, startEffective);
     target.setPointerCapture(pointerId);
 
     const onMove = (moveEvent: PointerEvent) => {
@@ -2057,7 +2075,7 @@ export default function Designer() {
               aria-label="调整控件库高度"
               aria-valuemin={PALETTE_HEIGHT_MIN}
               aria-valuemax={PALETTE_HEIGHT_MAX}
-              aria-valuenow={Math.round(paletteHeight)}
+              aria-valuenow={Math.round(paletteHeight ?? PALETTE_HEIGHT_MIN)}
               tabIndex={0}
               onPointerDown={startPaletteResize}
               onKeyDown={(event) => {
@@ -2077,7 +2095,7 @@ export default function Designer() {
             className="next-bottom-palette"
             ref={paletteRef}
             aria-label="控件库"
-            style={{ height: paletteHeight, maxHeight: 'none' }}
+            style={{ height: paletteHeight ?? undefined, maxHeight: 'none' }}
           >
             <div className="next-palette-tabs" role="group" aria-label="控件分类">
               {LIBRARY_CATEGORIES.map(({ id, label, Icon }) => (

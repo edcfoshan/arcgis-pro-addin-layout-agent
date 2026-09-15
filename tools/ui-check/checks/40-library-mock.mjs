@@ -75,6 +75,37 @@ export default async function (page) {
     { timeout: 10000 },
   );
   await assertChipContrast('暗色');
+
+  // ===== 默认高度必须装得下卡片 =====
+  // 首次使用（干净存储）时的控件库高度是按真实内容量出来的。它曾经写死 320，而实测内容
+  // 要 450 —— 默认配置自己就把卡片裁掉一截，用户的头号痛点在我们自己的默认值上重现，
+  // 而验收 A1 只要求「滚得到」，所以当时没有任何检查会失败。
+  // 判据取结果不取机制：放得下的窗口里，最后一张卡的下缘必须落在控件库可视区内。
+  // （窗口给不起时这条不成立，那是画布地板不变量的代价，见 22-splitter.mjs 的钳制断言。）
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  // 重新导航一次：run.mjs 的初始化脚本会在每次导航清空 localStorage，
+  // 于是这一轮又回到「没存过偏好」的首次使用状态。
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForSelector('.next-shell');
+  await page.waitForTimeout(500);
+
+  const fit = await page.evaluate(() => {
+    const palette = document.querySelector('.next-bottom-palette');
+    const cards = [...document.querySelectorAll('.library-compact-card')];
+    const last = cards[cards.length - 1].getBoundingClientRect();
+    return {
+      count: cards.length,
+      lastCardBottom: last.bottom,
+      viewBottom: palette.getBoundingClientRect().bottom,
+      storedDefault: localStorage.getItem('gispro-ribbon-designer-palette-height'),
+    };
+  });
+  eq(fit.count, 9, '干净存储下控件库应展示全部九张卡');
+  ok(
+    fit.lastCardBottom <= fit.viewBottom + 0.5,
+    `默认高度 ${fit.storedDefault} 装不下卡片：最后一张卡的下缘 ${Math.round(fit.lastCardBottom)}` +
+      ` 超出了控件库可视区底部 ${Math.round(fit.viewBottom)}`,
+  );
 }
 
 // —— 对比度工具：把 rgb()/rgba() 解析成相对亮度再算 WCAG 对比度。 ——
