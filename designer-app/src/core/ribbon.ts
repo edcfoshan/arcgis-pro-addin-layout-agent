@@ -1,4 +1,7 @@
-﻿import { CONTROL_LIBRARY } from './library';
+﻿// 注意:import 显式带 .ts 扩展名(node --experimental-strip-types 可直接跑本文件的测试;
+// tsconfig 已开 allowImportingTsExtensions,与 damlImport.ts 同一写法)。
+// 本文件其余 import 全是 import type,会被 strip-types 抹掉,无需加扩展名。
+import { CONTROL_LIBRARY } from './library.ts';
 import type {
   LibraryControlDefinition,
   RibbonControl,
