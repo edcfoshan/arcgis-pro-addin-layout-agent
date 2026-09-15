@@ -14,6 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `tools/tabler-icons/svg/` — vendored 的 Tabler Icons outline 全集(约 5100 个 SVG,MIT)
 - `tools/icon-gen/` — 图标包生成器(node + sharp + adm-zip)
 - `tools/placeholder-addin/` — 免编译导出的占位 DLL 源码(.NET 8 + Esri SDK nuget)
+- `tools/ui-check/` — UI 机械验收(Playwright 断言 + 纯 TS 检查;用法见「常用命令」)
 - `tools/` 其余 — 验算/构建脚本(pro-ui-check、随机验算等,开发侧管线)
 
 ## 常用命令
@@ -47,6 +48,14 @@ powershell -File tools/run-ribbon-layout-validation.ps1 -Cases 10 -RunProUiCheck
 
 # 旧 Web 设计器(仅维护时用)
 cd ribbon-designer && npm run dev -- --host 127.0.0.1 --port 4173
+
+# UI 机械验收(需先起 dev server;断言读计算样式与几何,见「无障碍不变量」)
+cd tools/ui-check && npm install     # 仅首次,装 playwright 包;它没有 install 脚本,**不会**下载浏览器
+# 仅首次且必要:本机实测从官方 CDN 下 chromium 10 分钟都没完成,换镜像 <1 分钟
+$env:PLAYWRIGHT_DOWNLOAD_HOST='https://cdn.npmmirror.com/binaries/playwright'; npx playwright install chromium
+npm run check                        # 跑全部断言
+npm run check palette                # 按文件名过滤(13 个检查文件,文件名前缀即分组:00/10/20/30/40…)
+npm run check:node                   # 纯 TS 检查(设计器与 shared 两变体的 addInId 必须一致,不需要浏览器)
 ```
 
 Rust 侧 `REPO_ROOT = CARGO_MANIFEST_DIR/../..` 仅作开发态回退;运行时优先资源目录/AppData。
@@ -85,17 +94,20 @@ RibbonDocument (JSON)
 designer.css 全量 token 化(`:root` ~40 语义 token),浅色基准还原 ArcGIS Pro 本体(Fluent 风);**暗色主题** = `:root[data-theme='dark']` 全量 token 覆盖(13 段),画布 mock 与图标选择器格子保持白底(Tabler PNG 仅浅色版,还原 Pro 画布观感)。铁律:
 
 - `:root`/`[data-theme='dark']` 之外不允许裸 hex/rgb;新颜色先加 token(两主题都要出值)
-- 底部控件库**双层**:上层特性分类 segment(全部/命令/容器/输入,lucide 图标,选择跨会话记忆 `gispro-ribbon-designer-lib-category`),下层紧凑卡(每类型一卡:Tabler 代表图标 + 类型名 + 常显描述行 + 尺寸徽章;点徽章选中尺寸、按住徽章拖出即该尺寸),不渲染 mock 实体
+- 底部控件库**双层**:上层特性分类 segment(全部/命令/容器/输入,lucide 图标,选择跨会话记忆 `gispro-ribbon-designer-lib-category`),下层卡片(每类型一卡:Tabler 代表图标 + 类型名 + 常显描述行 + **每个受支持尺寸各一格——格上半是真实控件 mock、下半是可点可拖的尺寸徽章**;点徽章选中尺寸、按住徽章拖出即该尺寸)
+  - 2026-09-15 改:原为「紧凑卡不渲染 mock 实体」,理由是紧凑卡要全量类型一次显示、渲染实体塞不下。画布与控件库改为可拖拽分隔条(记忆键 `gispro-ribbon-designer-palette-height`)后控件库能拿到更多高度,前提不再成立,故改为渲染真实 mock。**别再改回「卡片不渲染 mock」**
+  - 占格用 `.footprint-chip` 等比图示表达(一个网格单位 6px),文字占格保留在 `title`/`aria-label` 供读屏
 - `--cell` 恒 32px 不可改;`--group-cols` 必须同时设在组元素与网格元素(漏传组元素会按默认列数渲染导致溢出,实修 bug dd37c532)
-- 标题栏全图标化(按钮统一 26px):左 app 图标(`designer-app/public/app-icon.png`,当前是 Tauri 默认图,可单独替换)+ 文件 icon(FileText,悬停 tooltip 出菜单:新建/打开/保存/另存/最近 8 个/示例布局/关于)、中央当前项目名+未保存圆点、右设置/关于 icon 与窗口三键;更新横幅
+- 标题栏全图标化(按钮统一 `--h-ctl`,当前 28px):左 app 图标(`designer-app/public/app-icon.png`,当前是 Tauri 默认图,可单独替换)+ 文件 icon(FileText,悬停 tooltip 出菜单:新建/打开/保存/另存/最近 8 个/示例布局/关于)、中央当前项目名+未保存圆点、右设置/关于 icon 与窗口三键;更新横幅
 - 多项目模型(IDE 多开文件式):侧栏两级 **项目→页签**,项目=一个 .json=一个 addin 包;每项目独立 undo 栈/脏标记/activeTabId/折叠态;`RibbonDocument` schema 本身未加项目层,项目层只存在于 Designer.tsx 的 `ProjectEntry[]` 状态;Ctrl+S 作用于激活项目,无路径先另存;关闭项目脏则 Modal(保存/丢弃/取消),关最后一个自动开空白,**关窗仍不拦截**
+- 画布顶部有 Pro 那条 ribbon 页签条(`.next-canvas-tabs`,`role=tablist`);页签点击与侧栏 `.next-tab-item` 走**同一个 `activateProject` 入口**,选中态双向联动——**改一侧必须同步另一侧**。未选中控件时右栏渲染文档结构树(页签→分组→控件三级,点击切页签/选中控件并定位)
 - 草稿分槽:`gispro-ribbon-designer-doc-<projectId>` 每项目一份 + 会话元数据 `gispro-ribbon-designer-projects`(顺序/激活/折叠/脏态),启动全部恢复;旧单份草稿 key 保留作迁移源(升级用户不丢数据)
 - 导入/打开/示例布局一律**开新项目并激活**(.json 打开带 path 不脏;.esriAddInX/.daml 脏),打开侧栏里已开的文件则聚焦既有条目不开重复份
 - undo/redo:每项目独立双栈 Map(historyRef,深 50)+ `commit()` 单一入口(读 documentRef.current 不用 setState updater,防 StrictMode 双推);清空走确认弹窗(多开下新建只是追加项目,无破坏性不确认),其余删除靠 undo 兜底
 - 快捷键:Ctrl+Z/Y/S/O/N、Delete 删选中、Esc 逐层关弹层(输入框聚焦时不拦截)
-- UI 自检:`npm run dev` 后浏览器直渲 localhost:1420(invoke 失败但布局样式全真),Playwright evaluate 读计算样式做机械验收
+- UI 自检:`npm run dev` 后浏览器直渲 localhost:1420(invoke 失败但布局样式全真);机械验收已脚本化到 `tools/ui-check`(`npm run check` 读计算样式与几何,见「常用命令」),不再手写 Playwright evaluate
 
-**两套图标别混**:界面自身的图标(工具栏/弹窗/控件库卡片)走 `lucide-react` 组件;能拖进画布、会进导出包的**用户可选用**图标才是 Tabler(见下节)。改 UI 时不要拿 Tabler PNG 去替 lucide,反之亦然。UI 组件分工:`Designer.tsx` 主战场、`Modal.tsx` 弹窗外壳(a11y 语义/焦点陷阱/焦点归还,**所有弹窗都必须走它**)、`IconPicker.tsx` 图标选择器、`iconsClient.ts` 前端 icon 命令封装、`AboutDialog.tsx`/`Welcome.tsx` 弹窗、`ControlMock.tsx` 画布控件 mock。
+**两套图标别混**:界面自身的图标(工具栏/弹窗/控件库卡片)走 `lucide-react` 组件;能拖进画布、会进导出包的**用户可选用**图标才是 Tabler(见下节)。改 UI 时不要拿 Tabler PNG 去替 lucide,反之亦然。UI 组件分工:`Designer.tsx` 主战场、`DocumentOutline.tsx` 右栏空态的文档结构树、`Modal.tsx` 弹窗外壳(a11y 语义/焦点陷阱/焦点归还,**所有弹窗都必须走它**)、`IconPicker.tsx` 图标选择器、`iconsClient.ts` 前端 icon 命令封装、`AboutDialog.tsx`/`Welcome.tsx` 弹窗、`ControlMock.tsx` 画布与控件库卡片的控件 mock(mode='library' 时按真实尺寸渲染)。
 
 ## 无障碍不变量(2026-09-15 WCAG 2.2 AA 审计后确立)
 
@@ -104,11 +116,18 @@ designer.css 全量 token 化(`:root` ~40 语义 token),浅色基准还原 ArcGI
 - **焦点环是两个 token,别合并**:`--focus-ring`(实心,浅 `#1565c0` / 暗 `#4a90d9`,对各自全部底色 ≥3:1)专职焦点指示;`--accent-focus`(半透明)已被降级为**只剩拖拽预览填充**一个用途。拿半透明色当焦点环实测只有 1.25–1.38:1,远低于 WCAG 1.4.11 的 3:1
 - **弹窗不要手写 `<div className="next-modal">`**:手写会一次丢掉 `role="dialog"`/`aria-modal`/初始焦点/焦点陷阱/关闭后焦点归还五件事。用 `Modal.tsx`
 - **画布孤岛**:暗色下画布仍是白底,所以 `:root[data-theme='dark'] .next-ribbon-control, .icon-cell` 作用域内把 `--ink-*` 重定义成了 `--island-*` 浅色值(原来靠硬编码 `#ffffff`/`#1e2a38`,既违反 token 铁律又漏掉后代自设色)。**画布内新增自设 `color: var(--ink-*)` 的文案会自动拿到浅色值**;给孤岛加新 token 记得同步这一层
-- **紧凑控件热区**:`--h-ctl-xs: 18px` 是有意的视觉尺寸,**别为了过 WCAG 2.5.8 直接改高**。小于 24×24 的按钮统一用 `::after` 居中覆盖层补热区(`width/height: max(100%, 24px)`);这几类控件相邻中心距实测 ≥29px,覆盖层不会互相遮挡
+- **紧凑控件热区**:`--h-ctl-xs`(当前 20px)是有意的视觉尺寸,**别为了过 WCAG 2.5.8 直接改高**。小于 24×24 的按钮统一用 `::after` 居中覆盖层补热区(`width/height: max(100%, 24px)`);这几类控件相邻中心距实测 ≥29px,覆盖层不会互相遮挡
 - **表单控件靠 `color: inherit` 取色**:`.next-shell input/select/textarea` 默认不继承 color,漏掉会退回 UA 黑字,暗色下变成 1.6:1
 - **文档结构**:h1 必须落在 landmark 内部(放在 `<header>` 里,裸挂在 shell 下 axe 会报 `region`);两个 `<aside>` 都要 `aria-label` 否则 `landmark-unique` 不过
 
 **a11y 验证方法**:`npm run dev` 后经 Playwright 注入 axe-core(`https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.10.2/axe.min.js`)扫 `violations`。⚠️ **主题切换后样式约 1 秒才真正落地**(不是 120ms 过渡那种速度),期间扫描会读到旧背景色而报**假违规**——必须轮询等到目标元素的计算样式变成新值再扫,否则会得到「暗色 23 处违规」这类噪声结论。
+
+**「axe 违规为 0」≠「无障碍做完了」**:axe 只查它认识的那几类规则,下面这些真实缺陷它一条都报不出来。别拿「扫过 axe 全绿」当完工证据:
+
+- 占格图示边框对比度(2.00:1 浅 / 2.25:1 暗,低于 WCAG 1.4.11 的 3:1)——2026-09-15 已修(边框改 `--ink-3`)并纳入 `tools/ui-check/checks/40-library-mock.mjs`,该断言从解析后的颜色自算比值,**浅色与暗色两档都要咬住**
+- 画布页签条用了 `role="tab"`/`role="tablist"`,但**没有方向键导航、也没做 roving tabindex**,不合 ARIA tabs pattern(**仍未修**)
+- 分隔条的 `aria-valuenow` 报的是用户偏好而非当前渲染高度——有意的、已在代码注释里写明理由的取舍(**未改**)
+- 侧栏的「项目行 / 项目→页签」两级导航都是 `<div onClick>`(`.next-project-item`/`.next-tab-item`,无 `role`/`tabIndex`/键盘处理),项目改名入口也只有 `.next-project-name` 的 `onDoubleClick`——切项目、切非激活项目的页签、进改名都只有鼠标走得到(画布页签条只覆盖当前激活项目)(**仍未修**)
 
 ## 图标系统(Tabler,2026-09-15 换血)
 
@@ -141,6 +160,8 @@ designer.css 全量 token 化(`:root` ~40 语义 token),浅色基准还原 ArcGI
 - **本机 `npm run tauri build` 不带 `TAURI_SIGNING_PRIVATE_KEY` 时是个静默陷阱**:tauri 打印 `A public key has been found, but no private key` 后**仍 exit 0**,安装包照出但未签名;更坑的是 `bundle/nsis/*.sig` 停留在**上一次构建**的时间戳,与新 exe **不匹配**——成对误用会让签名校验失败(即 `latest.json` 更新链失效那个坑)。本地出测试包无所谓,**发版必须带私钥与口令重跑**
 - **Windows 前台锁**:`SetForegroundWindow` 前先 `SendKeys('%')` 解锁;最小化用 `ShowWindowAsync(SW_RESTORE)`
 - 运行中的 Pro 不自动发现新 add-in,需重启;pro-ui-check 已内置前台句柄校验
+- **`addInId` 的种子只能含稳定字段**:ArcGIS Pro 用 Config.daml 的 `<AddInInfo id>` 作插件安装目录名(本机 `Documents\ArcGIS\AddIns\ArcGISPro\` 下目录名与包内 id 逐一对应),所以这个 GUID 一变,Pro 就把它当全新插件装进新目录、同名插件不断累积。2026-09-15 修过一次:种子原先含 `metadata.name` 与 `metadata.lastUpdated`,而 `commit()`(所有文档改动的唯一入口)每次都刷新 `lastUpdated`,导致拖一个控件再导出 GUID 就变。现种子为 `assemblyName + metadata.id`。**改 `resolveOptions` 时不要往种子里加任何可变字段**,回归检查见 `tools/ui-check/node-checks/addin-id.mts`(同时覆盖「仅改名不改身份」与「两个生成器变体身份一致」)
+- **`tools/test-daml-roundtrip.mts` 在新克隆上跑不起来**:它读 `00测试包/all-controls-layout.json` 与 `00测试包/AllControls-Demo-1.0.1.esriAddInX`,而整个 `00测试包/` 已 gitignore(`.gitignore:19`)且未入库——只有本机恰好留着这两个夹具的人能跑。缺夹具时的现象与代码 bug 很像,别浪费时间调试
 - 本机 Pro 装在 `LOCALAPPDATA\Programs\ArcGIS\Pro`(3.6.0);DAML `desktopVersion` 写 3.5.0(最低版本语义);dotnet SDK 10 可直接构建 net8.0-windows7.0
 - 2026-09-15 历史已 filter-repo 重写:icon-cache(Esri 图标)/bin/obj/validation-runs/00测试包/废弃下载服务器文件全清,用户路径已替换;**勿再引用 tools/icon-cache**
 - 里程碑:M1 设计器 ✅ → M2 验算 ✅ → 2026-09-15 大众化 ✅(Tabler 图标/免编译导出/undo/文件菜单/暗色/更新体系,打 v1.0.0)→ M3 命令事件+C# 模式库 → M4 Dockpane → M5 AI 视觉评审
