@@ -366,14 +366,25 @@ export default function Designer() {
 
   // 生效高度 = 经过窗口钳制后真正渲染出来的高度。钳制由 CSS 的 flex 完成
   // （.next-canvas-row 的地板是 --canvas-min-height，控件库 flex-shrink 吸回不足的部分），
-  // 所以状态里的「偏好」可能大于本屏放得下的量。手势以生效高度为锚点，分隔条才 1:1 跟手，
-  // 否则会先空拖一段「偏好 − 可用空间」的距离。偏好只由用户手势改写，窗口尺寸永不写回偏好。
+  // 所以状态里的「偏好」可能大于本屏放得下的量。
   const paletteRef = useRef<HTMLElement | null>(null);
   const effectivePaletteHeight = () =>
     paletteRef.current?.getBoundingClientRect().height ?? paletteHeight;
 
-  const nudgePaletteHeight = (delta: number) =>
-    setPaletteHeight(clampPaletteHeight(Math.round(effectivePaletteHeight()) + delta));
+  // 高度手势的唯一入口。锚点随方向变，两个 base 由调用方在合适时机取：
+  // 键盘在按键那一刻取，拖拽在 pointerdown 那一刻取（拖拽过程中状态一直在变，现取会漂）。
+  //
+  // 变大方向锚「偏好与生效高度中的较大者」：被窗口钳住时偏好 > 生效高度，于是 Up / 上拖
+  // 加不动 → 退化成 no-op，偏好原样保留（460 不会被降级成 224，换回大窗口还拿得回来）。
+  // 变小方向锚生效高度：分隔条 1:1 跟手（锚偏好会先空拖「偏好 − 可用空间」一整段），
+  // 而且「变小」本来就是用户这一刻明确要的。
+  const applyPaletteResize = (delta: number, growBase: number, shrinkBase: number) =>
+    setPaletteHeight(clampPaletteHeight((delta > 0 ? growBase : shrinkBase) + delta));
+
+  const nudgePaletteHeight = (delta: number) => {
+    const effective = effectivePaletteHeight();
+    applyPaletteResize(delta, Math.max(paletteHeight, effective), effective);
+  };
 
   // 拖分隔条改高度。指针捕获挂在分隔条上，pointermove/pointerup 仍会冒泡到 window，
   // 所以监听放 window；pointercancel 也要收，否则触摸被系统接管时监听器会留在 window 上。
@@ -382,12 +393,13 @@ export default function Designer() {
     const target = event.currentTarget;
     const pointerId = event.pointerId;
     const startY = event.clientY;
-    const startHeight = effectivePaletteHeight();
+    const startEffective = effectivePaletteHeight();
+    const startGrowBase = Math.max(paletteHeight, startEffective);
     target.setPointerCapture(pointerId);
 
     const onMove = (moveEvent: PointerEvent) => {
-      // 往上拖 → 控件库变高
-      setPaletteHeight(clampPaletteHeight(startHeight + (startY - moveEvent.clientY)));
+      // 往上拖（delta > 0）→ 控件库变高
+      applyPaletteResize(startY - moveEvent.clientY, startGrowBase, startEffective);
     };
     const onEnd = () => {
       if (target.hasPointerCapture(pointerId)) target.releasePointerCapture(pointerId);

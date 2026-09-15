@@ -2,6 +2,9 @@ import { ok } from '../assert.mjs';
 
 export const name = 'P3-3 分隔条可拖拽、可键盘调节、且跨会话记忆';
 
+// 与 run.mjs 同一来源，保证播种脚本注入到的就是本轮被测的那个页面。
+const BASE = process.env.UI_CHECK_URL ?? 'http://localhost:1420';
+
 const PALETTE_KEY = 'gispro-ribbon-designer-palette-height';
 const PALETTE_MIN = 120;
 const PALETTE_MAX = 460;
@@ -32,6 +35,22 @@ export default async function (page) {
   const palette = page.locator('.next-bottom-palette');
   const paletteHeight = () =>
     palette.evaluate((el) => el.getBoundingClientRect().height);
+
+  // 播种脚本必须用 URL 标记门控。run.mjs 的初始化脚本会在「每一次导航」清空 localStorage，
+  // 而 Playwright 按注册顺序执行 init script —— 本检查后注册，就会「先清空、再播种」，
+  // 播种反而赢，并且这个脚本会一直跟着 page 走、泄漏给后面的检查（今天没爆只是因为
+  // files.sort() 恰好把本文件排在最后）。run.mjs 每次都导航到裸 BASE，标记不在，脚本自然失效。
+  await page.addInitScript((key) => {
+    const seed = location.search.match(/palette-seed=(\d+)/);
+    if (seed) localStorage.setItem(key, seed[1]);
+  }, PALETTE_KEY);
+
+  // 带标记加载：等价于「用户偏好是这个值，重新打开设计器」。裸 URL 不播种。
+  const loadWithSeed = async (value) => {
+    await page.goto(`${BASE}?palette-seed=${value}`, { waitUntil: 'load' });
+    await page.waitForSelector('.next-shell');
+    await page.waitForTimeout(250);
+  };
 
   ok((await splitter.count()) === 1, '应存在分隔条');
   ok(
@@ -73,20 +92,12 @@ export default async function (page) {
     `存储值 ${stored} 应与实际高度 ${afterUp} 一致`,
   );
 
-  // 刷新恢复。注意 run.mjs 的 addInitScript 在「每一次导航（含 reload）」都会清空
-  // localStorage，直接 reload 测的是初始化脚本而不是应用的恢复逻辑。故刷新前把应用
-  // 自己写下的那个值重新注入（注入的是刚从 localStorage 读到的 stored，不是编造的）。
-  await page.addInitScript(
-    ([key, value]) => localStorage.setItem(key, value),
-    [PALETTE_KEY, stored],
-  );
-  await page.reload();
-  await page.waitForSelector('.next-shell');
-  await page.waitForTimeout(250);
+  // 重新加载后恢复。注入的是应用自己写下的那个值（stored），不是编造的。
+  await loadWithSeed(stored);
   const afterReload = await paletteHeight();
   ok(
     Math.abs(afterReload - afterUp) < 4,
-    `刷新后应恢复记忆高度：期望约 ${afterUp}，实际 ${afterReload}`,
+    `重新加载后应恢复记忆高度：期望约 ${afterUp}，实际 ${afterReload}`,
   );
 
   // 边界：向上顶到上限就停住，不会无限增长
@@ -131,12 +142,7 @@ export default async function (page) {
     // 把一个「大到窗口装不下」的偏好写进存储再加载：460 是能过初值校验的最大值
     // （更大被判非法回默认，反而测不到钳制）。这正是「用户把控件库拉到最大，
     // 然后把窗口缩小」的真实场景。
-    await page.addInitScript(
-      ([key, value]) => localStorage.setItem(key, value),
-      [PALETTE_KEY, String(PALETTE_MAX)],
-    );
-    await page.reload();
-    await page.waitForSelector('.next-shell');
+    await loadWithSeed(PALETTE_MAX);
     await page.getByRole('button', { name: '新增分组' }).first().click();
     await page.waitForTimeout(300);
 
@@ -178,8 +184,35 @@ export default async function (page) {
     );
   }
 
-  // 最小窗口（1100×700，应用窗口的 minHeight）下下限仍要够得到：钳制只砍掉装不下的
-  // 部分，不能把可用区顶到下限之上。
+  // ===== 钳制态下「变大」手势不得把偏好改小 =====
+  // 循环停在 1100×700（偏好 460、生效 208）。此时按 Up：锚点取偏好与生效高度的较大者，
+  // 加不动 → 必须是 no-op。若锚成生效高度，460 会被反降成 224：同一个键在钳制前后语义相反。
+  await splitter.focus();
+  const beforeNudgeUp = await paletteHeight();
+  await page.keyboard.press('ArrowUp');
+  await page.waitForTimeout(200);
+  const nudgedUp = await paletteHeight();
+  ok(
+    Math.abs(nudgedUp - beforeNudgeUp) < 1,
+    `钳制态按 Up 应是 no-op：${beforeNudgeUp} → ${nudgedUp}`,
+  );
+  const storedAfterNudgeUp = await page.evaluate((key) => localStorage.getItem(key), PALETTE_KEY);
+  ok(
+    Number(storedAfterNudgeUp) === PALETTE_MAX,
+    `钳制态按 Up 不得降级用户偏好：存储 ${storedAfterNudgeUp}，应为 ${PALETTE_MAX}`,
+  );
+
+  // 换回大窗口，偏好应原样回来（这条是上一条的意义所在）
+  await page.setViewportSize({ width: 1360, height: 1100 });
+  await page.waitForTimeout(250);
+  const restored = await paletteHeight();
+  ok(
+    Math.abs(restored - PALETTE_MAX) < 2,
+    `换回大窗口应拿回偏好 ${PALETTE_MAX}，实际 ${restored}`,
+  );
+
+  // ===== 最小窗口（1100×700，应用窗口的 minHeight）下下限仍够得到 =====
+  // 钳制只砍掉装不下的部分，不能把可用区顶到下限之上。
   await page.setViewportSize({ width: 1100, height: 700 });
   await page.waitForTimeout(200);
   await splitter.focus();
