@@ -1153,8 +1153,7 @@ body,
   animation: pro-pop var(--t-modal) var(--ease);
 }
 
-.next-modal-head,
-.next-modal-actions {
+.next-modal-head {
   justify-content: space-between;
   gap: var(--sp-5);
   margin-bottom: var(--sp-5);
@@ -1163,89 +1162,6 @@ body,
 .next-modal-head strong {
   color: var(--ink);
   font-size: var(--fs-lg);
-}
-
-.next-modal-actions {
-  margin: var(--sp-5) 0 0;
-}
-
-/* 小型弹窗(导出目录设置) */
-.next-modal-card.small {
-  width: min(560px, 100%);
-}
-
-.target-dir-row {
-  display: flex;
-  gap: var(--sp-3);
-}
-
-.next-text-input {
-  flex: 1 1 auto;
-  height: var(--h-ctl);
-  padding: 0 var(--sp-4);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg-surface);
-  color: var(--ink);
-  font: inherit;
-  transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
-}
-
-.next-text-input:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-focus);
-}
-
-/* 验算对比 */
-.next-modal-card.compare-card {
-  width: min(1200px, 94vw);
-  max-height: 92vh;
-  display: flex;
-  flex-direction: column;
-}
-
-.compare-body {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--sp-6);
-  overflow: auto;
-  padding: var(--sp-6);
-}
-
-.compare-pane {
-  padding: var(--sp-4);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg-surface);
-  overflow: auto;
-}
-
-.compare-pane-title {
-  margin-bottom: var(--sp-3);
-  color: var(--ink-3);
-  font-size: var(--fs-base);
-}
-
-.compare-shot {
-  width: 100%;
-  height: auto;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-}
-
-.compare-canvas .next-ribbon-control {
-  pointer-events: none;
-  cursor: default;
-}
-
-.compare-meta {
-  padding: var(--sp-4) var(--sp-6);
-  border-top: 1px solid var(--border-soft);
-  font-family: var(--font-mono);
-  font-size: var(--fs-sm);
-  color: var(--ink-3);
-  word-break: break-all;
 }
 
 /* Toast */

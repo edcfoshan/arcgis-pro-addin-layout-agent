@@ -7,7 +7,6 @@ import {
   type CSSProperties,
 } from 'react';
 import {
-  Camera,
   ChevronDown,
   Copy,
   FolderOpen,
@@ -41,7 +40,7 @@ import type {
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
-import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
+import { open as openFileDialog, save as saveDialog } from '@tauri-apps/plugin-dialog';
 import { parseDamlToDocument } from '../core/damlImport';
 import { ControlMock } from './ControlMock';
 import { IconPicker, type IconSelection } from './IconPicker';
@@ -63,7 +62,7 @@ import {
 import './designer.css';
 
 const STORAGE_KEY = 'gispro-ribbon-designer-doc';
-const TARGET_DIR_STORAGE_KEY = 'gispro-ribbon-designer-target-dir';
+const LAST_EXPORT_DIR_STORAGE_KEY = 'gispro-ribbon-designer-last-export-dir';
 
 // 无边框窗口的自定义标题栏句柄;浏览器直渲(Playwright 自检)时无 Tauri internals,置 null 防崩
 const appWindow =
@@ -108,12 +107,6 @@ interface GhostPos {
   y: number;
 }
 
-interface ValidationReportJson {
-  capturedAt?: string;
-  proPid?: number;
-  screenshot?: string;
-}
-
 interface ImportedIcon {
   damlName: string;
   file: string;
@@ -125,13 +118,6 @@ interface ImportedPackage {
   damlText: string;
   jsonText: string;
   icons: ImportedIcon[];
-}
-
-interface ValidationOutcome {
-  screenshotDataUrl: string;
-  reportJson: ValidationReportJson;
-  caseDir: string;
-  packagePath: string;
 }
 
 const librarySections = [
@@ -172,16 +158,17 @@ export default function Designer() {
   const [ghostPos, setGhostPos] = useState<GhostPos>({ x: 0, y: 0 });
   const [hover, setHover] = useState<HoverTarget | null>(null);
   const [toast, setToast] = useState('');
-  const [fileMenu, setFileMenu] = useState<{ x: number; y: number } | null>(null);
-  const [targetDirOpen, setTargetDirOpen] = useState(false);
+  const [dropdown, setDropdown] = useState<{
+    kind: 'import' | 'export';
+    x: number;
+    y: number;
+  } | null>(null);
   const [iconPickerFor, setIconPickerFor] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
-  const [targetDir, setTargetDir] = useState(
-    () => localStorage.getItem(TARGET_DIR_STORAGE_KEY) || '',
-  );
-  const [targetDirDraft, setTargetDirDraft] = useState(targetDir);
   const [busy, setBusy] = useState('');
-  const [validation, setValidation] = useState<ValidationOutcome | null>(null);
+  const [lastExportDir, setLastExportDir] = useState(
+    () => localStorage.getItem(LAST_EXPORT_DIR_STORAGE_KEY) || '',
+  );
   const gridRefs = useRef(new Map<string, HTMLElement>());
   const dragRef = useRef<DragState>(null);
   const hoverRef = useRef<HoverTarget | null>(null);
@@ -204,20 +191,8 @@ export default function Designer() {
   }, [document]);
 
   useEffect(() => {
-    localStorage.setItem(TARGET_DIR_STORAGE_KEY, targetDir);
-  }, [targetDir]);
-
-  // 首启无存量目录、或存量是旧机器路径时,向 Rust 要 REPO_ROOT 派生的默认导出目录
-  useEffect(() => {
-    const stored = localStorage.getItem(TARGET_DIR_STORAGE_KEY);
-    if (stored && !stored.startsWith('C:\\Users\\13975')) return;
-    invoke<string>('get_default_target_dir')
-      .then((dir) => {
-        setTargetDir(dir);
-        setTargetDirDraft(dir);
-      })
-      .catch(() => undefined);
-  }, []);
+    localStorage.setItem(LAST_EXPORT_DIR_STORAGE_KEY, lastExportDir);
+  }, [lastExportDir]);
 
   const activeTab = document.tabs.find((tab) => tab.id === activeTabId) ?? document.tabs[0];
   const activeGroups = useMemo(
@@ -231,18 +206,6 @@ export default function Designer() {
   );
   const selectedControl =
     document.controls.find((control) => control.id === selectedControlId) ?? null;
-
-  const applyTargetDir = () => {
-    const next = targetDirDraft.trim();
-    if (!next) {
-      showToast('请输入有效的本地目录');
-      return;
-    }
-    setTargetDir(next);
-    setTargetDirDraft(next);
-    setTargetDirOpen(false);
-    showToast(`导出目录已设为 ${next}`);
-  };
 
   const addTab = () => {
     const tabId = createId('tab');
@@ -649,31 +612,69 @@ export default function Designer() {
     };
   }, []);
 
-  const pickImportFile = async () => {
+  const importFilters: Record<
+    'esriAddInX' | 'daml' | 'json',
+    { name: string; extensions: string[] }
+  > = {
+    esriAddInX: { name: 'ArcGIS Pro Add-in 安装包', extensions: ['esriAddInX'] },
+    daml: { name: 'DAML 布局文件', extensions: ['daml'] },
+    json: { name: '布局 JSON', extensions: ['json'] },
+  };
+
+  const pickImportFile = async (format: keyof typeof importFilters) => {
     if (!appWindow) {
       showToast('请在桌面应用中使用文件选择');
       return;
     }
     const picked = await openFileDialog({
       multiple: false,
-      filters: [
-        { name: 'Add-in 包 / DAML / 布局 JSON', extensions: ['esriAddInX', 'daml', 'json'] },
-      ],
+      filters: [importFilters[format]],
     }).catch(() => null);
     if (typeof picked === 'string' && picked) void importFromPath(picked);
   };
 
-  const exportArtifactsFile = async (filename: string, content: string, label: string) => {
-    const dir = targetDir.trim();
-    if (!dir) {
-      setTargetDirOpen(true);
-      showToast('请先设置导出目录');
-      return;
+  const splitPath = (path: string) => {
+    const idx = Math.max(path.lastIndexOf('\\'), path.lastIndexOf('/'));
+    return idx === -1
+      ? { dir: '', name: path }
+      : { dir: path.slice(0, idx), name: path.slice(idx + 1) };
+  };
+
+  // save 对话框选导出位置;defaultPath 优先上次导出目录,无记忆时回退 Rust 下发的默认目录
+  const saveExportPath = async (format: string, filterName: string, defaultName: string) => {
+    if (!appWindow) {
+      showToast('请在桌面应用中使用导出');
+      return null;
     }
+    let defaultDir = lastExportDir;
+    if (!defaultDir) {
+      defaultDir = await invoke<string>('get_default_target_dir').catch(() => '');
+    }
+    const defaultPath = defaultDir
+      ? `${defaultDir.replace(/[\\/]+$/, '')}\\${defaultName}`
+      : defaultName;
+    const picked = await saveDialog({
+      filters: [{ name: filterName, extensions: [format] }],
+      defaultPath,
+    }).catch(() => null);
+    return typeof picked === 'string' && picked ? picked : null;
+  };
+
+  const exportTextFile = async (
+    format: string,
+    filterName: string,
+    defaultName: string,
+    content: string,
+    label: string,
+  ) => {
+    const path = await saveExportPath(format, filterName, defaultName);
+    if (!path) return;
+    const { dir, name } = splitPath(path);
     setBusy(`正在导出 ${label}`);
     try {
-      const path = await invoke<string>('write_text_file', { dir, filename, content });
-      showToast(`${label} 已写入 ${path}`);
+      const written = await invoke<string>('write_text_file', { dir, filename: name, content });
+      setLastExportDir(dir);
+      showToast(`${label} 已写入 ${written}`);
     } catch (error) {
       showToast(`${label} 导出失败：${String(error)}`);
     } finally {
@@ -682,66 +683,42 @@ export default function Designer() {
   };
 
   const exportDaml = () =>
-    exportArtifactsFile('Config.daml', buildConfigDaml(document), 'Config.daml');
+    exportTextFile('daml', 'DAML 布局文件', 'Config.daml', buildConfigDaml(document), 'Config.daml');
+
+  const exportJson = () =>
+    exportTextFile(
+      'json',
+      '布局 JSON',
+      'layout.json',
+      JSON.stringify(document, null, 2),
+      '布局 JSON',
+    );
 
   const exportPackage = async () => {
-    const dir = targetDir.trim();
-    if (!dir) {
-      setTargetDirOpen(true);
-      showToast('请先设置导出目录');
-      return;
-    }
+    const artifacts: ArcGISProValidationArtifacts =
+      buildArcGISProValidationArtifacts(document);
+    const path = await saveExportPath(
+      'esriAddInX',
+      'ArcGIS Pro Add-in 安装包',
+      artifacts.packageFileName,
+    );
+    if (!path) return;
+    const { dir, name } = splitPath(path);
     setBusy('正在打包 add-in（编译 C# + 生成安装包）');
     try {
-      const artifacts: ArcGISProValidationArtifacts =
-        buildArcGISProValidationArtifacts(document);
-      const path = await invoke<string>('export_addin', {
+      const written = await invoke<string>('export_addin', {
         payload: {
           layout_snapshot: artifacts.layoutSnapshot,
-          package_file_name: artifacts.packageFileName,
+          package_file_name: name,
           target_dir: dir,
           version: computeLayoutVersion(document),
           icon_files: artifacts.iconFiles,
         },
       });
-      showToast(`安装包已生成 ${path}`);
+      setLastExportDir(dir);
+      showToast(`安装包已生成 ${written}`);
     } catch (error) {
       showToast(`打包失败：${String(error)}`);
-    } finally {
-      setBusy('');
-    }
-  };
-
-  // 一键验算:打包 → 安装 → 启动/复用 Pro → 截图 → 弹出与画布的并排对比
-  const runValidation = async () => {
-    if (busy) {
-      showToast('已有任务进行中,请稍候');
-      return;
-    }
-    const dir = targetDir.trim();
-    if (!dir) {
-      showToast('请先设置导出目录');
-      return;
-    }
-    setBusy('正在验算:打包 → 安装 → 启动 Pro → 截图(约 1-2 分钟,请勿遮挡屏幕)');
-    try {
-      const artifacts: ArcGISProValidationArtifacts =
-        buildArcGISProValidationArtifacts(document);
-      const outcome = await invoke<ValidationOutcome>('validate_layout', {
-        payload: {
-          export: {
-            layout_snapshot: artifacts.layoutSnapshot,
-            package_file_name: artifacts.packageFileName,
-            target_dir: dir,
-            version: computeLayoutVersion(document),
-            icon_files: artifacts.iconFiles,
-          },
-          config_daml: artifacts.configDaml,
-        },
-      });
-      setValidation(outcome);
-    } catch (error) {
-      showToast(`验算失败：${String(error)}`);
     } finally {
       setBusy('');
     }
@@ -864,10 +841,10 @@ export default function Designer() {
   }, [drag, showToast]);
 
   useEffect(() => {
-    if (!contextMenu && !fileMenu) return;
+    if (!contextMenu && !dropdown) return;
     const close = () => {
       setContextMenu(null);
-      setFileMenu(null);
+      setDropdown(null);
     };
     window.addEventListener('click', close);
     window.addEventListener('contextmenu', close);
@@ -875,7 +852,7 @@ export default function Designer() {
       window.removeEventListener('click', close);
       window.removeEventListener('contextmenu', close);
     };
-  }, [contextMenu, fileMenu]);
+  }, [contextMenu, dropdown]);
 
   return (
     <div className="next-shell">
@@ -962,20 +939,24 @@ export default function Designer() {
                 onClick={(event) => {
                   event.stopPropagation();
                   const rect = event.currentTarget.getBoundingClientRect();
-                  setFileMenu({ x: rect.left, y: rect.bottom + 4 });
+                  setDropdown({ kind: 'import', x: rect.left, y: rect.bottom + 4 });
                 }}
               >
                 <FolderOpen size={14} />
-                文件
+                导入
                 <ChevronDown size={12} />
               </button>
-              <button className="primary" onClick={() => void exportPackage()}>
+              <button
+                className="primary"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  const rect = event.currentTarget.getBoundingClientRect();
+                  setDropdown({ kind: 'export', x: rect.left, y: rect.bottom + 4 });
+                }}
+              >
                 <Package size={14} />
-                打包 add-in
-              </button>
-              <button onClick={() => void runValidation()}>
-                <Camera size={14} />
-                验算
+                导出
+                <ChevronDown size={12} />
               </button>
             </div>
           </section>
@@ -1125,111 +1106,66 @@ export default function Designer() {
         onPick={applyIconSelection}
       />
 
-      {fileMenu ? (
-        <div className="context-menu" style={{ left: fileMenu.x, top: fileMenu.y }}>
-          <div className="context-menu-title">文件</div>
-          <button
-            onClick={() => {
-              setFileMenu(null);
-              void pickImportFile();
-            }}
-          >
-            打开文件…(.esriAddInX / .daml / .json,也可直接拖入窗口)
-          </button>
-          <button
-            onClick={() => {
-              setFileMenu(null);
-              void exportDaml();
-            }}
-          >
-            导出 Config.daml
-          </button>
-          <button
-            onClick={() => {
-              setFileMenu(null);
-              setTargetDirOpen(true);
-            }}
-          >
-            导出目录…
-          </button>
-        </div>
-      ) : null}
-
-      {targetDirOpen ? (
-        <div className="next-modal" onClick={() => setTargetDirOpen(false)}>
-          <div className="next-modal-card small" onClick={(event) => event.stopPropagation()}>
-            <div className="next-modal-head">
-              <strong>导出目录</strong>
-              <button onClick={() => setTargetDirOpen(false)}>
-                <X size={14} />
-              </button>
-            </div>
-            <div className="target-dir-row">
-              <input
-                className="next-text-input"
-                value={targetDirDraft}
-                onChange={(event) => setTargetDirDraft(event.target.value)}
-                spellCheck={false}
-                placeholder="安装包与 Config.daml 的输出目录"
-              />
+      {dropdown ? (
+        <div className="context-menu" style={{ left: dropdown.x, top: dropdown.y }}>
+          <div className="context-menu-title">
+            {dropdown.kind === 'import' ? '导入' : '导出'}
+          </div>
+          {dropdown.kind === 'import' ? (
+            <>
               <button
                 onClick={() => {
-                  void openFileDialog({ directory: true }).then((dir) => {
-                    if (typeof dir === 'string' && dir) setTargetDirDraft(dir);
-                  });
+                  setDropdown(null);
+                  void pickImportFile('esriAddInX');
                 }}
               >
-                浏览…
+                导入 add-in 安装包(.esriAddInX)…
               </button>
-            </div>
-            <div className="next-modal-actions">
-              <button className="primary" onClick={applyTargetDir}>
-                应用
+              <button
+                onClick={() => {
+                  setDropdown(null);
+                  void pickImportFile('daml');
+                }}
+              >
+                导入 DAML(.daml)…
               </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {validation ? (
-        <div className="next-modal" onClick={() => setValidation(null)}>
-          <div
-            className="next-modal-card compare-card"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="next-modal-head">
-              <strong>验算结果对比</strong>
-              <button onClick={() => setValidation(null)}>
-                <X size={14} />
+              <button
+                onClick={() => {
+                  setDropdown(null);
+                  void pickImportFile('json');
+                }}
+              >
+                导入布局 JSON(.json)…
               </button>
-            </div>
-            <div className="compare-body">
-              <div className="compare-pane">
-                <div className="compare-pane-title">
-                  设计器画布(当前页签:{activeTab?.caption ?? '—'})
-                </div>
-                <ValidationCanvas document={document} groups={activeGroups} />
-              </div>
-              <div className="compare-pane">
-                <div className="compare-pane-title">
-                  ArcGIS Pro 截图 · 摄于{' '}
-                  {validation.reportJson.capturedAt
-                    ? new Date(validation.reportJson.capturedAt).toLocaleTimeString()
-                    : '未知时间'}
-                </div>
-                <img
-                  className="compare-shot"
-                  src={validation.screenshotDataUrl}
-                  alt="ArcGIS Pro 截图"
-                />
-              </div>
-            </div>
-            <div className="compare-meta">
-              <div>安装包:{validation.packagePath}</div>
-              <div>用例目录:{validation.caseDir}</div>
-              <div>提示:截图为整屏捕获,可能包含桌面上的其他窗口。</div>
-            </div>
-          </div>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => {
+                  setDropdown(null);
+                  void exportPackage();
+                }}
+              >
+                导出 add-in 安装包(.esriAddInX)
+              </button>
+              <button
+                onClick={() => {
+                  setDropdown(null);
+                  exportDaml();
+                }}
+              >
+                导出 Config.daml
+              </button>
+              <button
+                onClick={() => {
+                  setDropdown(null);
+                  exportJson();
+                }}
+              >
+                导出布局 JSON
+              </button>
+            </>
+          )}
         </div>
       ) : null}
 
@@ -1441,73 +1377,6 @@ function RibbonGroupGrid({
           </div>
         ) : null}
       </div>
-    </div>
-  );
-}
-
-// 只读画布:验算对比视图左栏,复刻 RibbonGroupGrid 的渲染循环,不带编辑 chrome 与拖拽
-function ValidationCanvas({
-  document,
-  groups,
-}: {
-  document: RibbonDocument;
-  groups: RibbonGroup[];
-}) {
-  if (!groups.length) {
-    return <div className="next-empty-canvas">当前页签是空白。</div>;
-  }
-  return (
-    <div className="next-ribbon-area compare-canvas">
-      {groups.map((group) => {
-        const subgroup = document.subgroups.find((item) => item.id === group.subgroupIds[0]);
-        if (!subgroup) return null;
-        const spec = getGridSpec(subgroup);
-        const controls = getSubgroupControls(document, subgroup.id);
-        const layout = getSubgroupLayout(document, subgroup, 'Large');
-        const layoutIds = new Set(layout.map((item) => item.i));
-        const rendered = controls.filter((control) => layoutIds.has(control.id));
-        const hiddenCount = controls.length - rendered.length;
-        return (
-          <section className="next-group" key={group.id}>
-            <div className="next-group-footer">
-              <div className="next-group-caption">{group.caption}</div>
-            </div>
-            <div
-              className="next-subgroup"
-              style={{ '--group-cols': spec.cols, '--group-rows': spec.rows } as CSSProperties}
-            >
-              <div className="next-grid-board">
-                {rendered.map((control) => (
-                  <div
-                    key={control.id}
-                    className="next-ribbon-control"
-                    style={
-                      {
-                        left: (control.layout?.x ?? 0) * RIBBON_CELL,
-                        top: (control.layout?.y ?? 0) * RIBBON_CELL,
-                        width: (control.layout?.w ?? 1) * RIBBON_CELL,
-                        height: (control.layout?.h ?? 1) * RIBBON_CELL,
-                      } as CSSProperties
-                    }
-                  >
-                    <ControlMock
-                      type={control.type}
-                      caption={control.caption}
-                      size={control.size}
-                      iconFile={control.icon.small || undefined}
-                    />
-                  </div>
-                ))}
-                {hiddenCount > 0 ? (
-                  <div className="hidden-controls-warning">
-                    有 {hiddenCount} 个控件因无空位未显示
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          </section>
-        );
-      })}
     </div>
   );
 }
