@@ -98,6 +98,19 @@
   --z-menu: 1500;
   --z-ghost: 2000;
 
+  /* 画布的纵向下限 = 页签条(页签高 + 下边框) + ribbon 区(内容最小高 + 上下内边距 +
+     悬浮编辑条预留)。画布永远放得下整条 ribbon，控件库只能拿画布「多余的那部分」——
+     spec D6 要的就是这句话里的「多余的」。三处使用点共用这组变量，改一处三处同步，
+     不会各写各的魔数然后漂移。 */
+  --ribbon-min-height: 320px;
+  --ribbon-reserve-top: 40px;
+  --canvas-min-height: calc(
+    var(--h-ctl) + 1px +
+    var(--ribbon-min-height) +
+    var(--sp-5) * 2 +
+    var(--ribbon-reserve-top)
+  );
+
   /* 网格(--cell 与 core/ribbonLayout.ts 的 RIBBON_CELL=32 联动,不可改值) */
   --cell: 32px;
   --grid-line-strong: rgba(25, 118, 210, 0.16);
@@ -577,7 +590,10 @@ body,
 .next-canvas-row {
   flex: 1 1 auto;
   display: flex;
-  min-height: 0;
+  /* 画布的地板：低于 --canvas-min-height 就压变形了（ribbon 放不下要滚动）。控件库的
+     flex-shrink 会先把「超出窗口的那部分」吃回去，所以存了大高度的用户在矮窗口里看到的
+     是钳制后的控件库，而不是被压扁的画布。 */
+  min-height: var(--canvas-min-height);
   overflow: hidden;
 }
 
@@ -649,7 +665,7 @@ body,
   display: flex;
   align-items: stretch;
   gap: var(--sp-4);
-  min-height: 320px;
+  min-height: var(--ribbon-min-height);
   /* 顶部为悬浮编辑条留出空间（约 38px 高）：本容器是 overflow-y:hidden 的裁剪容器，
      分组又紧贴它的顶边，不留空间时编辑条会被整条裁掉（实测 60px 里只剩 9px 可见）。
      只在真的有分组时才预留——空画布上不可能浮出编辑条，白留 40px 是浪费。 */
@@ -659,7 +675,7 @@ body,
 }
 
 .next-ribbon-area:has(.next-group) {
-  padding-top: calc(var(--sp-5) + 40px);
+  padding-top: calc(var(--sp-5) + var(--ribbon-reserve-top));
 }
 
 .next-empty-canvas {
@@ -1427,7 +1443,9 @@ body,
 
 /* ============ 10 底部控件库(紧凑卡:全量类型一次显示,不再渲染 mock 实体) ============ */
 .next-bottom-palette {
-  flex: 0 0 auto;
+  /* flex-shrink 必须为 1：窗口不够高时由它把「画布地板之外放不下的部分」吃回来，
+     用户偏好（内联 height）不被改写，只是这一屏渲染得更矮。 */
+  flex: 0 1 auto;
   min-height: 0;
   /* 高度改由 JSX 内联（用户拖分隔条的值，120–460）。原先写死的 min(40vh, 280px) 上限
      已移除：它按「两行卡片」估的，P5 的卡片带 mock 后会更高，且用户应当能自己分配空间。 */

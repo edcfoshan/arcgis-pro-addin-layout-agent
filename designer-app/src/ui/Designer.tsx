@@ -364,8 +364,16 @@ export default function Designer() {
   const clampPaletteHeight = (value: number) =>
     Math.min(PALETTE_HEIGHT_MAX, Math.max(PALETTE_HEIGHT_MIN, value));
 
+  // 生效高度 = 经过窗口钳制后真正渲染出来的高度。钳制由 CSS 的 flex 完成
+  // （.next-canvas-row 的地板是 --canvas-min-height，控件库 flex-shrink 吸回不足的部分），
+  // 所以状态里的「偏好」可能大于本屏放得下的量。手势以生效高度为锚点，分隔条才 1:1 跟手，
+  // 否则会先空拖一段「偏好 − 可用空间」的距离。偏好只由用户手势改写，窗口尺寸永不写回偏好。
+  const paletteRef = useRef<HTMLElement | null>(null);
+  const effectivePaletteHeight = () =>
+    paletteRef.current?.getBoundingClientRect().height ?? paletteHeight;
+
   const nudgePaletteHeight = (delta: number) =>
-    setPaletteHeight((current) => clampPaletteHeight(current + delta));
+    setPaletteHeight(clampPaletteHeight(Math.round(effectivePaletteHeight()) + delta));
 
   // 拖分隔条改高度。指针捕获挂在分隔条上，pointermove/pointerup 仍会冒泡到 window，
   // 所以监听放 window；pointercancel 也要收，否则触摸被系统接管时监听器会留在 window 上。
@@ -374,7 +382,7 @@ export default function Designer() {
     const target = event.currentTarget;
     const pointerId = event.pointerId;
     const startY = event.clientY;
-    const startHeight = paletteHeight;
+    const startHeight = effectivePaletteHeight();
     target.setPointerCapture(pointerId);
 
     const onMove = (moveEvent: PointerEvent) => {
@@ -1984,6 +1992,7 @@ export default function Designer() {
 
           <section
             className="next-bottom-palette"
+            ref={paletteRef}
             aria-label="控件库"
             style={{ height: paletteHeight, maxHeight: 'none' }}
           >
