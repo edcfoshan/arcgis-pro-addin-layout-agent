@@ -8,10 +8,12 @@
 
 ## 下载安装
 
-到 [Releases](../../releases/latest) 下载 `极思G GISpro 插件设计器_x.y.z_x64-setup.exe`，双击安装即可。
+到 [Releases](../../releases/latest) 下载 `JisigG-GISpro-Addin-Designer_x.y.z_x64-setup.exe`，双击安装即可。
 
 - 仅支持 Windows，按当前用户安装（无需管理员权限）
 - 装好后自带更新：应用内「关于 → 检查更新」可一键升级
+
+> 安装包文件名用 ASCII 而非中文产品名，是为了让 GitHub Releases 的资产名保持稳定、自动更新能正常校验签名。应用内的界面与窗口标题仍是中文。
 
 ## 三步上手
 

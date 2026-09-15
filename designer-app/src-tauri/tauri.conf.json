@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "极思G GISpro 插件设计器",
+  "productName": "JisigG-GISpro-Addin-Designer",
   "version": "1.0.0",
   "identifier": "com.jisig.gispro-addin-designer",
   "build": {

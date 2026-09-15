@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 仓库 `https://github.com/edcfoshan/arcgis-pro-addin-layout-agent`(public,MIT)。**历史含 Esri 提取图标,2026-09-15 已 filter-repo 重写并删库重建**,当前远端历史干净——不要提交任何 Esri 提取资源。本机 `tools/icon-cache-import/` 还有一批散落 Esri PNG,已 gitignore,仅作开发参考。
 
-- `designer-app/` — Tauri 2 + React 19 + TypeScript 桌面设计器(当前主线,产品名/identifier `com.jisig.gispro-addin-designer`,版本 1.0.0)
+- `designer-app/` — Tauri 2 + React 19 + TypeScript 桌面设计器(当前主线,identifier `com.jisig.gispro-addin-designer`,版本 1.0.0)。**productName 是 ASCII `JisigG-GISpro-Addin-Designer`,别改回中文**(原因见「已知约束与坑」);中文只出现在窗口标题 `app.windows[].title` 与界面文案
 - `ribbon-designer/` — 旧版 Web 设计器(Vite,端口 4173),仅 `shared/arcgisProValidation.ts`(打包链仍用)与 `src/core` 逻辑有参考价值
 - `arcgis-pro-validation/GisProRibbonLayoutValidator.AddIn` — .NET 8 验算插件(开发侧装机验算用)
 - `tools/tabler-icons/svg/` — vendored 的 Tabler Icons outline 全集(约 5100 个 SVG,MIT)
@@ -26,7 +26,9 @@ npm run icons                # 生成 icons-tabler.zip(--if-missing 幂等;SVG �
 npx tsc --noEmit             # 类型检查
 npm run build                # tsc + vite build
 npm run tauri build          # 正式版:src-tauri/target/release/ + bundle/nsis;
-                             # 惯例:复制 exe 到仓库根(已 gitignore);需要 TAURI_SIGNING_PRIVATE_KEY 环境变量出更新签名产物
+                             # 惯例:安装包(bundle/nsis/JisigG-GISpro-Addin-Designer_<版本>_x64-setup.exe)复制到 00测试包/(已 gitignore)
+                             # 不做便携版:target/release/designer-app.exe 需带 icons-tabler.zip + 占位 DLL 才能用
+                             # 需要 TAURI_SIGNING_PRIVATE_KEY 环境变量出更新签名产物
 
 # Rust 后端测试(designer-app/src-tauri)
 cargo test --lib                    # 单元测试(图标解析/取名/编码等,快)
@@ -126,6 +128,7 @@ designer.css 全量 token 化(`:root` ~40 语义 token),浅色基准还原 ArcGI
 - 2026-09-15 历史已 filter-repo 重写:icon-cache(Esri 图标)/bin/obj/validation-runs/00测试包/废弃下载服务器文件全清,用户路径已替换;**勿再引用 tools/icon-cache**
 - 里程碑:M1 设计器 ✅ → M2 验算 ✅ → 2026-09-15 大众化 ✅(Tabler 图标/免编译导出/undo/文件菜单/暗色/更新体系,打 v1.0.0)→ M3 命令事件+C# 模式库 → M4 Dockpane → M5 AI 视觉评审
 - **CI 只跑 `cargo test --lib`,两个集成测试会悄悄烂掉**:免编译改造给 `ExportPayload` 加 `daml` 字段时漏改 `export_addin_test.rs`,该测试长期编译不过而无人发现(2026-09-15 修复)。改 Rust 公共结构体后,记得手动 `cargo test --test import_addin_test --test export_addin_test --no-run` 过一遍
+- **productName 必须 ASCII,不能用中文**:GitHub 会转义非 ASCII 资产名(`极思G GISpro 插件设计器_1.0.0_x64-setup.exe` → `G.GISpro._1.0.0_x64-setup.exe`),而 tauri-action 算期望资产名时只做拉丁重音归一化(NFD 去变音符),覆盖不到 CJK,于是对不上→"Signature not found for the updater JSON"→**跳过 `latest.json`,自动更新彻底失效**(tauri-action issue #860,其修复不含 CJK)。2026-09-15 因此把 productName 改成 `JisigG-GISpro-Addin-Designer`;NSIS schema 没有分离「安装包文件名 / 安装后显示名」的选项,所以显示名一并变 ASCII,中文只保留在窗口标题与界面文案
 - **GitHub Actions 不会把 `secrets.GITHUB_TOKEN` 自动注入环境变量**:tauri-action 建 Release 靠它,必须在 step 的 `env` 里显式写 `GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}`,否则构建和签名全成功、最后一步报 `##[error]GITHUB_TOKEN is required`(实修 bug,release.yml)
 - 已打标签的发版要重做(改版本号/换密钥后):`git tag -d vX.Y.Z` + `git push origin :refs/tags/vX.Y.Z` → 在新提交上重打 → 再 push tag;草稿 Release 会随新的 tag 推送重建
 - `designer-app/README.md` 还是 Tauri 脚手架模板原文,未改(根 README.md 才是对外文档)
