@@ -55,7 +55,9 @@ cd tools/ui-check && npm install     # 仅首次,装 playwright 包;它没有 in
 $env:PLAYWRIGHT_DOWNLOAD_HOST='https://cdn.npmmirror.com/binaries/playwright'; npx playwright install chromium
 npm run check                        # 跑全部断言
 npm run check palette                # 按文件名过滤(13 个检查文件,文件名前缀即分组:00/10/20/30/40…)
-npm run check:node                   # 纯 TS 检查(设计器与 shared 两变体的 addInId 必须一致,不需要浏览器)
+npm run check:node                   # 纯 TS 检查(不需浏览器):两变体 addInId 一致、改名不改身份、导入文档缺 metadata.id 必须回填成不同身份
+# ⚠️ run.mjs 在**每次导航前**都 clear localStorage + 钉回浅色 + 复位视口。检查若自己注册 addInitScript,
+#    Playwright 按注册顺序执行 -> 你的脚本会**盖过** runner 的清空(实修过一例泄漏)。要播种请用 URL 门控,见 checks/22-splitter.mjs
 ```
 
 Rust 侧 `REPO_ROOT = CARGO_MANIFEST_DIR/../..` 仅作开发态回退;运行时优先资源目录/AppData。
@@ -91,10 +93,11 @@ RibbonDocument (JSON)
 
 ## UI 设计系统
 
-designer.css 全量 token 化(`:root` ~40 语义 token),浅色基准还原 ArcGIS Pro 本体(Fluent 风);**暗色主题** = `:root[data-theme='dark']` 全量 token 覆盖(13 段),画布 mock 与图标选择器格子保持白底(Tabler PNG 仅浅色版,还原 Pro 画布观感)。铁律:
+designer.css 全量 token 化(`:root` 72 个语义 token),浅色基准还原 ArcGIS Pro 本体(Fluent 风);**暗色主题** = `:root[data-theme='dark']` 覆盖其中 36 条(尺寸类 token 只在 `:root` 定义一次,暗色不重复出值),画布 mock 与图标选择器格子保持白底(Tabler PNG 仅浅色版,还原 Pro 画布观感)。铁律:
 
 - `:root`/`[data-theme='dark']` 之外不允许裸 hex/rgb;新颜色先加 token(两主题都要出值)
 - 底部控件库**双层**:上层特性分类 segment(全部/命令/容器/输入,lucide 图标,选择跨会话记忆 `gispro-ribbon-designer-lib-category`),下层卡片(每类型一卡:Tabler 代表图标 + 类型名 + 常显描述行 + **每个受支持尺寸各一格——格上半是真实控件 mock、下半是可点可拖的尺寸徽章**;点徽章选中尺寸、按住徽章拖出即该尺寸)
+  - 默认高度**内容自适应**:首屏量一次卡片总高并钳制到 min/max;窗口不够高时只在渲染层被钳制,**存储偏好不被改写**。原 `PALETTE_HEIGHT_DEFAULT` 常量已删
   - 2026-09-15 改:原为「紧凑卡不渲染 mock 实体」,理由是紧凑卡要全量类型一次显示、渲染实体塞不下。画布与控件库改为可拖拽分隔条(记忆键 `gispro-ribbon-designer-palette-height`)后控件库能拿到更多高度,前提不再成立,故改为渲染真实 mock。**别再改回「卡片不渲染 mock」**
   - 占格用 `.footprint-chip` 等比图示表达(一个网格单位 6px),文字占格保留在 `title`/`aria-label` 供读屏
 - `--cell` 恒 32px 不可改;`--group-cols` 必须同时设在组元素与网格元素(漏传组元素会按默认列数渲染导致溢出,实修 bug dd37c532)
@@ -125,7 +128,7 @@ designer.css 全量 token 化(`:root` ~40 语义 token),浅色基准还原 ArcGI
 **「axe 违规为 0」≠「无障碍做完了」**:axe 只查它认识的那几类规则,下面这些真实缺陷它一条都报不出来。别拿「扫过 axe 全绿」当完工证据:
 
 - 占格图示边框对比度(2.00:1 浅 / 2.25:1 暗,低于 WCAG 1.4.11 的 3:1)——2026-09-15 已修(边框改 `--ink-3`)并纳入 `tools/ui-check/checks/40-library-mock.mjs`,该断言从解析后的颜色自算比值,**浅色与暗色两档都要咬住**
-- 画布页签条用了 `role="tab"`/`role="tablist"`,但**没有方向键导航、也没做 roving tabindex**,不合 ARIA tabs pattern(**仍未修**)
+- 画布页签条原先是「`role="tab"`/`role="tablist"` 承诺了没实现的行为」(无方向键、无 roving tabindex)。2026-09-16 **已补全 ARIA tabs pattern**:`.next-ribbon-area` 带 `role="tabpanel"`+`id`,页签带 `aria-controls`、roving tabindex 与 ←/→/Home/End(见 `handleCanvasTabKeyDown`),`checks/20-canvas-tabs.mjs` 有断言守着
 - 分隔条的 `aria-valuenow` 报的是用户偏好而非当前渲染高度——有意的、已在代码注释里写明理由的取舍(**未改**)
 - 侧栏的「项目行 / 项目→页签」两级导航都是 `<div onClick>`(`.next-project-item`/`.next-tab-item`,无 `role`/`tabIndex`/键盘处理)——切项目、切非激活项目的页签仍只有鼠标走得到(画布页签条只覆盖当前激活项目)(**仍未修**;这两级导航的来源早于 2026-09-15 那轮 UI 工作,不在该轮范围内)
 - 项目改名入口原先只有 `.next-project-name` 的 `onDoubleClick`,键盘用户改不了名(WCAG 2.1.1)——2026-09-15 **已修**:该元素补上 `role="button"`/`tabIndex={0}`,**按 F2**(Windows 重命名约定;Enter/Space 是 role=button 的契约)进改名态(该元素是 span,够不到 `.next-shell button:focus-visible`,故 `.next-project-name:focus-visible` 自出一圈焦点环),`checks/12-project-rename.mjs` 有断言守着,**拿掉 F2/tabIndex 就会 FAIL,别删**
@@ -147,7 +150,7 @@ designer.css 全量 token 化(`:root` ~40 语义 token),浅色基准还原 ArcGI
 ## 发布与更新
 
 - updater:tauri-plugin-updater,`dialog:false` 自建 UI(关于弹窗检查更新+下载进度+relaunch;启动静默检查可关,横幅提示);endpoints=GitHub Releases latest.json + jsdelivr @main 镜像(回写 latest.json 到仓库根的是 `sync-latest-json.yml`)
-- 签名:私钥 `~/.tauri/jisig-designer.key`(**已设口令**;口令只放 GitHub Secrets 和你的密码管理器,不要写进仓库),公钥在 tauri.conf.json;CI 需 Secrets:`TAURI_SIGNING_PRIVATE_KEY`/`TAURI_SIGNING_PRIVATE_KEY_PASSWORD`。**私钥或口令丢失就无法再发更新,务必离线备份两者**;换口令只能重新生成密钥对(tauri 不支持给已有密钥改密码),会换掉公钥,需同步更新 tauri.conf.json 的 pubkey 与两个 Secrets
+- 签名:私钥在 `C:\Users\Administrator\.tauri\jisig-designer.key`(**已设口令**;口令只放 GitHub Secrets 和你的密码管理器,不要写进仓库),公钥在 tauri.conf.json。**发版签名实际由 CI 完成**(`release.yml` 从 Secrets 注入),本机只在要出签名测试包时才设那两个环境变量。⚠️ **该目录在 Git Bash 里看不到**(`ls`/`test -d`/`find` 都报不存在),核文件存在性要用 PowerShell 或 node——2026-09-16 曾因此误报「私钥丢失」;CI 需 Secrets:`TAURI_SIGNING_PRIVATE_KEY`/`TAURI_SIGNING_PRIVATE_KEY_PASSWORD`。**私钥或口令丢失就无法再发更新,务必离线备份两者**;换口令只能重新生成密钥对(tauri 不支持给已有密钥改密码),会换掉公钥,需同步更新 tauri.conf.json 的 pubkey 与两个 Secrets
 - CI:`build.yml`(push/PR:gen-png → npm ci → tsc → cargo test --lib;**只跑 `--lib`,两个集成测试不在 CI 里**);`release.yml`(tag v*:tauri-action 出 NSIS+签名产物+latest.json,草稿 Release);`sync-latest-json.yml`(监听 release published,把 latest.json 回写仓库根供 jsdelivr @main 镜像——**草稿 Release 的资产下载不到,所以同步不能放在 release.yml 里**)
 - 发布流程:改版本(package.json/tauri.conf.json/Cargo.toml 三处)→ commit → tag vX.Y.Z → push tag → CI 出包 → 编辑 Release 说明后发布
 - bundle:仅 nsis(Windows),`installMode: currentUser`,resources 平铺 exe 同级(icons-tabler.zip + 占位 DLL/deps.json 映射);`createUpdaterArtifacts: true`
