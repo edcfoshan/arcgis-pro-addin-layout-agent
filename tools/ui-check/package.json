@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "check": "node run.mjs",
-    "check:node": "node --experimental-strip-types node-checks/addin-id.mts"
+    "check:node": "node --experimental-strip-types node-checks/addin-id.mts && node --experimental-strip-types node-checks/daml-group-order.mts"
   },
   "dependencies": {
     "playwright": "^1.63.0"

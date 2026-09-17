@@ -259,17 +259,6 @@ const createLeafControl = (
   };
 };
 
-const sortControlsForGroup = (controls: RibbonControl[]) =>
-  [...controls].sort((left, right) => {
-    const ly = left.layout?.y ?? Number.MAX_SAFE_INTEGER;
-    const ry = right.layout?.y ?? Number.MAX_SAFE_INTEGER;
-    if (ly !== ry) return ly - ry;
-    const lx = left.layout?.x ?? Number.MAX_SAFE_INTEGER;
-    const rx = right.layout?.x ?? Number.MAX_SAFE_INTEGER;
-    if (lx !== rx) return lx - rx;
-    return left.id.localeCompare(right.id);
-  });
-
 const buildArtifactsModel = (document: RibbonDocument, options: Required<ArcGISProValidationOptions>) => {
   const projectToken = sanitizeToken(options.assemblyName.replace(/\./g, '_'), 'RibbonLayoutValidator');
   const generatedGroups: GeneratedGroup[] = [];
@@ -581,16 +570,18 @@ const renderLeafControl = (control: GeneratedLeafControl) => {
         .filter(Boolean)
         .join('\n');
     case 'comboBox':
+      // isReadOnly 会让 Pro 把下拉框渲染成置灰不可交互;占位类自带演示选项,保持可点开
       return [
-        `<comboBox id="${control.id}" caption="${caption}" className="${className}" keytip="${keytip}" isEditable="false" isReadOnly="true" sizeString="${xmlEscape(control.caption)}"${imageAttrs}>`,
+        `<comboBox id="${control.id}" caption="${caption}" className="${className}" keytip="${keytip}" isEditable="false" isReadOnly="false" sizeString=""${imageAttrs}>`,
         tooltip ? indent(1, tooltip) : '',
         `</comboBox>`,
       ]
         .filter(Boolean)
         .join('\n');
     case 'editBox':
+      // 内容(sizeString)留空,标题走 editHint 作灰色水印——框是待输入状态,不与名字重复
       return [
-        `<editBox id="${control.id}" caption="${caption}" className="${className}" keytip="${keytip}" sizeString="${xmlEscape(control.editHint || control.caption)}" editHint="${xmlEscape(control.editHint || control.caption)}"${imageAttrs}>`,
+        `<editBox id="${control.id}" caption="${caption}" className="${className}" keytip="${keytip}" sizeString="" editHint="${xmlEscape(control.editHint || control.caption)}"${imageAttrs}>`,
         tooltip ? indent(1, tooltip) : '',
         `</editBox>`,
       ]
@@ -668,11 +659,20 @@ const renderConfigDaml = (
     })
     .join('\n');
 
+  // Pro 对分组按声明顺序做列优先流式渲染,设计器画布也按 controlIds 声明顺序派生位置
+  // (core/ribbonLayout.ts flowLayout)。DAML 里的引用顺序必须原样保持声明顺序——
+  // 任何重排(比如按存储坐标 y/x 排序)都会让 Pro 里的实际排布与设计器所见不一致。
+  const controlById = new Map(document.controls.map((control) => [control.id, control]));
+  const subgroupByRefId = new Map(
+    document.subgroups.map((subgroup) => [createRefId(model.projectToken, subgroup.id), subgroup]),
+  );
+
   const groups = model.generatedGroups
     .map((group) => {
-      const relatedControls = sortControlsForGroup(
-        document.controls.filter((control) => group.subgroupIds.includes(createRefId(model.projectToken, control.subgroupId))),
-      );
+      const relatedControls = group.subgroupIds
+        .flatMap((refId) => subgroupByRefId.get(refId)?.controlIds ?? [])
+        .map((controlId) => controlById.get(controlId))
+        .filter(Boolean) as RibbonControl[];
       const directItems = relatedControls
         .map((control) => model.leafByControlId.get(control.id))
         .filter(Boolean) as GeneratedGroupItem[];

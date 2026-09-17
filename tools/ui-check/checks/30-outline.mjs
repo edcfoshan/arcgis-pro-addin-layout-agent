@@ -18,11 +18,11 @@ export default async function (page) {
   const gridBox = await grid.boundingBox();
   ok(gridBox, '画布上应出现分组网格（拖拽落点）');
 
+  // 先在控件库左栏选中「按钮」，详情区第一个尺寸徽章就是拖拽源
+  await page.locator('.palette-list-item', { hasText: '按钮' }).first().click();
+  await page.waitForTimeout(150);
   const badge = page
-    .locator('.library-compact-card')
-    .filter({ hasText: '按钮' })
-    .first()
-    .locator('.library-compact-sizes button')
+    .locator('.palette-detail .palette-size-cell button')
     .first();
   await badge.scrollIntoViewIfNeeded();
   const badgeBox = await badge.boundingBox();
@@ -122,9 +122,10 @@ export default async function (page) {
   // ===== 滚动定位：控件被滚出画布视野时，点树里那一条要把它找回来 =====
   // 「控件在视野内」在没溢出时恒真、断言等于没写，故先把画布横向撑开：再加 7 个分组，
   // 然后把 ribbon 条带滚到最右 —— 第一个分组连同它的控件就出了视野。
+  // 流式渲染后空分组宽度随内容收窄（约 100px），7 个可能撑不出溢出，加到 18 个保底。
   await page.keyboard.press('Escape');
   await page.waitForTimeout(200);
-  for (let i = 0; i < 7; i += 1) {
+  for (let i = 0; i < 18; i += 1) {
     await page.getByRole('button', { name: '新增分组' }).first().click();
     await page.waitForTimeout(120);
   }

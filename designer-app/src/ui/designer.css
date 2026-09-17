@@ -44,6 +44,7 @@
   --accent-soft-deep: #d6e9fb;
   --accent-focus: rgba(25, 118, 210, 0.24);
   --focus-ring: #1565c0; /* 焦点环实心色,对全部浅色底 ≥4.79:1(WCAG 1.4.11 需 3:1) */
+  --on-accent: #ffffff;
 
   /* 危险系 */
   --danger: #b3261e;
@@ -75,6 +76,7 @@
 
   /* 圆角与控件高度 */
   --radius: 4px;
+  --h-titlebar: 40px;
   --h-ctl: 28px;
   --h-ctl-sm: 24px;
   --h-ctl-xs: 20px;
@@ -91,6 +93,10 @@
   --shadow-3: 0 18px 48px rgba(15, 23, 42, 0.22);
 
   /* z-index */
+  /* 三栏停靠层叠:左右停靠栏(项目/文档结构)最上层,控件库中层,画布最底层。
+     几何上三块互不重叠;顺序在拖拽控件跨板块、弹层出现时生效。 */
+  --z-dock-side: 30;
+  --z-dock-palette: 20;
   --z-pop: 20;
   --z-warn: 30;
   --z-toast: 1000;
@@ -269,34 +275,62 @@ body,
 
 /* ============ 03 标题栏 ============ */
 .next-titlebar {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--sp-3);
   flex: 0 0 auto;
-  height: 32px;
-  padding: 0 var(--sp-2);
-  gap: var(--sp-2);
+  height: var(--h-titlebar);
+  padding: 0 var(--sp-4);
   border-bottom: 1px solid var(--border);
   background: var(--bg-chrome);
+}
+
+.titlebar-side {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.titlebar-side-left {
+  justify-content: flex-start;
+  gap: var(--sp-3);
+}
+
+.titlebar-side-right {
+  justify-content: flex-end;
+  gap: var(--sp-3);
+}
+
+.titlebar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
 }
 
 .window-handle {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 30px;
   flex: 0 0 auto;
   color: var(--ink-3);
   font-size: var(--fs-base);
 }
 
 .window-app-icon {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   object-fit: contain;
 }
 
 .window-title {
-  flex: 1 1 auto;
   min-width: 0;
   text-align: center;
-  color: var(--ink-2);
-  font-size: var(--fs-lg);
+  color: var(--ink);
+  font-size: var(--fs-base);
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -306,6 +340,7 @@ body,
 /* 模拟 Fluent 标题栏按钮:最小化 / 最大化 / 关闭 */
 .window-buttons {
   display: flex;
+  gap: var(--sp-1);
   width: auto;
 }
 
@@ -314,11 +349,10 @@ body,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
+  width: 36px;
   height: 30px;
   padding: 0;
-  border: none;
-  border-radius: 0;
+  border-radius: var(--radius);
   background: transparent;
   cursor: pointer;
   transition: background-color var(--t-fast) var(--ease);
@@ -326,15 +360,15 @@ body,
 
 .window-buttons button:nth-child(1)::before {
   content: '';
-  width: 10px;
+  width: 11px;
   height: 1px;
   background: var(--ink-2);
 }
 
 .window-buttons button:nth-child(2)::before {
   content: '';
-  width: 9px;
-  height: 9px;
+  width: 10px;
+  height: 10px;
   border: 1px solid var(--ink-2);
 }
 
@@ -342,7 +376,7 @@ body,
 .window-buttons button:nth-child(3)::after {
   content: '';
   position: absolute;
-  width: 11px;
+  width: 12px;
   height: 1px;
   background: var(--ink-2);
 }
@@ -377,13 +411,16 @@ body,
 }
 
 .next-tab-sidebar {
-  width: 172px;
+  width: 172px; /* JSX 未存宽度偏好时的回退值,与 PROJ_WIDTH_DEFAULT 一致 */
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--border);
   background: var(--bg-sunken);
   overflow-y: auto;
+  /* 三栏停靠层叠:左右栏纵贯到底,居最上层(拖拽跨板/弹层时压过控件库与画布) */
+  position: relative;
+  z-index: var(--z-dock-side);
 }
 
 .next-tab-sidebar-head {
@@ -428,6 +465,9 @@ body,
 
 .next-project-item.active {
   color: var(--accent-ink);
+  /* 激活项目左缘主色条:侧栏两级导航里一眼认出当前项目 */
+  box-shadow: inset 2px 0 0 var(--accent);
+  background: var(--accent-soft);
 }
 
 .next-project-chevron {
@@ -453,12 +493,23 @@ body,
 .next-project-name {
   flex: 1 1 auto;
   min-width: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* 名称可聚焦（F2 进改名态）。它是 span，够不到 .next-shell button:focus-visible，得自己出焦点环 */
+.next-shell .next-project-name:hover {
+  background: transparent;
+}
+
+/* 名称可聚焦（点击切换项目，F2 进改名态）。 */
 .next-project-name:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: -1px;
@@ -524,9 +575,17 @@ body,
   border: 1px solid transparent;
   border-radius: var(--radius);
   background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.next-shell .next-tab-item .next-tab-name:hover:not(:focus) {
+  background: transparent;
 }
 
 .next-tab-name:focus {
@@ -596,6 +655,9 @@ body,
 .next-canvas-row {
   flex: 1 1 auto;
   display: flex;
+  /* 三栏停靠层叠的底层:侧栏(30) > 控件库(20) > 画布(0) */
+  position: relative;
+  z-index: 0;
   /* 画布的地板：低于 --canvas-min-height 就压变形了（ribbon 放不下要滚动）。控件库的
      flex-shrink 会先把「超出窗口的那部分」吃回去，所以存了大高度的用户在矮窗口里看到的
      是钳制后的控件库，而不是被压扁的画布。 */
@@ -607,7 +669,7 @@ body,
   flex: 1 1 auto;
   min-width: 0;
   overflow: auto;
-  border-right: 1px solid var(--border);
+  /* 右缘不再贴属性栏:右栏已挪为纵贯停靠栏,与中列之间由竖分隔条分界 */
   background: var(--bg-canvas);
 }
 
@@ -617,11 +679,12 @@ body,
    .next-shell button:hover (0,2,1) 会分别压过裸 .next-canvas-tab (0,1,0) 与
    .next-canvas-tab.active (0,2,0)，导致未选中页签拿到 --bg-surface 底 + 完整描边、
    悬浮还会吃掉选中态底色（与 .next-tab-delete / .next-ribbon-control 同一写法）。 */
-.next-canvas-tabs {
+/* 板块角标签与页签条同行;legend 放在 tablist 外面(tablist 的子元素必须是 tab) */
+.next-canvas-tabsbar {
   display: flex;
   align-items: flex-end;
-  gap: var(--sp-1);
-  padding: 0 var(--sp-5);
+  gap: var(--sp-4);
+  padding-left: var(--sp-4);
   border-bottom: 1px solid var(--border);
   background: var(--bg-chrome);
   flex: 0 0 auto;
@@ -630,6 +693,16 @@ body,
      无需 z-index，而编辑条的 --z-pop 仍高于它。底色必须不透明，否则会透出下层内容。 */
   position: sticky;
   top: 0;
+  z-index: 1;
+}
+
+.next-canvas-tabs {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--sp-1);
+  padding: 0 var(--sp-5);
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .next-shell .next-canvas-tab {
@@ -659,6 +732,8 @@ body,
   background: var(--bg-surface);
   color: var(--accent-ink);
   font-weight: 600;
+  /* 激活页签底部主色短线,呼应 Pro 本体的选中页签强调 */
+  box-shadow: inset 0 -2px 0 var(--accent);
 }
 
 .next-canvas-tab-keytip {
@@ -668,6 +743,7 @@ body,
 }
 
 .next-ribbon-area {
+  position: relative;
   display: flex;
   align-items: stretch;
   gap: var(--sp-4);
@@ -704,6 +780,26 @@ body,
   border-radius: var(--radius) var(--radius) 0 0;
   background: var(--bg-surface);
   box-shadow: var(--shadow-1);
+}
+
+/* 分组顶部主色细线:画布上一眼区分分组边界,悬停/聚焦时加亮 */
+.next-group::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: linear-gradient(90deg, var(--accent), var(--accent-soft-deep));
+  opacity: 0.45;
+  transition: opacity var(--t-fast) var(--ease);
+  pointer-events: none;
+}
+
+.next-group:hover::before,
+.next-group:focus-within::before {
+  opacity: 1;
 }
 
 /* 分组编辑条：平时隐藏，悬停或获得焦点时浮现在分组框「上方外部」。
@@ -815,7 +911,7 @@ body,
   font-size: var(--fs-base);
 }
 
-.next-group-batch {
+.next-group-cols {
   display: inline-flex;
   align-items: center;
   gap: var(--sp-2);
@@ -823,10 +919,46 @@ body,
   font-size: var(--fs-sm);
 }
 
-.next-group-batch button {
+.next-group-cols button {
   min-height: 20px;
   padding: 0 var(--sp-3);
   font-size: var(--fs-sm);
+}
+
+.next-group-cols button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* 分组拖拽排序:指示线画在落点列边界,被拖分组半透明 */
+.next-group-drop-line {
+  position: absolute;
+  top: var(--sp-3);
+  bottom: var(--sp-3);
+  width: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  pointer-events: none;
+  z-index: 6;
+}
+
+.next-group.group-drag-source {
+  opacity: 0.4;
+}
+
+.group-drag-handle {
+  cursor: grab;
+}
+
+.group-drag-handle:active {
+  cursor: grabbing;
+}
+
+/* 固定计数宽度,连点 +/- 时数字不会推挤按钮 */
+.next-group-cols span {
+  min-width: 34px;
+  text-align: center;
 }
 
 /* WCAG 2.5.8(AA):紧凑控件的视觉尺寸保持不变,用居中覆盖层把点击热区补到 24×24。
@@ -835,7 +967,7 @@ body,
 .next-tab-delete,
 .next-project-chevron,
 .next-group-tools button,
-.next-group-batch button {
+.next-group-cols button {
   position: relative;
 }
 
@@ -843,7 +975,7 @@ body,
 .next-tab-delete::after,
 .next-project-chevron::after,
 .next-group-tools button::after,
-.next-group-batch button::after {
+.next-group-cols button::after {
   content: '';
   position: absolute;
   top: 50%;
@@ -880,12 +1012,25 @@ body,
   width: calc(var(--group-cols) * var(--cell));
   height: calc(var(--group-rows) * var(--cell));
   border-radius: 0 0 var(--radius) var(--radius);
+  /* 流式布局无固定列：底纹只保留 3 行的横向行带，纵向列线随内容宽度自然消失 */
   background:
     linear-gradient(var(--grid-line-strong) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid-line-weak) 1px, transparent 1px),
+    repeating-linear-gradient(180deg, var(--grid-line-weak) 0 1px, transparent 1px var(--cell)),
     var(--bg-surface);
-  background-size: var(--cell) var(--cell), var(--cell) var(--cell), auto;
+  background-size: 100% var(--cell), auto, auto;
   overflow: hidden;
+}
+
+.next-grid-empty-hint {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--sp-3);
+  color: var(--ink-4);
+  font-size: var(--fs-sm);
+  text-align: center;
+  pointer-events: none;
 }
 
 /* 分隔条的 landmark 外壳：它自己只是 role=separator，成不了 landmark，
@@ -926,6 +1071,37 @@ body,
   outline-offset: -1px;
 }
 
+/* 三栏停靠的竖向分隔条(左右停靠栏宽度)。热区同样补到 24px,左右各借 10px。 */
+.next-vsplit-dock {
+  flex: 0 0 auto;
+  display: flex;
+}
+
+.next-vsplit {
+  position: relative;
+  flex: 0 0 auto;
+  width: 4px;
+  border-left: 1px solid var(--border);
+  background: var(--bg-chrome);
+  cursor: ew-resize;
+}
+
+.next-vsplit::after {
+  content: '';
+  position: absolute;
+  inset: 0 -10px;
+}
+
+.next-vsplit:hover,
+.next-vsplit:focus-visible {
+  background: var(--accent-soft);
+}
+
+.next-vsplit:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -1px;
+}
+
 /* ============ 07 画布控件 mock ============ */
 /* 控件面:不透明浅渐变 + 独立细边,网格线不再透出(Pro 控件面板观感) */
 .next-shell .next-ribbon-control {
@@ -939,6 +1115,11 @@ body,
   background: linear-gradient(180deg, var(--bg-surface) 0, var(--bg-ctl) 100%);
   color: var(--ink-2);
   overflow: hidden;
+  /* mock 宽度可按内容撑破名义格（min-width:max-content），溢出方向必须固定向右贴格首，
+     不能吃 button 的 UA 居中行为——否则看起来像左右各留一截、与 Pro 的紧挨排列不符 */
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-start;
   transition:
     background-color var(--t-fast) var(--ease),
     border-color var(--t-fast) var(--ease),
@@ -959,7 +1140,7 @@ body,
 .next-shell .next-ribbon-control.selected {
   border-color: var(--accent);
   background: var(--accent-soft);
-  box-shadow: inset 0 0 0 1px var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 2px var(--accent-soft-deep);
   color: var(--accent-ink);
 }
 
@@ -988,6 +1169,9 @@ body,
 .next-control-mock.size-middle {
   flex-direction: row;
   gap: 5px;
+  /* Pro 的按钮内容贴格首（图标在左），格尾余量成为与下一枚按钮的自然间距 */
+  justify-content: flex-start;
+  padding-left: 5px;
 }
 
 .next-control-mock.size-small {
@@ -1028,11 +1212,16 @@ body,
   font-size: var(--fs-sm);
   line-height: 1.15;
   text-align: center;
+  /* Pro 的按钮宽度随文字增长(2026-09-16 实机截图),设计器 mock 文字不再折行压窄 */
+  white-space: nowrap;
 }
 
-.next-control-mock.size-middle .pro-label {
-  max-width: 42px;
-  text-align: left;
+/* 宽度随内容走:限画布与控件库预览;拖拽幽灵保持 96×96 契约(41 号检查守着) */
+.next-ribbon-control .next-control-mock.size-middle,
+.next-ribbon-control .next-control-mock.size-large,
+.library-mock-stage .next-control-mock.size-middle,
+.library-mock-stage .next-control-mock.size-large {
+  min-width: max-content;
 }
 
 /* 兜底图标统一单色深灰蓝(有真 Pro 图标时 ProImage 优先) */
@@ -1121,6 +1310,30 @@ body,
   background: var(--bg-surface);
 }
 
+/* 画廊收起态(Pro 实测:当前图块+文字+下拉箭头的窄条,图块阵列在下拉展开后) */
+.pro-gallery-closed {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 3px 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg-surface);
+}
+
+.pro-gallery-closed .tone-0 {
+  width: 18px;
+  height: 16px;
+  flex: 0 0 18px;
+  border: 1px solid var(--border);
+  border-radius: 1px;
+  background: var(--bg-surface);
+}
+
+.pro-gallery-closed .pro-label {
+  white-space: nowrap;
+}
+
 .next-gallery.size-large .pro-gallery-strip {
   grid-template-columns: repeat(3, 20px) 12px;
 }
@@ -1189,33 +1402,6 @@ body,
   padding-left: 0;
 }
 
-/* 工具板:2×2 带边格,hover 有浅蓝反馈 */
-.pro-tool-palette {
-  display: grid;
-  grid-template-columns: repeat(2, 20px);
-  gap: 3px;
-  padding: var(--sp-2);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
-  background: var(--bg-surface);
-}
-
-.pro-tool-palette > * {
-  display: grid;
-  place-items: center;
-  width: 20px;
-  height: 20px;
-  border: 1px solid var(--border-faint);
-  border-radius: 1px;
-  background: var(--bg-surface);
-  color: var(--icon-ink);
-  transition: background-color var(--t-fast) var(--ease);
-}
-
-.pro-tool-palette > *:hover {
-  background: var(--accent-soft);
-}
-
 /* 图标加载失败/无 Tauri 环境的占位灰块 */
 .pro-icon-placeholder {
   display: block;
@@ -1271,21 +1457,15 @@ body,
 }
 
 /* ============ 08 拖拽反馈 ============ */
-.next-drop-preview {
+/* 流式布局的拖拽插入指示线：竖线标出插入点（目标控件左缘/末尾右缘） */
+.next-drop-line {
   position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
   z-index: var(--z-pop);
   pointer-events: none;
-  box-sizing: border-box;
-}
-
-.next-drop-preview.valid {
-  border: 2px solid var(--accent);
-  background: var(--accent-focus);
-}
-
-.next-drop-preview.invalid {
-  border: 2px solid var(--danger);
-  background: var(--danger-glow);
+  background: var(--accent);
 }
 
 .drag-ghost {
@@ -1298,6 +1478,11 @@ body,
   background: var(--bg-surface);
   box-shadow: var(--shadow-2);
   animation: pro-ghost-in 80ms var(--ease);
+}
+
+.next-shell.drag-outside .drag-ghost {
+  border-color: var(--danger-border);
+  opacity: 0.65;
 }
 
 .drag-ghost .next-control-mock {
@@ -1320,15 +1505,18 @@ body,
 
 /* ============ 09 右侧属性面板 ============ */
 .next-side {
-  width: 320px;
+  width: 320px; /* JSX 未存宽度偏好时的回退值,与 STRUCT_WIDTH_DEFAULT 一致 */
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   gap: var(--sp-4);
   padding: var(--sp-4);
-  border-right: 0;
+  /* 三栏停靠:右栏已是纵贯停靠栏,左缘与中列之间由竖分隔条分界 */
+  border-left: 1px solid var(--border);
   background: var(--bg-sunken);
   overflow-y: auto;
+  position: relative;
+  z-index: var(--z-dock-side);
 }
 
 /* 右栏结构树 */
@@ -1581,103 +1769,152 @@ body,
   min-width: var(--h-ctl);
 }
 
-/* ============ 10 底部控件库(紧凑卡:每类型一卡,三尺寸各带真实 mock 预览) ============ */
+/* ============ 10 底部控件库(D 形态:左类型列表 + 右全尺寸大详情) ============ */
 .next-bottom-palette {
+  /* 三栏停靠层叠:控件库居中层,高于画布、低于左右停靠栏 */
+  position: relative;
+  z-index: var(--z-dock-palette);
   /* flex-shrink 必须为 1：窗口不够高时由它把「画布地板之外放不下的部分」吃回来，
      用户偏好（内联 height）不被改写，只是这一屏渲染得更矮。 */
   flex: 0 1 auto;
   min-height: 0;
-  /* 高度改由 JSX 内联（用户拖分隔条的值，120–460）。原先写死的 min(40vh, 280px) 上限
-     已移除：它按「两行卡片」估的，P5 的卡片带 mock 后会更高，且用户应当能自己分配空间。 */
   max-height: none;
   /* 必须显式 border-box：本仓库没有全局 box-sizing 重置，默认 content-box，
-     height:320 会被 1px 边框 + 上下内边距撑成 335，拖拽和断言都对不上实际高度。 */
+     height:296 会被 1px 边框 + 内边距撑大，拖拽和断言都对不上实际高度。 */
   box-sizing: border-box;
   overflow-x: auto;
   overflow-y: auto;
   border-top: 1px solid var(--border);
   background: var(--bg-chrome);
-  padding: var(--sp-3) var(--sp-5) var(--sp-4);
+  padding: var(--sp-4) var(--sp-5) var(--sp-4);
   display: flex;
   flex-direction: column;
-  gap: var(--sp-3);
 }
 
-/* 控件库上层:特性分类 segment(全部/命令/容器/输入),与设置弹窗分段同语言 */
-.next-palette-tabs {
-  display: inline-flex;
-  gap: var(--sp-2);
+/* 板块角标签:轻量标注「这是什么面板」,不占整行高度。
+   对齐按容器拆分:palette 是纵向 flex(靠左),tabsbar 是横向 flex(垂直居中)。 */
+.next-panel-legend {
   flex: 0 0 auto;
+  font-size: var(--fs-xs);
+  line-height: 1;
+  color: var(--ink-3);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-soft);
+  border-radius: 3px;
+  padding: 3px 9px;
+  letter-spacing: 0.08em;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
-.next-palette-tabs button {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-2);
-  min-height: var(--h-ctl-sm);
-  padding: 0 var(--sp-4);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg-surface);
-  color: var(--ink-2);
-  font-size: var(--fs-base);
+.next-bottom-palette > .next-panel-legend {
+  align-self: flex-start;
 }
 
-.next-palette-tabs button:hover {
-  border-color: var(--accent);
-  color: var(--accent-ink);
+.next-canvas-tabsbar .next-panel-legend {
+  align-self: center;
 }
 
-.next-palette-tabs button.active {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  color: var(--accent-ink);
+/* 浮在面板上边框的变体：注意 palette 本体是滚动容器（overflow auto），
+   absolute 负偏移会被裁掉、还会随滚动走，所以滚动容器里不用这个变体，
+   控件库的 legend 走普通文档流一行。 */
+.next-panel-legend.floating {
+  position: absolute;
+  top: -9px;
+  left: var(--sp-5);
+  z-index: 2;
+  align-self: auto;
+  background: var(--bg-app);
 }
 
-.next-palette-cards {
+.palette-split {
+  flex: 1 1 auto;
+  min-height: 0;
   display: flex;
-  gap: var(--sp-4);
-  align-items: stretch;
-  flex-wrap: wrap;
   min-width: 0;
 }
 
-.library-compact-card {
-  display: grid;
-  gap: var(--sp-2);
-  padding: var(--sp-3) var(--sp-4);
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius);
-  background: var(--bg-surface);
-  transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+/* 左栏:按交互特性分组的类型列表 */
+.palette-list {
+  width: 190px;
+  flex: 0 0 auto;
+  overflow-y: auto;
+  border-right: 1px solid var(--border-soft);
+  padding: var(--sp-2) 0 var(--sp-4);
 }
 
-.library-compact-card:hover {
-  border-color: var(--border);
-  box-shadow: var(--shadow-1);
+.palette-cat-head {
+  padding: var(--sp-4) var(--sp-5) var(--sp-2);
+  color: var(--ink-4);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.08em;
 }
 
-.library-compact-head {
+/* 选择器带 .next-shell 前缀压过通用按钮规则(同 .next-canvas-tab 的写法) */
+.next-shell .palette-list-item {
   display: flex;
   align-items: center;
   gap: var(--sp-3);
+  width: 100%;
+  min-height: 0;
+  padding: var(--sp-2) var(--sp-5);
+  border: 0;
+  border-left: 2px solid transparent;
+  border-radius: 0;
+  background: none;
   color: var(--ink-2);
   font-size: var(--fs-base);
+  text-align: left;
+  cursor: pointer;
+}
+
+.next-shell .palette-list-item:hover {
+  background: var(--bg-sunken);
+}
+
+.palette-list-item.active {
+  border-left-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
   font-weight: 600;
 }
 
-/* 卡上常显的类型说明(原来只有悬停 title 才见)。
-   卡片加了 mock 会变宽，故上限从 180px 放宽到 260px，描述行不再被截断。 */
-.library-compact-desc {
-  margin: 0;
-  max-width: 260px;
+/* 右栏:选中类型的全尺寸真实大图详情 */
+.palette-detail {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--sp-2) var(--sp-6) var(--sp-4);
+}
+
+.palette-detail-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-5);
+}
+
+.palette-detail-thumb {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+}
+
+.palette-detail-name {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.palette-detail-desc {
+  margin-top: 2px;
   color: var(--ink-3);
   font-size: var(--fs-sm);
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 
 .library-compact-icon {
@@ -1692,19 +1929,73 @@ body,
   background: var(--border-strong);
 }
 
-/* 三个尺寸横向摊开，每格：上为真实 mock、下为可点/可拖的尺寸徽章。
+/* 尺寸横向摊开，每格：上为真实 mock 大图、下为可点/可拖的尺寸徽章。
    点击或拖出任一格即产出该尺寸的控件。 */
-.library-compact-sizes {
+.palette-detail-sizes {
   display: flex;
-  gap: var(--sp-4);
+  flex-wrap: wrap;
+  gap: var(--sp-5);
   align-items: flex-end;
+  margin: var(--sp-4) 0;
 }
 
-.library-mock-cell {
+.palette-size-cell {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--sp-2);
+}
+
+/* 详情舞台固定高度，保证不同尺寸的徽章底部对齐、行高一致；
+   px 角标标注 mock 的真实渲染尺寸（1 格 = 32px）。 */
+.palette-detail-stage {
+  position: relative;
+  box-sizing: border-box;
+  min-height: 126px;
+  min-width: 96px;
+  padding: var(--sp-3) var(--sp-5);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--radius);
+  background: var(--bg-ctl);
+}
+
+.palette-stage-px {
+  position: absolute;
+  right: 6px;
+  bottom: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-4);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 详情尾行:导出后的 DAML size 值 + 操作提示 */
+.palette-detail-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  margin: 0;
+  color: var(--ink-4);
+  font-size: var(--fs-xs);
+}
+
+.palette-insert {
+  flex: 0 0 auto;
+}
+
+.palette-daml {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-soft);
+  border-radius: 3px;
+  padding: 2px 8px;
+}
+
+.palette-daml b {
+  color: var(--accent-ink);
 }
 
 /* 舞台固定高度，保证三个尺寸的徽章底部对齐、卡片高度一致 */
@@ -1745,10 +2036,11 @@ body,
   background: var(--bg-ctl);
 }
 
-/* 尺寸徽章:点击选中尺寸,按住直接拖出该尺寸控件 */
-.library-compact-sizes button {
-  display: grid;
-  gap: 1px;
+/* 尺寸徽章:尺寸字 + 占格数字 + 图示一行排开;点击选中尺寸,按住直接拖出该尺寸控件 */
+.palette-size-cell button {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
   padding: var(--sp-2) var(--sp-3);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -1763,25 +2055,28 @@ body,
     color var(--t-fast) var(--ease);
 }
 
-.library-compact-sizes button small {
-  display: block;
-  min-height: 20px;
-  color: var(--ink-4);
-  font-size: var(--fs-xs);
+.palette-size-cell button .footprint-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
-.library-compact-sizes button:hover {
+.palette-size-cell button small {
+  display: inline-flex;
+  align-items: center;
+}
+
+.palette-size-cell button:hover {
   border-color: var(--accent);
   background: var(--accent-soft);
   color: var(--accent-ink);
 }
 
-.library-compact-sizes button:active {
+.palette-size-cell button:active {
   cursor: grabbing;
   background: var(--accent-soft-deep);
 }
 
-.library-compact-sizes button.active {
+.palette-size-cell button.active {
   border-color: var(--accent);
   background: var(--accent-soft);
   color: var(--accent-ink);
@@ -2082,6 +2377,7 @@ body,
   --accent-soft: #1d3552;
   --accent-soft-deep: #24405f;
   --accent-focus: rgba(79, 155, 239, 0.3);
+  --on-accent: #0b1725;
   --focus-ring: #4a90d9; /* 焦点环实心色,对全部暗色底 ≥3.82:1 */
 
   /* 危险系 */
@@ -2124,22 +2420,41 @@ body,
 }
 
 /* ============ 14 标题栏扩展与更新横幅 ============ */
-.titlebar-icon-btn {
+.next-shell .titlebar-icon-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: var(--h-ctl);
-  height: var(--h-ctl);
+  width: 36px;
+  height: 30px;
   padding: 0;
   border: 0;
   border-radius: var(--radius);
   background: transparent;
-  color: var(--ink-2);
+  color: var(--ink-3);
+  transition:
+    background-color var(--t-fast) var(--ease),
+    color var(--t-fast) var(--ease);
 }
 
-.titlebar-icon-btn:hover {
+.next-shell .titlebar-icon-btn:hover {
+  background: var(--bg-sunken);
+  color: var(--ink);
+}
+
+.next-shell .titlebar-icon-btn:active {
+  background: var(--accent-soft-deep);
+  color: var(--accent-ink);
+}
+
+.next-shell .titlebar-icon-btn[aria-expanded='true'] {
   background: var(--accent-soft);
   color: var(--accent-ink);
+  box-shadow: inset 0 0 0 1px var(--accent-soft-deep);
+}
+
+.next-shell .titlebar-icon-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
 }
 
 .dirty-dot {
@@ -2344,7 +2659,7 @@ body,
   flex: 0 0 52px;
   border-radius: 10px;
   background: linear-gradient(135deg, var(--accent) 0%, var(--accent-pressed) 100%);
-  color: #ffffff;
+  color: var(--on-accent);
   font-size: 28px;
   font-weight: 700;
 }

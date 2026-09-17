@@ -1,14 +1,12 @@
 import {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type CSSProperties,
 } from 'react';
 import {
-  Box,
   ChevronDown,
   ChevronRight,
   Copy,
@@ -17,14 +15,13 @@ import {
   FolderOpen,
   Image as ImageIcon,
   Info,
-  LayoutGrid,
-  MousePointerClick,
+  GripVertical,
+  Minus,
   Package,
   Plus,
   Redo2,
   Save,
   Settings,
-  TextCursorInput,
   Trash2,
   Undo2,
   X,
@@ -60,6 +57,7 @@ import { ControlMock } from './ControlMock';
 import { DocumentOutline } from './DocumentOutline';
 import { IconPicker, type IconSelection } from './IconPicker';
 import { getIconUrl, invalidateIconList } from './iconsClient';
+import { MenuSurface } from './Menu';
 import { Welcome } from './Welcome';
 import { AboutDialog } from './AboutDialog';
 import { Modal } from './Modal';
@@ -68,15 +66,12 @@ import {
   DEFAULT_GROUP_COLS,
   FIXED_GROUP_ROWS,
   MAX_GROUP_COLS,
-  MIN_GROUP_COLS,
   RIBBON_CELL,
-  canPlaceRect,
-  findFirstOpenSlot,
+  flowLayout,
   footprintLabel,
   getFootprint,
-  getGridSpec,
-  getSubgroupLayout,
   normalizeDocumentLayouts,
+  type GridRect,
 } from '../core/ribbonLayout';
 import './designer.css';
 
@@ -88,16 +83,32 @@ const RECENT_FILES_STORAGE_KEY = 'gispro-ribbon-designer-recent-files';
 const THEME_STORAGE_KEY = 'gispro-ribbon-designer-theme';
 const AUTO_UPDATE_STORAGE_KEY = 'gispro-ribbon-designer-auto-update';
 const WELCOME_SEEN_STORAGE_KEY = 'gispro-ribbon-designer-welcome-seen';
-const LIB_CATEGORY_STORAGE_KEY = 'gispro-ribbon-designer-lib-category';
 const PALETTE_HEIGHT_STORAGE_KEY = 'gispro-ribbon-designer-palette-height';
+const PROJ_WIDTH_STORAGE_KEY = 'gispro-ribbon-designer-proj-width';
+const STRUCT_WIDTH_STORAGE_KEY = 'gispro-ribbon-designer-struct-width';
 
-// 控件库高度的区间。上限 460 是「一屏能看到的最大量」，下限 120 保证分类 segment
-// 加一行卡片仍看得见。
-// 没有「默认高度」这个常量：首次使用（没存过偏好）时的初值是量出来的内容高度 ——
-// 原先写死 320 是按印象估的，实测两行紧凑卡要 450，估小了正好把卡片裁掉，
-// 让「控件库被裁切」这个用户的头号痛点在我们自己的默认配置下重现。
-const PALETTE_HEIGHT_MIN = 120;
+// 控件库（D 形态：左类型列表 + 右全尺寸大详情）高度的区间。默认 296 恰好装下
+// 「详情头 + 舞台 126px + 徽章行 + DAML 行」的完整详情；下限 160 是最小窗口
+// （1100×700，画布地板之后）实际还够得到的值，再小详情就只能滚着看了；
+// 上限 460 是「一屏能看到的最大量」。
+const PALETTE_HEIGHT_MIN = 160;
 const PALETTE_HEIGHT_MAX = 460;
+const PALETTE_HEIGHT_DEFAULT = 296;
+
+// 左右停靠栏（项目栏 / 文档结构栏）的宽度区间，三栏停靠布局下纵贯到底。
+// 默认宽与 designer.css 里的回退宽度一一对应。
+const PROJ_WIDTH_MIN = 120;
+const PROJ_WIDTH_MAX = 320;
+const PROJ_WIDTH_DEFAULT = 172;
+const STRUCT_WIDTH_MIN = 240;
+const STRUCT_WIDTH_MAX = 460;
+const STRUCT_WIDTH_DEFAULT = 320;
+
+// 从 localStorage 读一份宽度/高度偏好；越界或读不到都算「没存过」。
+const storedSize = (key: string, min: number, max: number) => {
+  const raw = Number(localStorage.getItem(key));
+  return Number.isFinite(raw) && raw >= min && raw <= max ? raw : null;
+};
 
 // 每项目一份的草稿槽 key(项目 id 分槽,旧版单份草稿用 STORAGE_KEY 迁移)
 const draftKey = (projectId: string) => `${STORAGE_KEY}-${projectId}`;
@@ -128,6 +139,8 @@ type DragState =
       kind: 'new';
       definition: LibraryControlDefinition;
       size: RibbonControlSize;
+      /** 「图标」形态:small 下 1×1 纯图标 */
+      iconOnly?: boolean;
     }
   | {
       kind: 'move';
@@ -140,13 +153,17 @@ type DragState =
     }
   | null;
 
+type ActiveDragState = Exclude<DragState, null>;
+
+const DRAG_START_DISTANCE = 5;
+const EDGE_SCROLL_DISTANCE = 48;
+
 interface HoverTarget {
   subgroupId: string;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  valid: boolean;
+  /** 插入到目标分组 controlIds 的位置（流式布局下拖拽=定插入点，不再是格子落点） */
+  index: number;
+  /** 插入指示线的列位置（格） */
+  lineX: number;
 }
 
 interface ContextMenuState {
@@ -154,11 +171,6 @@ interface ContextMenuState {
   y: number;
   controlId?: string;
   groupId?: string;
-}
-
-interface GhostPos {
-  x: number;
-  y: number;
 }
 
 interface ImportedIcon {
@@ -179,7 +191,7 @@ interface RecentFile {
   name: string;
 }
 
-// 控件库双层分类:上层 segment 按交互特性分组,下层为具体控件卡
+// 控件类型按交互特性分组（控件库左栏列表的分组标题）
 const LIBRARY_CATEGORY: Record<string, 'command' | 'container' | 'input'> = {
   button: 'command',
   tool: 'command',
@@ -192,15 +204,10 @@ const LIBRARY_CATEGORY: Record<string, 'command' | 'container' | 'input'> = {
   checkBox: 'input',
 };
 
-const LIBRARY_CATEGORIES: {
-  id: 'all' | 'command' | 'container' | 'input';
-  label: string;
-  Icon: typeof LayoutGrid;
-}[] = [
-  { id: 'all', label: '全部', Icon: LayoutGrid },
-  { id: 'command', label: '命令', Icon: MousePointerClick },
-  { id: 'container', label: '容器', Icon: Box },
-  { id: 'input', label: '输入', Icon: TextCursorInput },
+const LIBRARY_CATEGORIES: { id: 'command' | 'container' | 'input'; label: string }[] = [
+  { id: 'command', label: '命令' },
+  { id: 'container', label: '容器' },
+  { id: 'input', label: '输入' },
 ];
 
 // 项目 = 一个 .json 文档 = 一个 addin 包(IDE 多开文件式);侧栏两级:项目 → 页签
@@ -330,7 +337,6 @@ export default function Designer() {
   );
   const revealNonceRef = useRef(0);
   const [drag, setDrag] = useState<DragState>(null);
-  const [ghostPos, setGhostPos] = useState<GhostPos>({ x: 0, y: 0 });
   const [hover, setHover] = useState<HoverTarget | null>(null);
   const [toast, setToast] = useState('');
   const [dropdown, setDropdown] = useState<{
@@ -343,6 +349,10 @@ export default function Designer() {
     childId?: string;
   } | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  // 分组拖拽排序(同页签内):按住分组编辑条上的手柄左右拖,松手落到指示线位置;
+  // groupDrop.index 是在「其余分组」序列里的插入位,x 是指示线的像素偏移
+  const [groupDragId, setGroupDragId] = useState<string | null>(null);
+  const [groupDrop, setGroupDrop] = useState<{ index: number; x: number } | null>(null);
   const [busy, setBusy] = useState('');
   const [lastExportDir, setLastExportDir] = useState(
     () => localStorage.getItem(LAST_EXPORT_DIR_STORAGE_KEY) || '',
@@ -369,47 +379,46 @@ export default function Designer() {
     }
   });
   const [libSize, setLibSize] = useState<Record<string, RibbonControlSize>>({});
-  const [libCategory, setLibCategory] = useState<'all' | 'command' | 'container' | 'input'>(() => {
-    const saved = localStorage.getItem(LIB_CATEGORY_STORAGE_KEY);
-    return saved === 'command' || saved === 'container' || saved === 'input' ? saved : 'all';
-  });
+  // 「图标」形态(小尺寸 1×1 纯图标)的选中记忆,与 libSize 成对使用
+  const [libIconOnly, setLibIconOnly] = useState<Record<string, boolean>>({});
+  // 控件库 D 形态左栏当前选中的类型，右栏展示它的全尺寸详情。不跨会话记忆：
+  // 库是常驻面板，每次进来都停在信息量最大的「画廊」上。
+  const [libSelectedType, setLibSelectedType] = useState<string>('gallery');
   // 控件库高度：用户拖分隔条调出来，存 localStorage 跨会话记忆。
-  // 越界或读不到就当作「没存过」（旧草稿、手工改坏的值都不会让布局炸掉），
-  // 由下面的首次测量补上内容高度。
-  const [paletteHeight, setPaletteHeight] = useState<number | null>(() => {
-    const raw = Number(localStorage.getItem(PALETTE_HEIGHT_STORAGE_KEY));
-    return Number.isFinite(raw) && raw >= PALETTE_HEIGHT_MIN && raw <= PALETTE_HEIGHT_MAX
-      ? raw
-      : null;
+  // 越界或读不到就当作「没存过」，回 D 形态详情的完整高度 296。
+  const [paletteHeight, setPaletteHeight] = useState<number>(() => {
+    const stored = storedSize(PALETTE_HEIGHT_STORAGE_KEY, PALETTE_HEIGHT_MIN, PALETTE_HEIGHT_MAX);
+    return stored ?? PALETTE_HEIGHT_DEFAULT;
   });
+  // 左右停靠栏宽度：同样拖分隔条调节、跨会话记忆；null 表示没存过，交给 CSS 默认宽。
+  const [projWidth, setProjWidth] = useState<number | null>(() =>
+    storedSize(PROJ_WIDTH_STORAGE_KEY, PROJ_WIDTH_MIN, PROJ_WIDTH_MAX),
+  );
+  const [structWidth, setStructWidth] = useState<number | null>(() =>
+    storedSize(STRUCT_WIDTH_STORAGE_KEY, STRUCT_WIDTH_MIN, STRUCT_WIDTH_MAX),
+  );
 
   const clampPaletteHeight = (value: number) =>
     Math.min(PALETTE_HEIGHT_MAX, Math.max(PALETTE_HEIGHT_MIN, value));
 
-  // 没存过偏好（首次使用、刚清过存储）→ 首次加载量一次真实内容高度，作为初值。
-  // 用 useLayoutEffect 不是 useEffect：它要在首次绘制前把高度定下来，否则用户会先看到
-  // 一帧按内容撑开的控件库再跳回去。此刻元素还没有内联 height，clientHeight 由内容决定，
-  // scrollHeight 就是「装下所有卡片需要多高」。
-  // 只取内容高度、不在这里减去本屏的可用空间：上限归 PALETTE_HEIGHT_MAX，窗口放不下的部分
-  // 由 CSS 的 flex-shrink 吃回去（画布地板那条不变量），偏好本身不因窗口大小被改写。
-  useLayoutEffect(() => {
-    if (paletteHeight !== null) return;
-    const element = paletteRef.current;
-    if (!element) return;
-    setPaletteHeight(clampPaletteHeight(element.scrollHeight));
-  }, []);
-
   useEffect(() => {
-    if (paletteHeight === null) return;
     localStorage.setItem(PALETTE_HEIGHT_STORAGE_KEY, String(Math.round(paletteHeight)));
   }, [paletteHeight]);
+
+  useEffect(() => {
+    if (projWidth !== null) localStorage.setItem(PROJ_WIDTH_STORAGE_KEY, String(Math.round(projWidth)));
+  }, [projWidth]);
+
+  useEffect(() => {
+    if (structWidth !== null) localStorage.setItem(STRUCT_WIDTH_STORAGE_KEY, String(Math.round(structWidth)));
+  }, [structWidth]);
 
   // 生效高度 = 经过窗口钳制后真正渲染出来的高度。钳制由 CSS 的 flex 完成
   // （.next-canvas-row 的地板是 --canvas-min-height，控件库 flex-shrink 吸回不足的部分），
   // 所以状态里的「偏好」可能大于本屏放得下的量。
   const paletteRef = useRef<HTMLElement | null>(null);
   const effectivePaletteHeight = () =>
-    paletteRef.current?.getBoundingClientRect().height ?? paletteHeight ?? PALETTE_HEIGHT_MIN;
+    paletteRef.current?.getBoundingClientRect().height ?? paletteHeight;
 
   // 高度手势的唯一入口。锚点随方向变，两个 base 由调用方在合适时机取：
   // 键盘在按键那一刻取，拖拽在 pointerdown 那一刻取（拖拽过程中状态一直在变，现取会漂）。
@@ -423,8 +432,7 @@ export default function Designer() {
 
   const nudgePaletteHeight = (delta: number) => {
     const effective = effectivePaletteHeight();
-    // paletteHeight 为 null 只在首次绘制前成立（布局副作用尚未落值），此刻拿当前渲染高度顶上。
-    applyPaletteResize(delta, Math.max(paletteHeight ?? effective, effective), effective);
+    applyPaletteResize(delta, Math.max(paletteHeight, effective), effective);
   };
 
   // 拖分隔条改高度。指针捕获挂在分隔条上，pointermove/pointerup 仍会冒泡到 window，
@@ -435,7 +443,7 @@ export default function Designer() {
     const pointerId = event.pointerId;
     const startY = event.clientY;
     const startEffective = effectivePaletteHeight();
-    const startGrowBase = Math.max(paletteHeight ?? startEffective, startEffective);
+    const startGrowBase = Math.max(paletteHeight, startEffective);
     target.setPointerCapture(pointerId);
 
     const onMove = (moveEvent: PointerEvent) => {
@@ -452,10 +460,58 @@ export default function Designer() {
     window.addEventListener('pointerup', onEnd);
     window.addEventListener('pointercancel', onEnd);
   };
+
+  // 左右停靠栏宽度手势。宽度方向没有「窗口钳制偏好」的反馈环（画布地板只约束纵向），
+  // 锚起点渲染宽 1:1 跟手即可；键盘步进 ±16，与高度分隔条一致。
+  // 基准宽取停靠栏 DOM 的当前 offsetWidth：偏好为 null（没存过）时 CSS 默认宽就是真相。
+  const projSidebarRef = useRef<HTMLElement | null>(null);
+  const structSidebarRef = useRef<HTMLElement | null>(null);
+
+  const nudgeSidebarWidth = (which: 'proj' | 'struct', delta: number) => {
+    const panel = which === 'proj' ? projSidebarRef.current : structSidebarRef.current;
+    if (!panel) return;
+    const min = which === 'proj' ? PROJ_WIDTH_MIN : STRUCT_WIDTH_MIN;
+    const max = which === 'proj' ? PROJ_WIDTH_MAX : STRUCT_WIDTH_MAX;
+    const next = Math.min(max, Math.max(min, panel.offsetWidth + delta));
+    (which === 'proj' ? setProjWidth : setStructWidth)(next);
+  };
+
+  const startSidebarResize =
+    (which: 'proj' | 'struct') => (event: React.PointerEvent<HTMLElement>) => {
+      event.preventDefault();
+      const target = event.currentTarget;
+      const panel = which === 'proj' ? projSidebarRef.current : structSidebarRef.current;
+      if (!panel) return;
+      const pointerId = event.pointerId;
+      const startX = event.clientX;
+      const startWidth = panel.offsetWidth;
+      const min = which === 'proj' ? PROJ_WIDTH_MIN : STRUCT_WIDTH_MIN;
+      const max = which === 'proj' ? PROJ_WIDTH_MAX : STRUCT_WIDTH_MAX;
+      const setWidth = which === 'proj' ? setProjWidth : setStructWidth;
+      target.setPointerCapture(pointerId);
+
+      const onMove = (moveEvent: PointerEvent) => {
+        // 左栏往右拖、右栏往左拖都是加宽
+        const delta = which === 'proj' ? moveEvent.clientX - startX : startX - moveEvent.clientX;
+        setWidth(Math.min(max, Math.max(min, startWidth + delta)));
+      };
+      const onEnd = () => {
+        if (target.hasPointerCapture(pointerId)) target.releasePointerCapture(pointerId);
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onEnd);
+        window.removeEventListener('pointercancel', onEnd);
+      };
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onEnd);
+      window.addEventListener('pointercancel', onEnd);
+    };
   const [updateBanner, setUpdateBanner] = useState<{ version: string } | null>(null);
   const gridRefs = useRef(new Map<string, HTMLElement>());
   const dragRef = useRef<DragState>(null);
+  const ghostRef = useRef<HTMLDivElement>(null);
+  const ghostPositionRef = useRef({ x: 0, y: 0 });
   const hoverRef = useRef<HoverTarget | null>(null);
+  const groupDragIdRef = useRef<string | null>(null);
   const projectsRef = useRef(projects);
   projectsRef.current = projects;
   const activeProjectIdRef = useRef(activeProjectId);
@@ -711,10 +767,6 @@ export default function Designer() {
   }, [projects, activeProjectId]);
 
   useEffect(() => {
-    localStorage.setItem(LIB_CATEGORY_STORAGE_KEY, libCategory);
-  }, [libCategory]);
-
-  useEffect(() => {
     localStorage.setItem(LAST_EXPORT_DIR_STORAGE_KEY, lastExportDir);
   }, [lastExportDir]);
 
@@ -754,11 +806,6 @@ export default function Designer() {
   const activeHistory = historyRef.current.get(activeProjectId);
   const canUndo = Boolean(activeHistory?.past.length);
   const canRedo = Boolean(activeHistory?.future.length);
-
-  const visibleLibraryItems =
-    libCategory === 'all'
-      ? CONTROL_LIBRARY
-      : CONTROL_LIBRARY.filter((item) => LIBRARY_CATEGORY[item.type] === libCategory);
 
   // 改名：同步 entry.name 与 document.metadata.name。
   // 空名回退「未命名」，不允许产生空标题。
@@ -887,17 +934,6 @@ export default function Designer() {
     }));
   };
 
-  const updateGroupColumns = (groupId: string, columns: number) => {
-    commit((current) => ({
-      ...current,
-      subgroups: current.subgroups.map((subgroup) =>
-        subgroup.groupId === groupId
-          ? { ...subgroup, layout: { row: 0, columns, rows: FIXED_GROUP_ROWS } }
-          : subgroup,
-      ),
-    }));
-  };
-
   const duplicateGroup = (groupId: string) => {
     const sourceGroup = document.groups.find((group) => group.id === groupId);
     const sourceSubgroup = document.subgroups.find(
@@ -960,90 +996,225 @@ export default function Designer() {
     showToast(`已删除分组 ${targetGroup.caption}`);
   };
 
-  const resizeGroupControls = (groupId: string, size: RibbonControlSize) => {
+  // 分组列数 +/-:列数是画布拖放区的手动最小宽,存在 subgroup.layout.columns
+  // (新建分组默认 8)。显示宽 = max(内容列数, 手动列数):内容超了会自动加宽,
+  // 手动只能收回到内容列数为止(内容必须完整可见),下限 1 列、上限 MAX_GROUP_COLS。
+  // Pro 端没有宽度概念(按内容自动收紧),这个宽度只决定设计器里的拖放区,不影响导出。
+  const adjustGroupColumns = (groupId: string, delta: 1 | -1) => {
     const subgroup = document.subgroups.find((item) => item.groupId === groupId);
     if (!subgroup) return;
-    let rejected = 0;
-    commit((current) => {
-      const spec = getGridSpec(subgroup);
-      const controls = getSubgroupControls(current, subgroup.id);
-      const placed: { i: string; x: number; y: number; w: number; h: number }[] = [];
-      const overflow = new Set<string>();
-      for (const control of controls) {
-        if (!control.supportedSizes.includes(size)) {
-          rejected += 1;
-          continue;
-        }
-        const footprint = getFootprint(control.type, size, control.variant);
-        const slot = findFirstOpenSlot(footprint, placed, spec);
-        if (slot) {
-          placed.push({ i: control.id, x: slot.x, y: slot.y, w: slot.w, h: slot.h });
+    const contentColumns = flowLayout(
+      getSubgroupControls(document, subgroup.id).map((control) => ({
+        id: control.id,
+        type: control.type,
+        size: control.size,
+        caption: control.caption,
+        variant: control.variant,
+        iconOnly: control.iconOnly,
+      })),
+    ).reduce((max, rect) => Math.max(max, rect.x + rect.w), 0);
+    const manual = Math.min(
+      MAX_GROUP_COLS,
+      Math.max(1, subgroup.layout?.columns ?? DEFAULT_GROUP_COLS),
+    );
+    let next: number;
+    if (delta === 1) {
+      next = Math.min(MAX_GROUP_COLS, Math.max(contentColumns, manual) + 1);
+    } else {
+      if (manual <= contentColumns) return;
+      next = Math.max(Math.max(1, contentColumns), manual - 1);
+    }
+    if (next === manual) return;
+    commit((current) => ({
+      ...current,
+      subgroups: current.subgroups.map((item) =>
+        item.id === subgroup.id
+          ? { ...item, layout: { row: 0, columns: next, rows: FIXED_GROUP_ROWS } }
+          : item,
+      ),
+    }));
+  };
+
+  // ===== 分组拖拽排序(同页签内) =====
+  // 分组顺序 = 导出后 Pro 页签上从左到右的顺序。手柄按住左右拖,松手落到指示线;
+  // 手柄上按左右方向键可逐格移动(键盘可达,不依赖指针)。
+  const ribbonAreaRef = useRef<HTMLDivElement | null>(null);
+
+  const positionGhost = useCallback((clientX: number, clientY: number) => {
+    ghostPositionRef.current = { x: clientX, y: clientY };
+    const ghost = ghostRef.current;
+    if (ghost) {
+      ghost.style.transform = `translate3d(${clientX + 12}px, ${clientY + 10}px, 0)`;
+    }
+  }, []);
+
+  // 拖拽接近画布左右边缘时持续横向滚动。rAF 让指针停在边缘也能继续走，
+  // 而不是依赖系统在指针静止时不再发 pointermove。
+  const startAreaAutoscroll = useCallback((getClientX: () => number, onFrame?: () => void) => {
+    let frame = 0;
+    const step = () => {
+      const area = ribbonAreaRef.current;
+      if (area) {
+        const rect = area.getBoundingClientRect();
+        const x = getClientX();
+        const delta =
+          x < rect.left + EDGE_SCROLL_DISTANCE
+            ? -Math.min(28, (rect.left + EDGE_SCROLL_DISTANCE - x) / 2)
+            : x > rect.right - EDGE_SCROLL_DISTANCE
+              ? Math.min(28, (x - rect.right + EDGE_SCROLL_DISTANCE) / 2)
+              : 0;
+        if (delta !== 0) area.scrollLeft += delta;
+      }
+      onFrame?.();
+      frame = requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step);
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, []);
+
+  const commitGroupOrder = (groupId: string, targetIndex: number) => {
+    commit((current) => ({
+      ...current,
+      tabs: current.tabs.map((tab) => {
+        if (tab.id !== activeTabId) return tab;
+        if (!tab.groupIds.includes(groupId)) return tab;
+        const ids = tab.groupIds.filter((id) => id !== groupId);
+        ids.splice(Math.max(0, Math.min(ids.length, targetIndex)), 0, groupId);
+        return { ...tab, groupIds: ids };
+      }),
+    }));
+  };
+
+  const moveGroupBy = (groupId: string, delta: -1 | 1) => {
+    commit((current) => ({
+      ...current,
+      tabs: current.tabs.map((tab) => {
+        if (tab.id !== activeTabId) return tab;
+        const index = tab.groupIds.indexOf(groupId);
+        const next = index + delta;
+        if (index < 0 || next < 0 || next >= tab.groupIds.length) return tab;
+        const ids = [...tab.groupIds];
+        [ids[index], ids[next]] = [ids[next], ids[index]];
+        return { ...tab, groupIds: ids };
+      }),
+    }));
+  };
+
+  const startGroupDrag = (event: React.PointerEvent<HTMLButtonElement>, groupId: string) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    const handle = event.currentTarget;
+    handle.setPointerCapture(event.pointerId);
+    setGroupDragId(groupId);
+    groupDragIdRef.current = groupId;
+    // 落点记在局部变量里:commit 绝不能放进 setState updater(StrictMode 会双跑双推历史)
+    let lastIndex: number | null = null;
+    let frame = 0;
+    let nextX = event.clientX;
+    let nextY = event.clientY;
+    const stopAutoscroll = startAreaAutoscroll(() => nextX, () => updateDrop(nextX, nextY));
+
+    const updateDrop = (moveX: number, moveY: number) => {
+      const area = ribbonAreaRef.current;
+      if (!area) return;
+      const areaRect = area.getBoundingClientRect();
+      const inside =
+        moveX >= areaRect.left &&
+        moveX <= areaRect.right &&
+        moveY >= areaRect.top &&
+        moveY <= areaRect.bottom;
+      if (!inside) {
+        lastIndex = null;
+        setGroupDrop(null);
+        return;
+      }
+      const others = Array.from(area.querySelectorAll<HTMLElement>('.next-group')).filter(
+        (el) => el.dataset.groupId !== groupId,
+      );
+      let index = 0;
+      let x = areaRect.width;
+      for (const el of others) {
+        const rect = el.getBoundingClientRect();
+        if (moveX > rect.left + rect.width / 2) {
+          index += 1;
+          x = rect.right - areaRect.left;
         } else {
-          overflow.add(control.id);
-          rejected += 1;
+          x = rect.left - areaRect.left;
+          break;
         }
       }
-      const byId = new Map(placed.map((item) => [item.i, item]));
-      return {
-        ...current,
-        controls: current.controls.map((control) => {
-          const item = byId.get(control.id);
-          return item
-            ? { ...control, size, layout: { x: item.x, y: item.y, w: item.w, h: item.h } }
-            : control;
-        }),
-      };
-    });
-    showToast(
-      rejected
-        ? `批量${SIZE_LABELS[size]}尺寸：${rejected} 个控件放不下或尺寸不支持`
-        : `已将分组控件批量改为${SIZE_LABELS[size]}尺寸`,
-    );
+      lastIndex = index;
+      setGroupDrop({ index, x });
+    };
+
+    const onMove = (moveEvent: PointerEvent) => {
+      nextX = moveEvent.clientX;
+      nextY = moveEvent.clientY;
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        updateDrop(nextX, nextY);
+      });
+    };
+
+    const cleanup = (shouldCommit: boolean, pointerId?: number) => {
+      if (frame) {
+        cancelAnimationFrame(frame);
+        frame = 0;
+      }
+      stopAutoscroll();
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onEnd);
+      window.removeEventListener('pointercancel', onEnd);
+      window.removeEventListener('keydown', onKeyDown);
+      if (pointerId !== undefined && handle.hasPointerCapture(pointerId)) {
+        handle.releasePointerCapture(pointerId);
+      }
+      setGroupDrop(null);
+      setGroupDragId(null);
+      groupDragIdRef.current = null;
+      if (shouldCommit && lastIndex !== null) commitGroupOrder(groupId, lastIndex);
+    };
+    const onEnd = (upEvent: PointerEvent) => cleanup(true, upEvent.pointerId);
+    const onCancel = (cancelEvent: PointerEvent) => cleanup(false, cancelEvent.pointerId);
+    const onKeyDown = (keyEvent: KeyboardEvent) => {
+      if (keyEvent.key === 'Escape') {
+        keyEvent.preventDefault();
+        keyEvent.stopPropagation();
+        cleanup(false);
+      }
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onEnd);
+    window.addEventListener('pointercancel', onCancel);
+    window.addEventListener('keydown', onKeyDown);
   };
 
   const updateControl = (controlId: string, patch: Partial<RibbonControl>) => {
-    // 尺寸或变体(如画廊 下拉↔摊开)变化都会改变占格,走同一条重排路径;
-    // variant 清除时值为 undefined,须用键存在性区分「没改」与「改成无」
+    // 尺寸或变体(如画廊 下拉↔摊开)变化都会改变占格:流式布局下直接更新名义占格,
+    // 画布显示位置由 flowLayout 派生;variant 清除时值为 undefined,须用键存在性区分「没改」与「改成无」
     if (patch.size || 'variant' in patch) {
-      let rejected = false;
-      commit((current) => {
-        const control = current.controls.find((item) => item.id === controlId);
-        const subgroup = control
-          ? current.subgroups.find((item) => item.id === control.subgroupId)
-          : null;
-        if (!control || !subgroup) return current;
-        const spec = getGridSpec(subgroup);
-        const layout = getSubgroupLayout(current, subgroup, 'Large').filter(
-          (item) => item.i !== control.id,
-        );
-        const nextSize = (patch.size ?? control.size) as RibbonControlSize;
-        const nextVariant = 'variant' in patch ? patch.variant : control.variant;
-        const footprint = getFootprint(control.type, nextSize, nextVariant);
-        const currentLayout = control.layout ?? { x: 0, y: 0 };
-        const candidate = {
-          i: control.id,
-          x: currentLayout.x,
-          y: currentLayout.y,
-          w: footprint.w,
-          h: footprint.h,
-        };
-        const slot = canPlaceRect(candidate, layout, spec)
-          ? candidate
-          : findFirstOpenSlot(footprint, layout, spec);
-        if (!slot) {
-          rejected = true;
-          return current;
-        }
-        return {
-          ...current,
-          controls: current.controls.map((item) =>
-            item.id === controlId
-              ? { ...item, ...patch, layout: { x: slot.x, y: slot.y, w: slot.w, h: slot.h } }
-              : item,
-          ),
-        };
-      });
-      if (rejected) showToast('当前分组没有足够空位，尺寸未修改');
+      commit((current) => ({
+        ...current,
+        controls: current.controls.map((control) => {
+          if (control.id !== controlId) return control;
+          const nextSize = (patch.size ?? control.size) as RibbonControlSize;
+          const nextVariant = 'variant' in patch ? patch.variant : control.variant;
+          const fp = getFootprint(control.type, nextSize, nextVariant);
+          return {
+            ...control,
+            ...patch,
+            layout: {
+              x: control.layout?.x ?? 0,
+              y: control.layout?.y ?? 0,
+              w: fp.w,
+              h: fp.h,
+            },
+          };
+        }),
+      }));
       return;
     }
     commit((current) => ({
@@ -1071,41 +1242,56 @@ export default function Designer() {
     if (selectedControlId === controlId) setSelectedControlId(null);
   };
 
-  const addControlAt = (
+  // 流式布局下落点=插入位置：新控件插到 controlIds 的目标索引处；
+  // layout 只写名义占格（画布显示位置由 flowLayout 派生，不读存储坐标）。
+  const addControlAtIndex = (
     subgroup: RibbonSubgroup,
     definition: LibraryControlDefinition,
     size: RibbonControlSize,
-    layout: { x: number; y: number; w: number; h: number },
+    index: number,
+    iconOnly?: boolean,
   ) => {
-    const nextControl = createControlFromType(definition.type, subgroup.id, { size, layout });
+    const fp = getFootprint(definition.type, size, undefined, iconOnly);
+    const nextControl = createControlFromType(definition.type, subgroup.id, {
+      size,
+      iconOnly: iconOnly || undefined,
+      layout: { x: 0, y: 0, w: fp.w, h: fp.h },
+    });
     commit((current) => ({
       ...current,
       controls: [...current.controls, nextControl],
-      subgroups: current.subgroups.map((item) =>
-        item.id === subgroup.id
-          ? { ...item, controlIds: [...item.controlIds, nextControl.id] }
-          : item,
-      ),
+      subgroups: current.subgroups.map((item) => {
+        if (item.id !== subgroup.id) return item;
+        const ids = [...item.controlIds];
+        ids.splice(Math.min(index, ids.length), 0, nextControl.id);
+        return { ...item, controlIds: ids };
+      }),
     }));
     setSelectedControlId(nextControl.id);
   };
 
-  const moveControl = (
-    controlId: string,
-    subgroupId: string,
-    layout: { x: number; y: number; w: number; h: number },
-  ) => {
+  const moveControlTo = (controlId: string, subgroupId: string, index: number) => {
     commit((current) => {
       const control = current.controls.find((item) => item.id === controlId);
       if (!control) return current;
       const sameSubgroup = control.subgroupId === subgroupId;
+      const sourceSubgroup = current.subgroups.find((item) => item.id === control.subgroupId);
+      const sourceIndex = sourceSubgroup?.controlIds.indexOf(controlId) ?? -1;
+      // computeHover 给的是原 controlIds 的插入位；同组右移移除原控件后要左移一位。
+      const nextIndex = sameSubgroup && sourceIndex >= 0 && sourceIndex < index ? index - 1 : index;
       return {
         ...current,
-        controls: current.controls.map((item) =>
-          item.id === controlId ? { ...item, subgroupId, layout } : item,
-        ),
+        controls: sameSubgroup
+          ? current.controls
+          : current.controls.map((item) =>
+              item.id === controlId ? { ...item, subgroupId } : item,
+            ),
         subgroups: current.subgroups.map((subgroup) => {
-          if (sameSubgroup && subgroup.id === subgroupId) return subgroup;
+          if (sameSubgroup && subgroup.id === subgroupId) {
+            const ids = subgroup.controlIds.filter((id) => id !== controlId);
+            ids.splice(Math.min(Math.max(0, nextIndex), ids.length), 0, controlId);
+            return { ...subgroup, controlIds: ids };
+          }
           if (subgroup.id === control.subgroupId) {
             return {
               ...subgroup,
@@ -1113,12 +1299,52 @@ export default function Designer() {
             };
           }
           if (subgroup.id === subgroupId) {
-            return { ...subgroup, controlIds: [...subgroup.controlIds, controlId] };
+            const ids = [...subgroup.controlIds];
+            ids.splice(Math.min(index, ids.length), 0, controlId);
+            return { ...subgroup, controlIds: ids };
           }
           return subgroup;
         }),
       };
     });
+  };
+
+  // 拖拽的单指针替代路径：选中尺寸徽章后，把当前类型插入选中控件之后；
+  // 没有选中控件时插入第一个分组末尾。空画布给出明确下一步。
+  const insertSelectedLibraryControl = () => {
+    const definition = CONTROL_LIBRARY.find((item) => item.type === libSelectedType);
+    if (!definition) return;
+    const size =
+      libSize[definition.type] ??
+      (definition.supportedSizes.includes('large')
+        ? 'large'
+        : definition.supportedSizes[definition.supportedSizes.length - 1]);
+    const selected = selectedControlId
+      ? document.controls.find((control) => control.id === selectedControlId)
+      : null;
+    const targetGroup =
+      activeGroups.find((group) => group.subgroupIds.includes(selected?.subgroupId ?? '')) ??
+      activeGroups[0];
+    const subgroup = targetGroup
+      ? document.subgroups.find((item) => item.id === targetGroup.subgroupIds[0])
+      : null;
+    if (!subgroup) {
+      showToast('请先新增分组，再插入控件');
+      return;
+    }
+    const controls = getSubgroupControls(document, subgroup.id);
+    const index =
+      selected && selected.subgroupId === subgroup.id
+        ? controls.findIndex((control) => control.id === selected.id) + 1
+        : controls.length;
+    addControlAtIndex(
+      subgroup,
+      definition,
+      size,
+      index,
+      libIconOnly[definition.type] ? true : undefined,
+    );
+    showToast(`已插入${definition.label}`);
   };
 
   // ===== 导入/打开/示例布局的统一落点:一律开新项目并激活,不动当前编辑中的项目 =====
@@ -1404,14 +1630,24 @@ export default function Designer() {
     }
   };
 
+  // 导出文件名用的安全主名:Windows 文件名非法字符换成下划线,空名兜底
+  const fileStem = (name: string) => name.trim().replace(/[\\/:*?"<>|]+/g, '_') || '未命名布局';
+  const projectName = document.metadata.name || '未命名布局';
+
   const exportDaml = () =>
-    exportTextFile('daml', 'DAML 布局文件', 'Config.daml', buildConfigDaml(document), 'Config.daml');
+    exportTextFile(
+      'daml',
+      'DAML 布局文件',
+      `${fileStem(projectName)}.daml`,
+      buildConfigDaml(document),
+      'Config.daml',
+    );
 
   const exportJson = () =>
     exportTextFile(
       'json',
       '布局 JSON',
-      'layout.json',
+      `${fileStem(projectName)}.json`,
       JSON.stringify(document, null, 2),
       '布局 JSON',
     );
@@ -1420,14 +1656,15 @@ export default function Designer() {
     // 免编译导出:DAML 指向预编译占位 DLL,用户机器无需 .NET SDK
     const artifacts: ArcGISProValidationArtifacts =
       buildArcGISProValidationArtifacts(document, { placeholderBehaviors: true });
+    // 默认文件名带项目名,多项目时从文件就能看出导的是哪份设计稿
     const path = await saveExportPath(
       'esriAddInX',
       'ArcGIS Pro Add-in 安装包',
-      artifacts.packageFileName,
+      `${fileStem(projectName)}-${artifacts.options.version}.esriAddInX`,
     );
     if (!path) return;
     const { dir, name } = splitPath(path);
-    setBusy('正在打包 add-in 安装包');
+    setBusy(`正在导出「${projectName}」安装包`);
     try {
       const written = await invoke<string>('export_addin', {
         payload: {
@@ -1440,7 +1677,7 @@ export default function Designer() {
         },
       });
       setLastExportDir(dir);
-      showToast(`安装包已生成 ${written}（控件行为为占位实现）`);
+      showToast(`「${projectName}」安装包已生成 ${written}（控件行为为占位实现）`);
     } catch (error) {
       showToast(`打包失败：${String(error)}`);
     } finally {
@@ -1518,13 +1755,74 @@ export default function Designer() {
     });
   };
 
-  const startDrag = useCallback((event: React.PointerEvent, state: Exclude<DragState, null>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    dragRef.current = state;
-    setDrag(state);
-    setGhostPos({ x: event.clientX, y: event.clientY });
-  }, []);
+  const startDrag = useCallback(
+    (event: React.PointerEvent, state: ActiveDragState) => {
+      if (event.pointerType === 'mouse' && event.button !== 0) return;
+      event.preventDefault();
+      event.stopPropagation();
+
+      const startX = event.clientX;
+      const startY = event.clientY;
+      let started = false;
+      let nextX = startX;
+      let nextY = startY;
+
+      // pointerdown 不直接进入拖拽：5px 内仍是 click。一旦真的拖动，
+      // 用捕获阶段 click 拦掉松手时的“选中/切换尺寸”副作用。
+      const onClickCapture = (clickEvent: MouseEvent) => {
+        if (!started) return;
+        clickEvent.preventDefault();
+        clickEvent.stopPropagation();
+      };
+      window.addEventListener('click', onClickCapture, true);
+
+      const cleanup = () => {
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+        window.removeEventListener('pointercancel', onCancel);
+        window.removeEventListener('keydown', onKeyDown);
+        window.removeEventListener('click', onClickCapture, true);
+      };
+      const begin = () => {
+        started = true;
+        dragRef.current = state;
+        positionGhost(nextX, nextY);
+        setDrag(state);
+      };
+      const onMove = (moveEvent: PointerEvent) => {
+        nextX = moveEvent.clientX;
+        nextY = moveEvent.clientY;
+        if (!started) {
+          const distance = Math.hypot(nextX - startX, nextY - startY);
+          if (distance < DRAG_START_DISTANCE) return;
+          begin();
+        }
+        positionGhost(nextX, nextY);
+      };
+      const onUp = () => cleanup();
+      const onCancel = () => {
+        if (started) {
+          dragRef.current = null;
+          hoverRef.current = null;
+          setDrag(null);
+          setHover(null);
+        }
+        cleanup();
+      };
+      const onKeyDown = (keyEvent: KeyboardEvent) => {
+        if (keyEvent.key !== 'Escape') return;
+        keyEvent.preventDefault();
+        keyEvent.stopPropagation();
+        onCancel();
+      };
+
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp);
+      window.addEventListener('pointercancel', onCancel);
+      window.addEventListener('keydown', onKeyDown);
+    },
+    [positionGhost],
+  );
 
   useEffect(() => {
     if (!drag) return;
@@ -1532,10 +1830,6 @@ export default function Designer() {
       const current = dragRef.current;
       if (!current) return null;
       const doc = documentRef.current;
-      const footprint =
-        current.kind === 'new'
-          ? getFootprint(current.definition.type, current.size)
-          : getFootprint(current.type, current.size, current.variant);
       for (const [subgroupId, element] of gridRefs.current) {
         const rect = element.getBoundingClientRect();
         if (
@@ -1548,81 +1842,125 @@ export default function Designer() {
         }
         const subgroup = doc.subgroups.find((item) => item.id === subgroupId);
         if (!subgroup) return null;
-        const spec = getGridSpec(subgroup);
-        const x = Math.max(
-          0,
-          Math.min(spec.cols - footprint.w, Math.floor((clientX - rect.left) / RIBBON_CELL)),
+        // 流式命中：按 Pro 同规则派生每个控件的显示矩形，鼠标落在哪个控件上，
+        // 拖拽即插入到它之前/之后（左右半区分），空白处追加到末尾。
+        const controls = getSubgroupControls(doc, subgroup.id);
+        const layout = flowLayout(
+          controls.map((c) => ({
+            id: c.id,
+            type: c.type,
+            size: c.size,
+            caption: c.caption,
+            variant: c.variant,
+            iconOnly: c.iconOnly,
+          })),
         );
-        const y = Math.max(
-          0,
-          Math.min(spec.rows - footprint.h, Math.floor((clientY - rect.top) / RIBBON_CELL)),
+        const hit = layout.find(
+          (r) =>
+            clientX >= rect.left + r.x * RIBBON_CELL &&
+            clientX < rect.left + (r.x + r.w) * RIBBON_CELL &&
+            clientY >= rect.top + r.y * RIBBON_CELL &&
+            clientY < rect.top + (r.y + r.h) * RIBBON_CELL,
         );
-        const existing = getSubgroupLayout(doc, subgroup, 'Large').filter(
-          (item) => !(current.kind === 'move' && item.i === current.controlId),
-        );
-        const candidate = { i: '__drag__', x, y, w: footprint.w, h: footprint.h };
-        return {
-          subgroupId,
-          x,
-          y,
-          w: footprint.w,
-          h: footprint.h,
-          valid: canPlaceRect(candidate, existing, spec),
-        };
+        let index: number;
+        let lineX: number;
+        if (hit) {
+          const idx = controls.findIndex((c) => c.id === hit.i);
+          const mid = rect.left + (hit.x + hit.w / 2) * RIBBON_CELL;
+          if (current.kind === 'move' && controls[idx]?.id === current.controlId) {
+            // 悬停在自身上：插入线停在原位
+            index = idx;
+            lineX = hit.x;
+          } else {
+            const before = clientX < mid;
+            index = before ? idx : idx + 1;
+            lineX = before ? hit.x : hit.x + hit.w;
+          }
+        } else {
+          index = controls.length;
+          lineX = layout.reduce((max, r) => Math.max(max, r.x + r.w), 0);
+        }
+        return { subgroupId, index, lineX };
       }
       return null;
     };
 
+    const updateHover = (clientX: number, clientY: number) => {
+      const next = computeHover(clientX, clientY);
+      hoverRef.current = next;
+      setHover((previous) =>
+        previous?.subgroupId === next?.subgroupId &&
+        previous?.index === next?.index &&
+        previous?.lineX === next?.lineX
+          ? previous
+          : next,
+      );
+    };
+    const stopAutoscroll = startAreaAutoscroll(() => nextX, () => updateHover(nextX, nextY));
+    let frame = 0;
+    let nextX = 0;
+    let nextY = 0;
+
     const onMove = (event: PointerEvent) => {
       if (!dragRef.current) return;
-      setGhostPos({ x: event.clientX, y: event.clientY });
-      const next = computeHover(event.clientX, event.clientY);
-      hoverRef.current = next;
-      setHover(next);
+      nextX = event.clientX;
+      nextY = event.clientY;
+      positionGhost(nextX, nextY);
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        updateHover(nextX, nextY);
+      });
     };
 
     const onUp = () => {
+      if (frame) {
+        cancelAnimationFrame(frame);
+        frame = 0;
+        updateHover(nextX, nextY);
+      }
       const current = dragRef.current;
       const target = hoverRef.current;
       if (current && target) {
         const doc = documentRef.current;
-        if (target.valid) {
+        const subgroup = doc.subgroups.find((item) => item.id === target.subgroupId);
+        if (subgroup) {
           if (current.kind === 'new') {
-            const subgroup = doc.subgroups.find((item) => item.id === target.subgroupId);
-            if (subgroup) {
-              addControlAt(subgroup, current.definition, current.size, {
-                x: target.x,
-                y: target.y,
-                w: target.w,
-                h: target.h,
-              });
-            }
+            addControlAtIndex(subgroup, current.definition, current.size, target.index, current.iconOnly);
           } else {
-            moveControl(current.controlId, target.subgroupId, {
-              x: target.x,
-              y: target.y,
-              w: target.w,
-              h: target.h,
-            });
+            moveControlTo(current.controlId, target.subgroupId, target.index);
           }
-        } else {
-          showToast('放不下：目标格位被占用或超出网格');
         }
       }
       dragRef.current = null;
       hoverRef.current = null;
       setDrag(null);
       setHover(null);
+      stopAutoscroll();
+    };
+
+    const onCancel = () => {
+      if (frame) cancelAnimationFrame(frame);
+      dragRef.current = null;
+      hoverRef.current = null;
+      setDrag(null);
+      setHover(null);
+      stopAutoscroll();
     };
 
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onCancel);
+    positionGhost(ghostPositionRef.current.x, ghostPositionRef.current.y);
     return () => {
+      if (frame) cancelAnimationFrame(frame);
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onCancel);
+      stopAutoscroll();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drag, showToast]);
+  }, [drag, positionGhost, startAreaAutoscroll]);
 
   useEffect(() => {
     if (!contextMenu && !dropdown) return;
@@ -1671,7 +2009,16 @@ export default function Designer() {
       } else if (event.key === 'Delete') {
         if (selectedControlId) deleteControl(selectedControlId);
       } else if (event.key === 'Escape') {
-        if (dropdown) setDropdown(null);
+        if (dragRef.current) {
+          dragRef.current = null;
+          hoverRef.current = null;
+          setDrag(null);
+          setHover(null);
+        } else if (groupDragIdRef.current) {
+          setGroupDrop(null);
+          setGroupDragId(null);
+          groupDragIdRef.current = null;
+        } else if (dropdown) setDropdown(null);
         else if (contextMenu) setContextMenu(null);
         else if (iconPickerFor) setIconPickerFor(null);
         else if (confirmAction) setConfirmAction(null);
@@ -1702,7 +2049,7 @@ export default function Designer() {
   }, []);
 
   return (
-    <div className={`next-shell${drag ? ' dragging' : ''}`}>
+    <div className={`next-shell${drag ? ' dragging' : ''}${drag && !hover ? ' drag-outside' : ''}`}>
       <a className="skip-link" href="#main-canvas">
         跳到画布
       </a>
@@ -1712,65 +2059,76 @@ export default function Designer() {
         onDoubleClick={() => void appWindow?.toggleMaximize()}
       >
         <h1 className="visually-hidden">极思G GISpro 插件设计器</h1>
-        <div className="window-handle" data-tauri-drag-region>
-          <img className="window-app-icon" src="/app-icon.png" alt="" draggable={false} />
+        <div className="titlebar-side titlebar-side-left" data-tauri-drag-region>
+          <div className="window-handle" data-tauri-drag-region>
+            <img className="window-app-icon" src="/app-icon.png" alt="" draggable={false} />
+          </div>
+          <div className="titlebar-actions">
+            <button
+              className="titlebar-icon-btn"
+              title="文件"
+              aria-label="文件"
+              aria-haspopup="menu"
+              aria-expanded={dropdown?.kind === 'file'}
+              onClick={(event) => {
+                event.stopPropagation();
+                const rect = event.currentTarget.getBoundingClientRect();
+                setDropdown({ kind: 'file', x: rect.left, y: rect.bottom + 4 });
+              }}
+            >
+              <FileText size={18} />
+            </button>
+            <button
+              className="titlebar-icon-btn"
+              title="设置"
+              aria-label="设置"
+              aria-haspopup="menu"
+              aria-expanded={dropdown?.kind === 'settings'}
+              onClick={(event) => {
+                event.stopPropagation();
+                const rect = event.currentTarget.getBoundingClientRect();
+                setDropdown({ kind: 'settings', x: rect.left, y: rect.bottom + 4 });
+              }}
+            >
+              <Settings size={18} />
+            </button>
+            <button
+              className="titlebar-icon-btn"
+              title="关于与检查更新"
+              onClick={(event) => {
+                event.stopPropagation();
+                setShowAbout(true);
+              }}
+            >
+              <Info size={18} />
+            </button>
+          </div>
         </div>
-        <button
-          className="titlebar-icon-btn"
-          title="文件"
-          aria-label="文件"
-          onClick={(event) => {
-            event.stopPropagation();
-            const rect = event.currentTarget.getBoundingClientRect();
-            setDropdown({ kind: 'file', x: rect.left, y: rect.bottom + 4 });
-          }}
-        >
-          <FileText size={14} />
-        </button>
         <div className="window-title" data-tauri-drag-region>
           {activeProjectTitle}
           {fileDirty ? <span className="dirty-dot" title="有未保存到文件的修改" /> : null}
         </div>
-        <button
-          className="titlebar-icon-btn"
-          title="设置"
-          onClick={(event) => {
-            event.stopPropagation();
-            const rect = event.currentTarget.getBoundingClientRect();
-            setDropdown({ kind: 'settings', x: rect.right - 220, y: rect.bottom + 4 });
-          }}
-        >
-          <Settings size={14} />
-        </button>
-        <button
-          className="titlebar-icon-btn"
-          title="关于与检查更新"
-          onClick={(event) => {
-            event.stopPropagation();
-            setShowAbout(true);
-          }}
-        >
-          <Info size={14} />
-        </button>
-        <div className="window-buttons" onDoubleClick={(event) => event.stopPropagation()}>
-          <button
-            type="button"
-            aria-label="最小化"
-            title="最小化"
-            onClick={() => void appWindow?.minimize()}
-          />
-          <button
-            type="button"
-            aria-label="最大化/还原"
-            title="最大化/还原"
-            onClick={() => void appWindow?.toggleMaximize()}
-          />
-          <button
-            type="button"
-            aria-label="关闭"
-            title="关闭"
-            onClick={() => void appWindow?.close()}
-          />
+        <div className="titlebar-side titlebar-side-right">
+          <div className="window-buttons" onDoubleClick={(event) => event.stopPropagation()}>
+            <button
+              type="button"
+              aria-label="最小化"
+              title="最小化"
+              onClick={() => void appWindow?.minimize()}
+            />
+            <button
+              type="button"
+              aria-label="最大化/还原"
+              title="最大化/还原"
+              onClick={() => void appWindow?.toggleMaximize()}
+            />
+            <button
+              type="button"
+              aria-label="关闭"
+              title="关闭"
+              onClick={() => void appWindow?.close()}
+            />
+          </div>
         </div>
       </header>
 
@@ -1793,7 +2151,12 @@ export default function Designer() {
       ) : null}
 
       <div className="next-workbench">
-        <aside className="next-tab-sidebar" aria-label="项目与页签列表">
+        <aside
+          className="next-tab-sidebar"
+          ref={projSidebarRef}
+          aria-label="项目与页签列表"
+          style={{ width: projWidth ?? undefined }}
+        >
           <div className="next-tab-sidebar-head">
             <strong>项目</strong>
             <button onClick={() => addProject()} title="新增项目">
@@ -1804,6 +2167,7 @@ export default function Designer() {
             <div className="next-project-block" key={project.id}>
               <div
                 className={`next-project-item${project.id === activeProject.id ? ' active' : ''}`}
+                aria-current={project.id === activeProject.id ? 'true' : undefined}
                 onClick={() => activateProject(project.id)}
                 title={projectTitle(project)}
               >
@@ -1833,19 +2197,21 @@ export default function Designer() {
                     }}
                   />
                 ) : (
-                  <span
+                  <button
+                    type="button"
                     className="next-project-name"
-                    role="button"
-                    tabIndex={0}
-                    title={`${projectTitle(project)}（F2 或双击改名）`}
+                    title={`${projectTitle(project)}（点击切换项目，F2 或双击改名）`}
+                    aria-label={`${projectTitle(project)}，切换项目；按 F2 重命名`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      activateProject(project.id);
+                    }}
                     onDoubleClick={(event) => {
                       event.stopPropagation();
                       setRenamingProjectId(project.id);
                     }}
-                    // 键盘必须能不借助鼠标进改名态，否则改名只有鼠标可达（WCAG 2.1.1）。
-                    // F2 是 Windows 资源管理器的重命名约定；Enter/Space 是 role="button" 的契约。
                     onKeyDown={(event) => {
-                      if (event.key === 'F2' || event.key === 'Enter' || event.key === ' ') {
+                      if (event.key === 'F2') {
                         event.preventDefault();
                         event.stopPropagation();
                         setRenamingProjectId(project.id);
@@ -1853,7 +2219,7 @@ export default function Designer() {
                     }}
                   >
                     {projectTitle(project)}
-                  </span>
+                  </button>
                 )}
                 {project.dirty ? <span className="dirty-dot" title="有未保存到文件的修改" /> : null}
                 <button
@@ -1875,6 +2241,11 @@ export default function Designer() {
                       className={`next-tab-item${
                         project.id === activeProject.id && tab.id === activeTab?.id ? ' active' : ''
                       }`}
+                      aria-current={
+                        project.id === activeProject.id && tab.id === activeTab?.id
+                          ? 'true'
+                          : undefined
+                      }
                       onClick={() => activateProject(project.id, tab.id)}
                     >
                       {project.id === activeProject.id && tab.id === activeTab?.id ? (
@@ -1886,7 +2257,17 @@ export default function Designer() {
                           spellCheck={false}
                         />
                       ) : (
-                        <span className="next-tab-name">{tab.caption}</span>
+                        <button
+                          type="button"
+                          className="next-tab-name"
+                          aria-label={`${tab.caption}，切换到该页签`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            activateProject(project.id, tab.id);
+                          }}
+                        >
+                          {tab.caption}
+                        </button>
                       )}
                       {project.document.tabs.length > 1 ? (
                         <button
@@ -1915,6 +2296,30 @@ export default function Designer() {
             </div>
           ))}
         </aside>
+
+        <section className="next-vsplit-dock" aria-label="项目栏宽度调节">
+          <div
+            className="next-vsplit"
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="调整项目栏宽度"
+            aria-valuemin={PROJ_WIDTH_MIN}
+            aria-valuemax={PROJ_WIDTH_MAX}
+            aria-valuenow={projWidth ?? PROJ_WIDTH_DEFAULT}
+            tabIndex={0}
+            onPointerDown={startSidebarResize('proj')}
+            onKeyDown={(event) => {
+              if (event.key === 'ArrowLeft') {
+                event.preventDefault();
+                nudgeSidebarWidth('proj', -16);
+              }
+              if (event.key === 'ArrowRight') {
+                event.preventDefault();
+                nudgeSidebarWidth('proj', 16);
+              }
+            }}
+          />
+        </section>
 
         <div className="next-center">
           <section className="next-toolbar" aria-label="工具栏">
@@ -1967,6 +2372,8 @@ export default function Designer() {
                 {currentFile && !fileDirty ? '已保存' : '保存'}
               </button>
               <button
+                aria-haspopup="menu"
+                aria-expanded={dropdown?.kind === 'import'}
                 onClick={(event) => {
                   event.stopPropagation();
                   const rect = event.currentTarget.getBoundingClientRect();
@@ -1979,6 +2386,8 @@ export default function Designer() {
               </button>
               <button
                 className="primary"
+                aria-haspopup="menu"
+                aria-expanded={dropdown?.kind === 'export'}
                 onClick={(event) => {
                   event.stopPropagation();
                   const rect = event.currentTarget.getBoundingClientRect();
@@ -1999,7 +2408,13 @@ export default function Designer() {
                   这里是完整的 ARIA tabs pattern（tablist + tab + tabpanel + roving tabindex
                   + 方向键）：只挂 role="tablist"/"tab" 而不给键盘行为，是在用语义承诺一个
                   没实现的交互，属 4.1.2 的语义夸大。 */}
-              <div className="next-canvas-tabs" role="tablist" aria-label="Ribbon 页签">
+              {/* 板块角标签放 tablist 外面：tablist 的子元素必须是 tab，
+                  legend 混进去既坏语义又坏 roving tabindex 的方向键循环。 */}
+              <div className="next-canvas-tabsbar">
+                <span className="next-panel-legend" aria-hidden>
+                  画布
+                </span>
+                <div className="next-canvas-tabs" role="tablist" aria-label="Ribbon 页签">
                 {document.tabs.map((tab, index) => (
                   <button
                     key={tab.id}
@@ -2019,13 +2434,22 @@ export default function Designer() {
                     <span className="next-canvas-tab-keytip">{tab.keytip}</span>
                   </button>
                 ))}
+                </div>
               </div>
               <div
                 className="next-ribbon-area"
                 id={CANVAS_TABPANEL_ID}
+                ref={ribbonAreaRef}
                 role="tabpanel"
                 aria-labelledby={canvasTabDomId(activeTabId)}
               >
+                {groupDrop ? (
+                  <div
+                    className="next-group-drop-line"
+                    style={{ left: groupDrop.x }}
+                    aria-hidden
+                  />
+                ) : null}
                 {activeGroups.length ? (
                   activeGroups.map((group, index) => (
                     <RibbonGroupView
@@ -2034,6 +2458,7 @@ export default function Designer() {
                       group={group}
                       drag={drag}
                       hover={hover}
+                      dragging={groupDragId === group.id}
                       canDelete={index > 0}
                       selectedControlId={selectedControlId}
                       registerGrid={(subgroupId, element) => {
@@ -2041,9 +2466,8 @@ export default function Designer() {
                         else gridRefs.current.delete(subgroupId);
                       }}
                       onUpdateGroup={updateGroup}
-                      onUpdateColumns={updateGroupColumns}
                       onDuplicateGroup={duplicateGroup}
-                      onResizeGroup={resizeGroupControls}
+                      onAdjustGroupColumns={adjustGroupColumns}
                       onDeleteGroup={deleteGroup}
                       onContextMenuGroup={(x, y, groupId) =>
                         setContextMenu({ x, y, groupId })
@@ -2063,6 +2487,8 @@ export default function Designer() {
                           variant: control.variant,
                         })
                       }
+                      onStartGroupDrag={startGroupDrag}
+                      onMoveGroup={moveGroupBy}
                     />
                   ))
                 ) : (
@@ -2072,34 +2498,6 @@ export default function Designer() {
                 )}
               </div>
             </section>
-
-            <aside className="next-side" aria-label="属性面板">
-              {selectedControl ? (
-                <Inspector
-                  control={selectedControl}
-                  onUpdate={updateControl}
-                  onDelete={deleteControl}
-                  onOpenIcons={(childId) =>
-                    setIconPickerFor(
-                      childId
-                        ? { controlId: selectedControl.id, childId }
-                        : { controlId: selectedControl.id },
-                    )
-                  }
-                  onUpdateChild={(childId, patch) => updateChild(selectedControl.id, childId, patch)}
-                  onAddChild={() => addChild(selectedControl.id)}
-                  onRemoveChild={(childId) => removeChild(selectedControl.id, childId)}
-                />
-              ) : (
-                <DocumentOutline
-                  document={document}
-                  activeTabId={activeTabId}
-                  selectedControlId={selectedControlId}
-                  onSelectTab={(tabId) => activateProject(activeProject.id, tabId)}
-                  onSelectControl={revealControl}
-                />
-              )}
-            </aside>
           </main>
 
           {/* 画布与控件库之间的可拖拽分隔条。画布不再无条件吃掉剩余空间，
@@ -2136,107 +2534,260 @@ export default function Designer() {
             />
           </section>
 
+          {/* D 形态控件库：左栏按交互特性分组的类型列表，右栏选中类型的全尺寸大详情。
+              点徽章选中「点入/拖出」的默认尺寸；按住徽章直接拖出该尺寸控件。
+              占格信息同时在图示（chip）、数字与 button 可访问名三处。 */}
           <section
             className="next-bottom-palette"
             ref={paletteRef}
             aria-label="控件库"
-            style={{ height: paletteHeight ?? undefined, maxHeight: 'none' }}
+            style={{ height: paletteHeight, maxHeight: 'none' }}
           >
-            <div className="next-palette-tabs" role="group" aria-label="控件分类">
-              {LIBRARY_CATEGORIES.map(({ id, label, Icon }) => (
-                <button
-                  key={id}
-                  className={libCategory === id ? 'active' : ''}
-                  aria-pressed={libCategory === id}
-                  title={
-                    id === 'all'
-                      ? '全部控件'
-                      : id === 'command'
-                        ? '命令类:点击执行动作'
-                        : id === 'container'
-                          ? '容器类:承载多个命令或选项'
-                          : '输入类:录入参数值'
-                  }
-                  onClick={() => setLibCategory(id)}
-                >
-                  <Icon size={13} />
-                  {label}
-                </button>
-              ))}
-            </div>
-            <div className="next-palette-cards">
-              {visibleLibraryItems.map((item) => {
-                const size =
+            {/* palette 本体是滚动容器，legend 必须走普通文档流（floating 变体在滚动容器里会被裁剪） */}
+            <span className="next-panel-legend" aria-hidden>
+              控件库
+            </span>
+            <div className="palette-split">
+              <nav className="palette-list" aria-label="控件类型列表">
+                {LIBRARY_CATEGORIES.map(({ id, label }) => {
+                  const items = CONTROL_LIBRARY.filter(
+                    (entry) => LIBRARY_CATEGORY[entry.type] === id,
+                  );
+                  return (
+                    <div key={id}>
+                      <div className="palette-cat-head">
+                        {label} · {items.length}
+                      </div>
+                      {items.map((item) => (
+                        <button
+                          key={item.type}
+                          type="button"
+                          className={`palette-list-item${libSelectedType === item.type ? ' active' : ''}`}
+                          aria-pressed={libSelectedType === item.type}
+                          onClick={() => setLibSelectedType(item.type)}
+                        >
+                          <LibraryIconThumb type={item.type} />
+                          <span>{item.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })}
+              </nav>
+              {(() => {
+                const item =
+                  CONTROL_LIBRARY.find((entry) => entry.type === libSelectedType) ??
+                  CONTROL_LIBRARY[0];
+                const activeSize =
                   libSize[item.type] ??
                   (item.supportedSizes.includes('large')
                     ? 'large'
                     : item.supportedSizes[item.supportedSizes.length - 1]);
                 return (
-                  <div
-                    className="library-compact-card"
-                    key={item.type}
-                    title={`${item.label} — ${item.shortDescription}`}
-                  >
-                    <div className="library-compact-head">
-                      <LibraryIconThumb type={item.type} />
-                      <span>{item.label}</span>
+                  <div className="palette-detail" key={item.type}>
+                    <div className="palette-detail-head">
+                      <span className="palette-detail-thumb">
+                        <LibraryIconThumb type={item.type} />
+                      </span>
+                      <div>
+                        <div className="palette-detail-name">{item.label}</div>
+                        <div className="palette-detail-desc">{item.shortDescription}</div>
+                      </div>
                     </div>
-                    <p className="library-compact-desc">{item.shortDescription}</p>
-                    <div className="library-compact-sizes">
-                      {item.supportedSizes.map((candidate) => (
-                        <div key={candidate} className="library-mock-cell" data-size={candidate}>
-                          <div className="library-mock-stage" aria-hidden>
-                            <ControlMock
-                              type={item.type}
-                              caption={item.label}
-                              size={candidate}
-                              mode="library"
-                            />
-                          </div>
-                          <button
-                            type="button"
-                            className={candidate === size ? 'active' : ''}
-                            title={`${item.label} · ${SIZE_LABELS[candidate]} · ${footprintLabel(item.type, candidate)}`}
-                            aria-label={`${item.label} ${SIZE_LABELS[candidate]} 尺寸，占 ${footprintLabel(item.type, candidate)} 格`}
-                            onClick={() => setLibSize((current) => ({ ...current, [item.type]: candidate }))}
-                            onPointerDown={(event) =>
-                              startDrag(event, {
-                                kind: 'new',
-                                definition: item,
-                                size: candidate,
-                              })
-                            }
-                          >
-                            {SIZE_LABELS[candidate]}
-                            <small>
-                              <span
-                                className="footprint-chip"
-                                data-footprint={footprintLabel(item.type, candidate)}
-                                style={
-                                  {
-                                    '--fw': getFootprint(item.type, candidate).w,
-                                    '--fh': getFootprint(item.type, candidate).h,
-                                  } as CSSProperties
-                                }
-                                aria-hidden
+                    <div className="palette-detail-sizes">
+                      {item.supportedSizes.map((candidate) => {
+                        const footprint = getFootprint(item.type, candidate);
+                        return (
+                          <div key={candidate} className="palette-size-cell" data-size={candidate}>
+                            <div className="library-mock-stage palette-detail-stage" aria-hidden>
+                              <ControlMock
+                                type={item.type}
+                                caption={item.label}
+                                size={candidate}
+                                mode="library"
                               />
-                            </small>
-                          </button>
-                        </div>
-                      ))}
+                              <span className="palette-stage-px">
+                                {footprint.w * RIBBON_CELL}×{footprint.h * RIBBON_CELL}px
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              className={
+                                candidate === activeSize && !libIconOnly[item.type] ? 'active' : ''
+                              }
+                              title={`${item.label} · ${SIZE_LABELS[candidate]} · ${footprintLabel(item.type, candidate)}`}
+                              aria-label={`${item.label} ${SIZE_LABELS[candidate]} 尺寸，占 ${footprintLabel(item.type, candidate)} 格`}
+                              aria-pressed={candidate === activeSize && !libIconOnly[item.type]}
+                              onClick={() => {
+                                setLibSize((current) => ({ ...current, [item.type]: candidate }));
+                                setLibIconOnly((current) => ({ ...current, [item.type]: false }));
+                              }}
+                              onPointerDown={(event) =>
+                                startDrag(event, {
+                                  kind: 'new',
+                                  definition: item,
+                                  size: candidate,
+                                })
+                              }
+                            >
+                              <span>{SIZE_LABELS[candidate]}</span>
+                              <span className="footprint-num">
+                                {footprintLabel(item.type, candidate)}
+                              </span>
+                              <small>
+                                <span
+                                  className="footprint-chip"
+                                  data-footprint={footprintLabel(item.type, candidate)}
+                                  style={
+                                    {
+                                      '--fw': footprint.w,
+                                      '--fh': footprint.h,
+                                    } as CSSProperties
+                                  }
+                                  aria-hidden
+                                />
+                              </small>
+                            </button>
+                          </div>
+                        );
+                      })}
+                      {/* 「图标」形态:small + iconOnly,1×1 纯图标;Pro 端是否去文字由其自适应 */}
+                      {(() => {
+                        const iconFootprint = getFootprint(item.type, 'small', undefined, true);
+                        return (
+                          <div className="palette-size-cell" data-size="icon">
+                            <div className="library-mock-stage palette-detail-stage" aria-hidden>
+                              <ControlMock
+                                type={item.type}
+                                caption={item.label}
+                                size="small"
+                                mode="library"
+                                iconOnly
+                              />
+                              <span className="palette-stage-px">
+                                {iconFootprint.w * RIBBON_CELL}×{iconFootprint.h * RIBBON_CELL}px
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              className={libIconOnly[item.type] ? 'active' : ''}
+                              title={`${item.label} · 图标 · 1x1`}
+                              aria-label={`${item.label} 图标形态，占 1x1 格（导出为 small 尺寸，Pro 端是否省略文字由其自行决定）`}
+                              aria-pressed={Boolean(libIconOnly[item.type])}
+                              onClick={() => {
+                                setLibSize((current) => ({ ...current, [item.type]: 'small' }));
+                                setLibIconOnly((current) => ({ ...current, [item.type]: true }));
+                              }}
+                              onPointerDown={(event) =>
+                                startDrag(event, {
+                                  kind: 'new',
+                                  definition: item,
+                                  size: 'small',
+                                  iconOnly: true,
+                                })
+                              }
+                            >
+                              <span>图标</span>
+                              <span className="footprint-num">
+                                {footprintLabel(item.type, 'small', undefined, true)}
+                              </span>
+                              <small>
+                                <span
+                                  className="footprint-chip"
+                                  data-footprint={footprintLabel(item.type, 'small', undefined, true)}
+                                  style={
+                                    {
+                                      '--fw': iconFootprint.w,
+                                      '--fh': iconFootprint.h,
+                                    } as CSSProperties
+                                  }
+                                  aria-hidden
+                                />
+                              </small>
+                            </button>
+                          </div>
+                        );
+                      })()}
                     </div>
+                    <p className="palette-detail-meta">
+                      <span className="palette-daml">
+                        size="<b>{activeSize}</b>"
+                      </span>
+                      <span>1 格 = 32px · 点徽章选中默认尺寸 · 按住拖入画布</span>
+                      <button className="palette-insert" onClick={insertSelectedLibraryControl}>
+                        <Plus size={13} />
+                        插入到当前分组
+                      </button>
+                    </p>
                   </div>
                 );
-              })}
+              })()}
             </div>
           </section>
         </div>
+
+        <section className="next-vsplit-dock" aria-label="文档结构栏宽度调节">
+          <div
+            className="next-vsplit"
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="调整文档结构栏宽度"
+            aria-valuemin={STRUCT_WIDTH_MIN}
+            aria-valuemax={STRUCT_WIDTH_MAX}
+            aria-valuenow={structWidth ?? STRUCT_WIDTH_DEFAULT}
+            tabIndex={0}
+            onPointerDown={startSidebarResize('struct')}
+            onKeyDown={(event) => {
+              if (event.key === 'ArrowLeft') {
+                event.preventDefault();
+                nudgeSidebarWidth('struct', -16);
+              }
+              if (event.key === 'ArrowRight') {
+                event.preventDefault();
+                nudgeSidebarWidth('struct', 16);
+              }
+            }}
+          />
+        </section>
+
+        <aside
+          className="next-side"
+          ref={structSidebarRef}
+          aria-label="属性面板"
+          style={{ width: structWidth ?? undefined }}
+        >
+          {selectedControl ? (
+            <Inspector
+              control={selectedControl}
+              onUpdate={updateControl}
+              onDelete={deleteControl}
+              onOpenIcons={(childId) =>
+                setIconPickerFor(
+                  childId
+                    ? { controlId: selectedControl.id, childId }
+                    : { controlId: selectedControl.id },
+                )
+              }
+              onUpdateChild={(childId, patch) => updateChild(selectedControl.id, childId, patch)}
+              onAddChild={() => addChild(selectedControl.id)}
+              onRemoveChild={(childId) => removeChild(selectedControl.id, childId)}
+            />
+          ) : (
+            <DocumentOutline
+              document={document}
+              activeTabId={activeTabId}
+              selectedControlId={selectedControlId}
+              onSelectTab={(tabId) => activateProject(activeProject.id, tabId)}
+              onSelectControl={revealControl}
+            />
+          )}
+        </aside>
       </div>
 
       {drag ? (
         <div
+          ref={ghostRef}
           className="drag-ghost"
-          style={{ left: ghostPos.x + 12, top: ghostPos.y + 10 } as CSSProperties}
         >
           {drag.kind === 'new' ? (
             <ControlMock
@@ -2244,6 +2795,7 @@ export default function Designer() {
               caption={drag.definition.label}
               size={drag.size}
               mode="library"
+              iconOnly={drag.iconOnly}
             />
           ) : (
             <ControlMock
@@ -2260,6 +2812,7 @@ export default function Designer() {
         <ContextMenu
           state={contextMenu}
           document={document}
+          onClose={() => setContextMenu(null)}
           onAction={(action) => {
             const menu = contextMenu;
             setContextMenu(null);
@@ -2291,17 +2844,32 @@ export default function Designer() {
       />
 
       {dropdown ? (
-        <div className="context-menu" style={{ left: dropdown.x, top: dropdown.y }}>
+        <MenuSurface
+          label={
+            dropdown.kind === 'file'
+              ? '文件菜单'
+              : dropdown.kind === 'settings'
+                ? '设置菜单'
+                : dropdown.kind === 'import'
+                  ? '导入菜单'
+                  : '导出菜单'
+          }
+          x={dropdown.x}
+          y={dropdown.y}
+          onClose={() => setDropdown(null)}
+        >
           {dropdown.kind === 'file' ? (
             <>
               <div className="context-menu-title">文件</div>
-              <button onClick={() => void requestNewDocument()}>
+              <button type="button" role="menuitem" onClick={() => void requestNewDocument()}>
                 新建项目<span className="menu-hint">Ctrl+N</span>
               </button>
-              <button onClick={() => void openDocDialog()}>
+              <button type="button" role="menuitem" onClick={() => void openDocDialog()}>
                 打开…<span className="menu-hint">Ctrl+O</span>
               </button>
               <button
+                type="button"
+                role="menuitem"
                 onClick={() =>
                   void saveDoc().then(() => undefined)
                 }
@@ -2309,12 +2877,14 @@ export default function Designer() {
                 {currentFile ? `保存 ${splitPath(currentFile).name}` : '保存'}
                 <span className="menu-hint">Ctrl+S</span>
               </button>
-              <button onClick={() => void saveDocAs()}>另存为…</button>
+              <button type="button" role="menuitem" onClick={() => void saveDocAs()}>另存为…</button>
               <div className="context-menu-sep" />
               <div className="context-menu-title">最近文件</div>
               {recentFiles.length ? (
                 recentFiles.map((file) => (
                   <button
+                    type="button"
+                    role="menuitem"
                     key={file.path}
                     title={file.path}
                     onClick={() => void loadDocumentFromPath(file.path)}
@@ -2326,8 +2896,8 @@ export default function Designer() {
                 <div className="menu-empty">暂无最近文件</div>
               )}
               <div className="context-menu-sep" />
-              <button onClick={() => openDemoLayout()}>打开示例布局</button>
-              <button onClick={() => setShowAbout(true)}>关于…</button>
+              <button type="button" role="menuitem" onClick={() => openDemoLayout()}>打开示例布局</button>
+              <button type="button" role="menuitem" onClick={() => setShowAbout(true)}>关于…</button>
             </>
           ) : dropdown.kind === 'settings' ? (
             <>
@@ -2336,12 +2906,16 @@ export default function Designer() {
                 <span>界面主题</span>
                 <div className="settings-seg">
                   <button
+                    type="button"
+                    role="menuitem"
                     className={theme === 'light' ? 'active' : ''}
                     onClick={() => setTheme('light')}
                   >
                     浅色
                   </button>
                   <button
+                    type="button"
+                    role="menuitem"
                     className={theme === 'dark' ? 'active' : ''}
                     onClick={() => setTheme('dark')}
                   >
@@ -2365,11 +2939,15 @@ export default function Designer() {
           ) : (
             <>
               <div className="context-menu-title">
-                {dropdown.kind === 'import' ? '导入' : '导出'}
+                {dropdown.kind === 'import'
+                  ? '导入'
+                  : `导出当前项目：${projectName}`}
               </div>
               {dropdown.kind === 'import' ? (
                 <>
                   <button
+                    type="button"
+                    role="menuitem"
                     onClick={() => {
                       setDropdown(null);
                       void pickImportFile('esriAddInX');
@@ -2378,6 +2956,8 @@ export default function Designer() {
                     导入 add-in 安装包(.esriAddInX)…
                   </button>
                   <button
+                    type="button"
+                    role="menuitem"
                     onClick={() => {
                       setDropdown(null);
                       void pickImportFile('daml');
@@ -2386,6 +2966,8 @@ export default function Designer() {
                     导入 DAML(.daml)…
                   </button>
                   <button
+                    type="button"
+                    role="menuitem"
                     onClick={() => {
                       setDropdown(null);
                       void pickImportFile('json');
@@ -2397,6 +2979,8 @@ export default function Designer() {
               ) : (
                 <>
                   <button
+                    type="button"
+                    role="menuitem"
                     onClick={() => {
                       setDropdown(null);
                       void exportPackage();
@@ -2424,7 +3008,7 @@ export default function Designer() {
               )}
             </>
           )}
-        </div>
+        </MenuSurface>
       ) : null}
 
       {confirmAction === 'clear' ? (
@@ -2507,7 +3091,7 @@ export default function Designer() {
         />
       ) : null}
 
-      {toast ? <div className="next-toast">{toast}</div> : null}
+      {toast ? <div className="next-toast" role="status">{toast}</div> : null}
     </div>
   );
 }
@@ -2526,52 +3110,93 @@ function RibbonGroupView({
   drag,
   hover,
   canDelete,
+  dragging,
   selectedControlId,
   registerGrid,
   onUpdateGroup,
-  onUpdateColumns,
   onDuplicateGroup,
-  onResizeGroup,
+  onAdjustGroupColumns,
   onDeleteGroup,
   onContextMenuGroup,
   onSelectControl,
   onControlContextMenu,
   onDragControlStart,
+  onStartGroupDrag,
+  onMoveGroup,
 }: {
   document: RibbonDocument;
   group: RibbonGroup;
   drag: DragState;
   hover: HoverTarget | null;
   canDelete: boolean;
+  dragging: boolean;
   selectedControlId: string | null;
   registerGrid: (subgroupId: string, element: HTMLElement | null) => void;
   onUpdateGroup: (groupId: string, patch: Partial<RibbonGroup>) => void;
-  onUpdateColumns: (groupId: string, columns: number) => void;
   onDuplicateGroup: (groupId: string) => void;
-  onResizeGroup: (groupId: string, size: RibbonControlSize) => void;
+  onAdjustGroupColumns: (groupId: string, delta: 1 | -1) => void;
   onDeleteGroup: (groupId: string) => void;
   onContextMenuGroup: (x: number, y: number, groupId: string) => void;
   onSelectControl: (controlId: string) => void;
   onControlContextMenu: (x: number, y: number, controlId: string) => void;
   onDragControlStart: (event: React.PointerEvent, control: RibbonControl) => void;
+  onStartGroupDrag: (event: React.PointerEvent<HTMLButtonElement>, groupId: string) => void;
+  onMoveGroup: (groupId: string, delta: -1 | 1) => void;
 }) {
   const subgroup = document.subgroups.find((item) => item.id === group.subgroupIds[0]);
   if (!subgroup) return null;
-  const spec = getGridSpec(subgroup);
+  // 流式渲染：按声明顺序派生每个控件的显示位置（与 Pro 同规则），组宽随内容
+  const controls = getSubgroupControls(document, subgroup.id);
+  const flow = flowLayout(
+    controls.map((c) => ({
+      id: c.id,
+      type: c.type,
+      size: c.size,
+      caption: c.caption,
+      variant: c.variant,
+      iconOnly: c.iconOnly,
+    })),
+  );
+  // 显示宽 = max(内容列数, 手动列数)。手动列数(新建默认 8)是拖放区的最小宽:
+  // 空分组按 8 列给足落点;内容超出后随内容加宽;− 只能收回到内容列数
+  const contentColumns = flow.reduce((max, item) => Math.max(max, item.x + item.w), 0);
+  const manualColumns = Math.min(
+    MAX_GROUP_COLS,
+    Math.max(1, subgroup.layout?.columns ?? DEFAULT_GROUP_COLS),
+  );
+  const usedColumns = Math.max(contentColumns, manualColumns);
 
   return (
     <div
-      className="next-group"
+      className={`next-group${dragging ? ' group-drag-source' : ''}`}
       role="group"
       tabIndex={0}
       aria-label={`分组 ${group.caption}`}
-      style={{ '--group-cols': spec.cols } as CSSProperties}
+      data-group-id={group.id}
+      style={{ '--group-cols': Math.max(usedColumns, 1) } as CSSProperties}
       onContextMenu={(event) => {
         event.preventDefault();
         onContextMenuGroup(event.clientX, event.clientY, group.id);
       }}
     >
       <div className="next-group-tools">
+        <button
+          className="group-drag-handle"
+          title="拖拽调整分组顺序（也可按左右方向键）"
+          aria-label={`调整「${group.caption}」分组顺序：按住拖拽，或按左右方向键移动`}
+          onPointerDown={(event) => onStartGroupDrag(event, group.id)}
+          onKeyDown={(event) => {
+            if (event.key === 'ArrowLeft') {
+              event.preventDefault();
+              onMoveGroup(group.id, -1);
+            } else if (event.key === 'ArrowRight') {
+              event.preventDefault();
+              onMoveGroup(group.id, 1);
+            }
+          }}
+        >
+          <GripVertical size={12} />
+        </button>
         <input
           className="next-group-name"
           aria-label="分组名称"
@@ -2579,13 +3204,6 @@ function RibbonGroupView({
           onChange={(event) => onUpdateGroup(group.id, { caption: event.target.value })}
           spellCheck={false}
         />
-        <button onClick={() => onUpdateColumns(group.id, Math.max(MIN_GROUP_COLS, spec.cols - 1))}>
-          −列
-        </button>
-        <strong>{spec.cols}列</strong>
-        <button onClick={() => onUpdateColumns(group.id, Math.min(MAX_GROUP_COLS, spec.cols + 1))}>
-          +列
-        </button>
         <button onClick={() => onDuplicateGroup(group.id)} title="复制分组">
           <Copy size={12} />
         </button>
@@ -2594,18 +3212,31 @@ function RibbonGroupView({
             <Trash2 size={12} />
           </button>
         ) : null}
-        <div className="next-group-batch">
-          <span>批量尺寸</span>
-          {(['large', 'middle', 'small'] as const).map((size) => (
-            <button key={size} onClick={() => onResizeGroup(group.id, size)}>
-              {SIZE_LABELS[size]}
-            </button>
-          ))}
+        <div className="next-group-cols" role="group" aria-label="分组列数">
+          <button
+            onClick={() => onAdjustGroupColumns(group.id, -1)}
+            disabled={manualColumns <= Math.max(contentColumns, 1)}
+            title="减少列数"
+            aria-label="减少列数"
+          >
+            <Minus size={12} />
+          </button>
+          <span>{usedColumns} 列</span>
+          <button
+            onClick={() => onAdjustGroupColumns(group.id, 1)}
+            disabled={usedColumns >= MAX_GROUP_COLS}
+            title="增加列数"
+            aria-label="增加列数"
+          >
+            <Plus size={12} />
+          </button>
         </div>
       </div>
       <RibbonGroupGrid
         document={document}
         subgroup={subgroup}
+        flow={flow}
+        usedColumns={usedColumns}
         drag={drag}
         hover={hover}
         selectedControlId={selectedControlId}
@@ -2624,6 +3255,8 @@ function RibbonGroupView({
 function RibbonGroupGrid({
   document,
   subgroup,
+  flow,
+  usedColumns,
   drag,
   hover,
   selectedControlId,
@@ -2634,6 +3267,8 @@ function RibbonGroupGrid({
 }: {
   document: RibbonDocument;
   subgroup: RibbonSubgroup;
+  flow: GridRect[];
+  usedColumns: number;
   drag: DragState;
   hover: HoverTarget | null;
   selectedControlId: string | null;
@@ -2643,23 +3278,18 @@ function RibbonGroupGrid({
   onDragControlStart: (event: React.PointerEvent, control: RibbonControl) => void;
 }) {
   const controls = getSubgroupControls(document, subgroup.id);
-  const spec = getGridSpec(subgroup);
-  const layout = getSubgroupLayout(document, subgroup, 'Large');
-  const layoutIds = new Set(layout.map((item) => item.i));
-  const renderedControls = controls.filter((control) => layoutIds.has(control.id));
-  const hiddenCount = controls.length - renderedControls.length;
-  const usedColumns = layout.reduce((max, item) => Math.max(max, item.x + item.w), 0);
+  const rectMap = new Map(flow.map((item) => [item.i, item]));
   const showPreview = Boolean(drag) && hover?.subgroupId === subgroup.id;
 
   return (
     <div
       className="next-subgroup"
-      style={{ '--group-cols': spec.cols, '--group-rows': spec.rows } as CSSProperties}
+      style={{ '--group-cols': Math.max(usedColumns, 1), '--group-rows': 3 } as CSSProperties}
     >
       <div className="next-subgroup-head">
         <span>宽屏固定高度</span>
         <strong>
-          已用到 {usedColumns}/{spec.cols} 列 · 3 行
+          已用到 {usedColumns} 列 · 3 行
         </strong>
       </div>
       <div
@@ -2667,61 +3297,56 @@ function RibbonGroupGrid({
         ref={(element) => registerGrid(subgroup.id, element)}
         data-testid={`grid-${subgroup.id}`}
       >
-        {showPreview && hover ? (
-          <div
-            className={`next-drop-preview ${hover.valid ? 'valid' : 'invalid'}`}
-            style={
-              {
-                left: hover.x * RIBBON_CELL,
-                top: hover.y * RIBBON_CELL,
-                width: hover.w * RIBBON_CELL,
-                height: hover.h * RIBBON_CELL,
-              } as CSSProperties
-            }
-          />
-        ) : null}
-        {renderedControls.map((control) => (
-          <button
-            key={control.id}
-            data-testid={`control-${control.id}`}
-            className={`next-ribbon-control${control.id === selectedControlId ? ' selected' : ''}${
-              drag?.kind === 'move' && drag.controlId === control.id ? ' dragging' : ''
-            }`}
-            style={
-              {
-                left: (control.layout?.x ?? 0) * RIBBON_CELL,
-                top: (control.layout?.y ?? 0) * RIBBON_CELL,
-                width: (control.layout?.w ?? 1) * RIBBON_CELL,
-                height: (control.layout?.h ?? 1) * RIBBON_CELL,
-              } as CSSProperties
-            }
-            onPointerDown={(event) => {
-              if (event.button !== 0) return;
-              onDragControlStart(event, control);
-            }}
-            onClick={() => onSelectControl(control.id)}
-            onContextMenu={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              onControlContextMenu(event.clientX, event.clientY, control.id);
-            }}
-          >
-            <ControlMock
-              type={control.type}
-              caption={control.caption}
-              size={control.size}
-              iconFile={control.icon.small || undefined}
-              variant={control.variant}
-              separator={control.separator}
-              children={control.children}
-            />
-          </button>
-        ))}
-        {hiddenCount > 0 ? (
-          <div className="hidden-controls-warning">
-            有 {hiddenCount} 个控件因无空位未显示
+        {controls.length === 0 ? (
+          <div className="next-grid-empty-hint" aria-hidden>
+            从控件库拖入，或点“插入到当前分组”
           </div>
         ) : null}
+        {showPreview && hover ? (
+          <div className="next-drop-line" style={{ left: hover.lineX * RIBBON_CELL - 1 }} />
+        ) : null}
+        {controls.map((control) => {
+          const rect = rectMap.get(control.id);
+          if (!rect) return null;
+          return (
+            <button
+              key={control.id}
+              data-testid={`control-${control.id}`}
+              className={`next-ribbon-control${control.id === selectedControlId ? ' selected' : ''}${
+                drag?.kind === 'move' && drag.controlId === control.id ? ' dragging' : ''
+              }`}
+              style={
+                {
+                  left: rect.x * RIBBON_CELL,
+                  top: rect.y * RIBBON_CELL,
+                  width: rect.w * RIBBON_CELL,
+                  height: rect.h * RIBBON_CELL,
+                } as CSSProperties
+              }
+              onPointerDown={(event) => {
+                if (event.button !== 0) return;
+                onDragControlStart(event, control);
+              }}
+              onClick={() => onSelectControl(control.id)}
+              onContextMenu={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onControlContextMenu(event.clientX, event.clientY, control.id);
+              }}
+            >
+              <ControlMock
+                type={control.type}
+                caption={control.caption}
+                size={control.size}
+                iconFile={control.icon.small || undefined}
+                variant={control.variant}
+                separator={control.separator}
+                iconOnly={control.iconOnly}
+                children={control.children}
+              />
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -2785,16 +3410,26 @@ function Inspector({
         <label>
           首选尺寸
           <select
-            value={control.size}
-            onChange={(event) =>
-              onUpdate(control.id, { size: event.target.value as RibbonControlSize })
-            }
+            value={control.iconOnly && control.size === 'small' ? 'icon' : control.size}
+            onChange={(event) => {
+              const next = event.target.value;
+              if (next === 'icon') {
+                onUpdate(control.id, { size: 'small', iconOnly: true });
+              } else {
+                onUpdate(control.id, { size: next as RibbonControlSize, iconOnly: undefined });
+              }
+            }}
           >
             {control.supportedSizes.map((size) => (
               <option key={size} value={size}>
                 {SIZE_LABELS[size]} {footprintLabel(control.type, size, control.variant)}
               </option>
             ))}
+            {control.supportedSizes.includes('small') ? (
+              <option value="icon">
+                图标 {footprintLabel(control.type, 'small', control.variant, true)}
+              </option>
+            ) : null}
           </select>
         </label>
         {control.type === 'gallery' ? (
@@ -2927,33 +3562,40 @@ function Inspector({
 function ContextMenu({
   state,
   document,
+  onClose,
   onAction,
 }: {
   state: ContextMenuState;
   document: RibbonDocument;
+  onClose: () => void;
   onAction: (action: string) => void;
 }) {
   const control = state.controlId
     ? document.controls.find((item) => item.id === state.controlId)
     : null;
   return (
-    <div className="context-menu" style={{ left: state.x, top: state.y }}>
+    <MenuSurface
+      label={control ? `${control.caption || TYPE_LABELS[control.type] || control.type}菜单` : '分组菜单'}
+      x={state.x}
+      y={state.y}
+      onClose={onClose}
+    >
       {control ? (
         <>
           <div className="context-menu-title">{control.caption || TYPE_LABELS[control.type] || control.type}</div>
-          <button onClick={() => onAction('icons')}>选择图标…</button>
-          <button className="danger" onClick={() => onAction('delete-control')}>
+          <button type="button" role="menuitem" onClick={() => onAction('icons')}>选择图标…</button>
+          <button type="button" role="menuitem" className="danger" onClick={() => onAction('delete-control')}>
             删除控件
           </button>
         </>
       ) : (
         <>
-          <button onClick={() => onAction('duplicate-group')}>复制分组</button>
-          <button className="danger" onClick={() => onAction('delete-group')}>
+          <button type="button" role="menuitem" onClick={() => onAction('duplicate-group')}>复制分组</button>
+          <button type="button" role="menuitem" className="danger" onClick={() => onAction('delete-group')}>
             删除分组
           </button>
         </>
       )}
-    </div>
+    </MenuSurface>
   );
 }

@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>新布局稿·三栏停靠</title>
+<style>
+:root{
+  --bg-app:#eef1f5;--bg-canvas:#e6ebf1;--bg-chrome:#f7f9fb;--bg-sunken:#f3f6f9;--bg-surface:#ffffff;--bg-ctl:#fafcfd;
+  --bd-strong:#aab6c3;--bd:#cdd6df;--bd-soft:#dfe6ee;--bd-faint:#edf1f6;
+  --ink:#1e2a38;--ink-2:#3d4d61;--ink-3:#566779;--ink-4:#5c6b7a;--ic:#4e6172;
+  --acc:#1976d2;--acc-ink:#12406e;--acc-soft:#eaf3ff;--acc-deep:#d6e9fb;--ring:#1565c0;--danger:#b3261e;
+  --f:'Microsoft YaHei UI','Microsoft YaHei','Segoe UI',sans-serif;--mono:Consolas,'Cascadia Code',monospace;
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{background:var(--bg-app);color:var(--ink);font-family:var(--f);font-size:13px;display:flex;flex-direction:column;overflow:hidden}
+button{font-family:inherit;cursor:pointer}
+button:focus-visible{outline:2px solid var(--ring);outline-offset:1}
+.ic{stroke:var(--ic);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* ── 方案说明条 ── */
+.note{flex:none;background:var(--bg-surface);border-bottom:1px solid var(--bd);padding:8px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.note .tag{background:var(--acc-soft);color:var(--acc-ink);font-weight:600;font-size:12px;border-radius:3px;padding:2px 9px}
+.note .name{font-weight:600;font-size:13px}
+.note .concept{color:var(--ink-2);font-size:12px}
+.note .chips{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
+.note .chips span{font-size:11px;color:var(--ink-3);background:var(--bg-sunken);border:1px solid var(--bd-soft);border-radius:999px;padding:1px 9px}
+
+/* ── 应用 chrome ── */
+.titlebar{flex:none;height:32px;background:var(--bg-chrome);border-bottom:1px solid var(--bd-soft);display:flex;align-items:center;padding:0 10px;gap:8px}
+.titlebar .dot{width:9px;height:9px;border-radius:50%;background:var(--acc)}
+.titlebar .proj{flex:1;text-align:center;font-size:12px;color:var(--ink-2)}
+.titlebar .proj b{color:var(--ink);font-weight:600}
+.titlebar .proj i{font-style:normal;color:var(--acc);margin-left:3px}
+.titlebar .win{display:flex;gap:14px;color:var(--ink-4);font-size:12px;padding:0 4px}
+.toolbar{flex:none;height:38px;background:var(--bg-chrome);border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:6px;padding:0 10px}
+.tbtn{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;font-size:12px;color:var(--ink-2);background:none;border:1px solid transparent;border-radius:3px}
+.tbtn:hover{background:var(--bg-sunken);border-color:var(--bd-soft)}
+.tbtn.danger{color:var(--danger)}
+.tbtn.primary{background:var(--acc);color:#fff;font-weight:600}
+.tbtn.primary:hover{background:#1565c0}
+.tb-sep{width:1px;height:16px;background:var(--bd-soft);margin:0 4px}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:6px}
+.hint-save{font-size:11px;color:var(--ink-4);margin-right:6px}
+
+/* ── 三栏停靠工作区 ── */
+.workspace{flex:1;min-height:0;display:flex}
+/* 层3:左右栏(纵贯到底,最上层) */
+.side{flex:none;background:var(--bg-chrome);position:relative;display:flex;flex-direction:column;z-index:30}
+.side.proj{width:170px}
+.side.struct{width:206px}
+.side .sbody{flex:1;min-height:0;overflow:auto;padding-top:12px}
+.legend{position:absolute;top:-9px;left:10px;z-index:3;font-size:11px;line-height:1;color:var(--ink-3);background:var(--bg-app);border:1px solid var(--bd);border-radius:3px;padding:3px 9px;letter-spacing:.08em}
+.pitem{margin:4px 8px;padding:6px 9px;border-radius:3px;font-size:12px;color:var(--ink-2);cursor:default}
+.pitem.on{background:var(--acc-soft);color:var(--acc-ink);font-weight:600}
+.pitem.newtab{border:1px dashed var(--bd);color:var(--ink-4);text-align:center;margin-top:8px}
+.tree{padding:2px 8px 8px;font-size:12px;color:var(--ink-2);user-select:none;-webkit-user-select:none}
+.tree .tw{color:var(--ink-4);font-size:9px;display:inline-block;width:12px}
+.tree .root{color:var(--ink);font-weight:600;padding:4px 4px}
+.tree .lv1{padding:3px 4px 3px 22px}
+.tree .lv2{padding:3px 4px 3px 40px;color:var(--ink-3)}
+.tree .lv1:hover,.tree .lv2:hover{background:var(--bg-sunken)}
+
+/* 分隔条(边界可拖) */
+.spv{flex:none;width:5px;cursor:ew-resize;background:var(--bd-soft);transition:background .12s}
+.spv:hover{background:var(--acc)}
+.sph{flex:none;height:5px;cursor:ns-resize;background:var(--bd-soft);transition:background .12s}
+.sph:hover{background:var(--acc)}
+
+/* 中列:画布(层1,最底) + 控件库(层2) */
+.center{flex:1;min-width:0;display:flex;flex-direction:column}
+.canvas{flex:1;min-height:140px;background:var(--bg-canvas);display:flex;flex-direction:column;position:relative;z-index:0}
+.tabstrip{flex:none;height:30px;display:flex;align-items:flex-end;padding:0 10px;gap:2px}
+.legend-inline{flex:none;margin-right:8px;align-self:center;font-size:11px;line-height:1;color:var(--ink-3);background:var(--bg-sunken);border:1px solid var(--bd-soft);border-radius:3px;padding:3px 9px;letter-spacing:.08em}
+.ctab{font-size:12px;color:var(--ink-3);padding:5px 14px;border:1px solid transparent;border-bottom:none;border-radius:3px 3px 0 0}
+.ctab.on{background:var(--bg-chrome);border-color:var(--bd);color:var(--ink);font-weight:600}
+.ribbon{flex:none;background:var(--bg-chrome);border-top:1px solid var(--bd);display:flex;gap:8px;padding:8px 10px 10px;overflow:hidden}
+.grp{background:var(--bg-surface);border:1px solid var(--bd);border-radius:2px;flex:none}
+.grp .meta{display:flex;justify-content:space-between;gap:18px;font-size:10px;color:var(--ink-4);padding:3px 8px;border-bottom:1px solid var(--bd-faint)}
+.grp .body{display:flex;gap:3px;padding:6px 7px}
+.grp .name{text-align:center;font-size:11px;color:var(--ink-2);padding:4px 8px;border-top:1px solid var(--bd-faint)}
+.tile{width:44px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:3px 0;border-radius:2px}
+.tile .ic{width:16px;height:16px}
+.tile span{font-size:9px;color:var(--ink-3);white-space:nowrap}
+.tile i{font-style:normal;width:0;height:0;border:3px solid transparent;border-top-color:var(--ink-4);margin-top:1px}
+.canvasfloor{flex:1}
+
+/* 层2:控件库(夹在两栏之间,D 形态,高度可拖) */
+.palette{flex:none;height:296px;min-height:200px;background:var(--bg-chrome);position:relative;display:flex;flex-direction:column;z-index:20}
+.libsplit{flex:1;min-height:0;display:flex;padding-top:12px}
+.liblist{flex:none;width:188px;border-right:1px solid var(--bd-soft);overflow:auto}
+.cathead{font-size:10.5px;color:var(--ink-4);letter-spacing:.1em;padding:10px 14px 4px}
+.litem{display:flex;align-items:center;gap:8px;padding:6px 14px;font-size:12.5px;color:var(--ink-2);cursor:pointer;border-left:2px solid transparent}
+.litem .ic{width:15px;height:15px}
+.litem:hover{background:var(--bg-sunken)}
+.litem.on{background:var(--acc-soft);border-left-color:var(--acc);color:var(--acc-ink);font-weight:600}
+.libdetail{flex:1;min-width:0;overflow:auto;padding:12px 20px 14px}
+.dhead{display:flex;align-items:center;gap:11px;margin-bottom:4px}
+.dhead .big{width:34px;height:34px;border-radius:4px;background:var(--bg-sunken);border:1px solid var(--bd-soft);display:flex;align-items:center;justify-content:center}
+.dhead .big .ic{width:20px;height:20px}
+.dhead .nm{font-size:15px;font-weight:600}
+.dhead .desc{font-size:12px;color:var(--ink-3);margin-top:2px}
+.drow{display:flex;flex-wrap:wrap;gap:16px;margin:12px 0 10px}
+.sz{display:flex;flex-direction:column;gap:6px}
+.stagebox{position:relative;height:126px;min-width:96px;padding:0 14px;background:var(--bg-ctl);border:1px solid var(--bd-faint);border-radius:3px;display:flex;align-items:center;justify-content:center}
+.stagebox .px{position:absolute;right:6px;bottom:4px;font-family:var(--mono);font-size:9px;color:var(--ink-4)}
+.szb{display:flex;align-items:center;gap:6px;justify-content:center;padding:3px 8px;background:var(--bg-surface);border:1px solid var(--bd);border-radius:3px;transition:border-color .12s,background .12s}
+.szb:hover{border-color:var(--acc)}
+.szb.on{background:var(--acc-soft);border-color:var(--acc)}
+.szb .fp{font-family:var(--mono);font-size:11px;color:var(--ink-2)}
+.szb.on .fp{color:var(--acc-ink)}
+.szb .zh{font-size:11px;color:var(--ink-3)}
+.szb.on .zh{color:var(--acc-ink);font-weight:600}
+.chip{display:grid;gap:1px}
+.chip i{width:6px;height:6px;border:1px solid var(--ink-3);background:rgba(25,118,210,.10);font-style:normal}
+.dmeta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px;color:var(--ink-4)}
+.daml{font-family:var(--mono);font-size:11px;color:var(--ink-2);background:var(--bg-sunken);border:1px solid var(--bd-soft);border-radius:3px;padding:2px 8px}
+.daml b{color:var(--acc-ink);font-weight:600}
+
+/* ── 控件 mock ── */
+.mock{background:var(--bg-surface);border:1px solid var(--bd);border-radius:2px;display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--ink-2);position:relative}
+.mock .cap{font-size:11px;white-space:nowrap}
+.mock .caret{width:0;height:0;border:4px solid transparent;border-top-color:var(--ink-4);flex:none}
+.mock .divv{width:1px;align-self:stretch;background:var(--bd-soft);flex:none}
+.mock .tiles{display:grid;gap:3px}
+.mock .tilesw{display:flex;gap:3px}
+.mock .gcell{width:22px;height:22px;border:1px solid var(--bd-soft);border-radius:2px;background:var(--bg-sunken);display:flex;align-items:center;justify-content:center}
+.mock .gcell b{width:10px;height:10px;background:var(--acc-deep);border-radius:1px}
+.gfoot{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;gap:4px;padding:2px 6px;border-top:1px solid var(--bd-faint);background:var(--bg-surface)}
+.gfoot span{font-size:10px;color:var(--ink-3);flex:1;text-align:left}
+.ckbox{width:13px;height:13px;border:1px solid var(--bd-strong);border-radius:2px;background:#fff;display:flex;align-items:center;justify-content:center;flex:none}
+.ckbox svg{stroke:var(--acc);fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;width:9px;height:9px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12l14 0"/><path d="M13 18l6 -6"/><path d="M13 6l6 6"/></symbol>
+  <symbol id="i-crosshair" viewBox="0 0 24 24"><path d="M4 8v-2a2 2 0 0 1 2 -2h2"/><path d="M4 16v2a2 2 0 0 0 2 2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M16 20h2a2 2 0 0 0 2 -2v-2"/><path d="M9 12l6 0"/><path d="M12 9l0 6"/></symbol>
+  <symbol id="i-stack" viewBox="0 0 24 24"><path d="M12 6l-8 4l8 4l8 -4l-8 -4"/><path d="M4 14l8 4l8 -4"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></symbol>
+  <symbol id="i-dots" viewBox="0 0 24 24"><path d="M4 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M18 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/></symbol>
+  <symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 21a9 9 0 0 1 0 -18c4.97 0 9 3.582 9 8c0 1.06 -.474 2.078 -1.318 2.828c-.844 .75 -1.989 1.172 -3.182 1.172h-2.5a2 2 0 0 0 -1 3.75a1.3 1.3 0 0 1 -1 2.25"/><path d="M7.5 10.5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M11.5 7.5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M15.5 10.5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6l11 0"/><path d="M9 12l11 0"/><path d="M9 18l11 0"/><path d="M5 6l0 .01"/><path d="M5 12l0 .01"/><path d="M5 18l0 .01"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M7 7h-1a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2 -2v-1"/><path d="M20.385 6.585a2.1 2.1 0 0 0 -2.97 -2.97l-8.415 8.385v3h3l8.385 -8.415"/><path d="M16 5l3 3"/></symbol>
+  <symbol id="i-circle-check" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M9 12l2 2l4 -4"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14l-4 -4l4 -4"/><path d="M4 10h10a5 5 0 0 1 5 5v1"/></symbol>
+  <symbol id="i-redo" viewBox="0 0 24 24"><path d="M15 14l4 -4l-4 -4"/><path d="M20 10h-10a5 5 0 0 0 -5 5v1"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v2"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M6 9l6 6l6 -6"/></symbol>
+  <symbol id="i-dl" viewBox="0 0 24 24"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4v12"/></symbol>
+</svg>
+
+<div class="note">
+  <span class="tag">布局稿</span>
+  <span class="name">三栏停靠</span>
+  <span class="concept">项目、文档结构两栏纵贯到底；控件库常驻夹在两栏之间（D 形态，不收缩）；画布在中列上方。层叠＝左右栏 ＞ 控件库 ＞ 画布（拖拽跨板、弹层时生效）。</span>
+  <span class="chips"><span>拖左/右栏内缘调宽</span><span>拖控件库上缘调高</span><span>两栏全高到底</span><span>控件库＝已选 D 形态</span></span>
+</div>
+
+<div class="titlebar">
+  <span class="dot"></span>
+  <span class="proj"><b>CC工具箱2.2.3</b><i>●</i></span>
+  <span class="win"><span>—</span><span>□</span><span>✕</span></span>
+</div>
+<div class="toolbar">
+  <button class="tbtn" title="撤销"><svg class="ic" width="15" height="15"><use href="#i-undo"/></svg></button>
+  <button class="tbtn" title="重做"><svg class="ic" width="15" height="15"><use href="#i-redo"/></svg></button>
+  <span class="tb-sep"></span>
+  <button class="tbtn"><svg class="ic" width="14" height="14"><use href="#i-plus"/></svg>新增分组</button>
+  <button class="tbtn danger"><svg class="ic" width="14" height="14"><use href="#i-trash"/></svg>清空</button>
+  <span class="tb-right">
+    <span class="hint-save">本地草稿自动保存</span>
+    <button class="tbtn">新建</button>
+    <button class="tbtn">保存</button>
+    <button class="tbtn">导入<svg class="ic" width="12" height="12"><use href="#i-chev"/></svg></button>
+    <button class="tbtn primary"><svg class="ic" width="14" height="14" style="stroke:#fff"><use href="#i-dl"/></svg>导出</button>
+  </span>
+</div>
+
+<div class="workspace">
+  <!-- 层3:项目栏(纵贯到底) -->
+  <aside class="side proj" id="pn-proj">
+    <span class="legend">项目</span>
+    <div class="sbody">
+      <div class="pitem on">CC工具箱2.2.3</div>
+      <div class="pitem">CC工具箱附加</div>
+      <div class="pitem newtab">＋ 新增页签</div>
+    </div>
+  </aside>
+  <div class="spv" id="sp-left" title="拖动调整项目栏宽度"></div>
+
+  <div class="center">
+    <!-- 层1:画布 -->
+    <main class="canvas">
+      <div class="tabstrip">
+        <span class="legend-inline">画布</span>
+        <span class="ctab on">CC工具箱2.2.3</span>
+        <span class="ctab">CC工具箱附加</span>
+      </div>
+      <div class="ribbon" id="ribbon"></div>
+      <div class="canvasfloor"></div>
+    </main>
+    <div class="sph" id="sp-palette" title="拖动调整控件库高度"></div>
+
+    <!-- 层2:控件库(D 形态,夹在两栏之间) -->
+    <section class="palette">
+      <span class="legend">控件库</span>
+      <div class="libsplit">
+        <nav class="liblist" id="liblist"></nav>
+        <div class="libdetail" id="libdetail"></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="spv" id="sp-right" title="拖动调整文档结构栏宽度"></div>
+  <!-- 层3:文档结构栏(纵贯到底) -->
+  <aside class="side struct" id="pn-struct">
+    <span class="legend">文档结构</span>
+    <div class="sbody">
+      <div class="tree">
+        <div class="root"><span class="tw">▾</span>CC工具箱2.2.3</div>
+        <div class="lv1"><span class="tw">▸</span>声明</div>
+        <div class="lv1"><span class="tw">▾</span>数据处理</div>
+        <div class="lv2">TXT相关</div>
+        <div class="lv2">CAD相关</div>
+        <div class="lv2">SHP相关</div>
+        <div class="lv1"><span class="tw">▸</span>字段处理</div>
+        <div class="lv1"><span class="tw">▸</span>综合应用</div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script>
+const CATS = ['命令','容器','输入'];
+const LIB = [
+  {t:'button',     label:'按钮',    cat:'命令', desc:'执行一次性命令',        icon:'i-arrow-right',  sizes:{small:[1,1],middle:[2,1],large:[2,3]}, cap:'导出'},
+  {t:'tool',       label:'交互工具', cat:'命令', desc:'进入地图交互状态',      icon:'i-crosshair',    sizes:{small:[1,1],middle:[2,1],large:[2,3]}, cap:'选择'},
+  {t:'splitButton',label:'分裂按钮', cat:'容器', desc:'主命令＋下拉候选',      icon:'i-stack',        sizes:{middle:[2,1],large:[2,2]}, cap:'添加图层'},
+  {t:'toolPalette',label:'工具板',  cat:'容器', desc:'一组同类工具的切换入口', icon:'i-pencil',       sizes:{middle:[3,1],large:[3,3]}, cap:'绘制'},
+  {t:'menu',       label:'菜单',    cat:'容器', desc:'展开多个命令项',        icon:'i-dots',         sizes:{small:[1,1],middle:[2,1],large:[2,2]}, cap:'选项'},
+  {t:'gallery',    label:'画廊',    cat:'容器', desc:'图块方式选样式模板',    icon:'i-palette',      sizes:{middle:[3,1],large:[3,3]}, cap:'填充样式'},
+  {t:'comboBox',   label:'下拉框',  cat:'输入', desc:'从列表选一个值',        icon:'i-list',         sizes:{small:[2,1],middle:[3,1],large:[4,1]}, cap:'行政区划'},
+  {t:'editBox',    label:'输入框',  cat:'输入', desc:'录入文本或路径参数',    icon:'i-edit',         sizes:{middle:[3,1],large:[4,1]}, cap:'C:\\Data\\Project.gdb'},
+  {t:'checkBox',   label:'复选框',  cat:'输入', desc:'布尔开关选项',          icon:'i-circle-check', sizes:{small:[1,1],middle:[2,1]}, cap:'显示注记'},
+];
+const ZH = {small:'小',middle:'中',large:'大'};
+let cur = 'gallery';
+
+function ic(name, px, color){ return `<svg class="ic" width="${px}" height="${px}"${color?` style="stroke:${color}"`:''}><use href="#${name}"/></svg>`; }
+function caret(){ return `<span class="caret"></span>`; }
+function chip(w,h){ let cells=''; for(let i=0;i<w*h;i++) cells+='<i></i>';
+  return `<span class="chip" style="grid-template-columns:repeat(${w},6px)" aria-hidden="true">${cells}</span>`; }
+
+/* 真实比例 mock:1 格 = 32px */
+function mock(it, size){
+  const [w,h] = it.sizes[size];
+  const W = w*32, H = h*32;
+  let inner = '';
+  const cap = it.cap.length > 5 ? it.cap.slice(0,4)+'…' : it.cap;
+  if (it.t==='comboBox' || it.t==='editBox'){
+    inner = `<span style="flex:1;text-align:${it.t==='editBox'?'left':'right'};font-size:${w<=2?9:10}px;color:var(--ink-3);padding:0 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${it.cap}</span>${it.t==='comboBox'?caret():''}`;
+  } else if (it.t==='checkBox'){
+    inner = `<span class="ckbox"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>` + (size==='middle'?`<span class="cap" style="padding-right:6px">${it.cap}</span>`:'');
+  } else if (it.t==='splitButton'){
+    if (size==='middle') inner = `${ic(it.icon,16)}<span class="cap" style="padding:0 6px">${cap}</span><span class="divv"></span><span style="width:16px;display:flex;justify-content:center">${caret()}</span>`;
+    else inner = `<span style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">${ic(it.icon,18)}<span class="cap">${cap}</span></span><span class="divv"></span><span style="width:16px;display:flex;justify-content:center">${caret()}</span>`;
+  } else if (it.t==='toolPalette'){
+    if (size==='middle') inner = `${ic(it.icon,16)}<span class="cap" style="padding:0 6px">${cap}</span>${caret()}`;
+    else inner = `<span class="tiles" style="grid-template-columns:repeat(2,22px)">${'<span class="gcell"><b></b></span>'.repeat(4)}</span><span class="gfoot"><span>${cap}</span>${caret()}</span>`;
+  } else if (it.t==='gallery'){
+    const cell = '<span class="gcell"><b></b></span>';
+    if (size==='middle') inner = `<span class="tilesw">${cell}${cell}</span>${caret()}`;
+    else inner = `<span class="tiles" style="grid-template-columns:repeat(3,22px);padding:6px 0 22px">${cell.repeat(6)}</span><span class="gfoot"><span>${cap}</span>${caret()}</span>`;
+  } else if (size==='small'){
+    inner = ic(it.icon,16);
+  } else if (size==='middle'){
+    inner = `${ic(it.icon,16)}<span class="cap" style="padding:0 7px">${cap}</span>${it.t==='menu'?caret():''}`;
+  } else {
+    inner = `<span style="display:flex;flex-direction:column;align-items:center;gap:5px;padding-top:10px">${ic(it.icon,24)}<span class="cap">${cap}</span>${it.t==='menu'?caret():''}</span>`;
+  }
+  return `<div class="mock" style="width:${W}px;height:${H}px" aria-hidden="true">${inner}</div>`;
+}
+
+/* 画布示意 */
+const RIBBON = [
+  {name:'声明', used:'4/8 列', tiles:[['声明','i-dots'],['资料库','i-list']]},
+  {name:'数据处理', used:'18/18 列', tiles:[['TXT相关','i-list'],['CAD相关','i-stack'],['SHP相关','i-edit'],['Excel相关','i-list'],['GDB相关','i-stack'],['要素综合','i-palette'],['综合2','i-pencil'],['数据检查','i-circle-check'],['数据转换','i-arrow-right']]},
+  {name:'字段处理', used:'6/8 列', tiles:[['字符串','i-edit'],['数字','i-list'],['字段综合','i-stack']]},
+];
+document.getElementById('ribbon').innerHTML = RIBBON.map(g =>
+  `<div class="grp"><div class="meta"><span>宽屏固定高度</span><span>已用到 ${g.used} · 3 行</span></div>
+   <div class="body">${g.tiles.map(([n,icn])=>`<div class="tile">${ic(icn,16)}<span>${n}</span><i></i></div>`).join('')}</div>
+   <div class="name">${g.name}</div></div>`).join('');
+
+/* 控件库 D 形态 */
+const liblist = document.getElementById('liblist');
+liblist.innerHTML = CATS.map(c=>{
+  const items = LIB.filter(x=>x.cat===c);
+  return `<div class="cathead">${c} · ${items.length}</div>` +
+    items.map(it=>`<div class="litem" data-t="${it.t}">${ic(it.icon,15)}<span>${it.label}</span></div>`).join('');
+}).join('');
+liblist.addEventListener('click', e=>{
+  const li = e.target.closest('.litem');
+  if (!li) return;
+  cur = li.dataset.t;
+  liblist.querySelectorAll('.litem').forEach(x=>x.classList.toggle('on', x===li));
+  renderDetail();
+});
+function renderDetail(){
+  const it = LIB.find(x=>x.t===cur);
+  const sizes = Object.keys(it.sizes);
+  const def = sizes.includes('middle') ? 'middle' : sizes[0];
+  document.getElementById('libdetail').innerHTML = `
+    <div class="dhead">
+      <span class="big">${ic(it.icon,20)}</span>
+      <span><span class="nm">${it.label}</span><div class="desc">${it.desc}</div></span>
+    </div>
+    <div class="drow">${sizes.map(s=>{
+      const [w,h] = it.sizes[s];
+      return `<div class="sz">
+        <div class="stagebox">${mock(it,s)}<span class="px">${w*32}×${h*32}px</span></div>
+        <button class="szb${s===def?' on':''}" data-s="${s}" title="${it.label} · ${ZH[s]} · 占 ${w}×${h} 格 · 按住可拖入画布">
+          ${chip(w,h)}<span class="fp">${w}×${h}</span><span class="zh">${ZH[s]}</span>
+        </button>
+      </div>`;}).join('')}
+    </div>
+    <div class="dmeta">
+      <span class="daml">size="<b id="damlv">${def}</b>"</span>
+      <span>1 格 = 32px · 点徽章选中默认尺寸 · 按住拖入画布</span>
+    </div>`;
+  document.querySelectorAll('#libdetail .szb').forEach(b=>{
+    b.onclick = ()=>{
+      document.querySelectorAll('#libdetail .szb').forEach(x=>x.classList.toggle('on', x===b));
+      document.getElementById('damlv').textContent = b.dataset.s;
+    };
+  });
+}
+liblist.querySelector(`.litem[data-t="${cur}"]`).classList.add('on');
+renderDetail();
+
+/* 边界拖拽:左/右栏宽度、控件库高度 */
+function dragSplit(hz, onMove){
+  hz.addEventListener('pointerdown', e=>{
+    e.preventDefault();
+    hz.setPointerCapture(e.pointerId);
+    const x0 = e.clientX, y0 = e.clientY;
+    const move = ev=>{ onMove(ev.clientX - x0, ev.clientY - y0); };
+    const up = ()=>{
+      hz.removeEventListener('pointermove', move);
+      hz.removeEventListener('pointerup', up);
+    };
+    hz.addEventListener('pointermove', move);
+    hz.addEventListener('pointerup', up);
+  });
+}
+dragSplit(document.getElementById('sp-left'), (dx)=>{
+  const w = Math.min(320, Math.max(120, document.getElementById('pn-proj').offsetWidth + dx));
+  document.getElementById('pn-proj').style.width = w + 'px';
+});
+dragSplit(document.getElementById('sp-right'), (dx)=>{
+  const w = Math.min(360, Math.max(140, document.getElementById('pn-struct').offsetWidth - dx));
+  document.getElementById('pn-struct').style.width = w + 'px';
+});
+dragSplit(document.getElementById('sp-palette'), (_dx, dy)=>{
+  const p = document.querySelector('.palette');
+  const maxH = p.parentElement.offsetHeight - 140;
+  p.style.height = Math.min(maxH, Math.max(200, p.offsetHeight - dy)) + 'px';
+});
+</script>
+</body>
+</html>

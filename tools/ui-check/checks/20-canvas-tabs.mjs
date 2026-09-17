@@ -136,8 +136,9 @@ export default async function (page) {
   assertSelectedDistinct('浅色', await tabBgs());
 
   // 切到暗色（产品默认主题）。走真实 UI 切，不用 addInitScript —— 那会被 run.mjs 的初始化覆盖。
+  // 底色搬在 tabsbar 上（legend 与 tablist 同行的那层），所以观察点也跟着到 tabsbar。
   const lightStripBg = await page
-    .locator('.next-canvas-tabs')
+    .locator('.next-canvas-tabsbar')
     .evaluate((el) => getComputedStyle(el).backgroundColor);
   await page.locator('button[title="设置"]').click();
   await page.waitForTimeout(200);
@@ -147,7 +148,7 @@ export default async function (page) {
   await page.waitForFunction(
     (before) =>
       document.documentElement.dataset.theme === 'dark' &&
-      getComputedStyle(document.querySelector('.next-canvas-tabs')).backgroundColor !== before,
+      getComputedStyle(document.querySelector('.next-canvas-tabsbar')).backgroundColor !== before,
     lightStripBg,
     { timeout: 10000 },
   );

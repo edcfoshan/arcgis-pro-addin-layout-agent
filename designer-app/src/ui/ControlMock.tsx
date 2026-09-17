@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import {
   Check,
   ChevronDown,
-  Circle,
   Database,
   Diamond,
   FileText,
@@ -11,7 +10,6 @@ import {
   MoreHorizontal,
   MousePointer2,
   PanelTop,
-  Pencil,
   SquareDashedMousePointer,
   Table2,
 } from 'lucide-react';
@@ -140,6 +138,7 @@ export function ControlMock({
   mode = 'canvas',
   variant,
   separator,
+  iconOnly,
   children,
 }: {
   type: RibbonControl['type'];
@@ -149,16 +148,25 @@ export function ControlMock({
   mode?: 'canvas' | 'library';
   variant?: RibbonControl['variant'];
   separator?: boolean;
+  /** 设计器侧「图标」形态:small 下渲染 1×1 纯图标,无文字无箭头 */
+  iconOnly?: boolean;
   children?: ControlChild[];
 }) {
-  const label = size === 'small' && caption.length > 3 ? caption.slice(0, 3) : caption;
-  const className = `next-control-mock mode-${mode} next-${type} size-${size}${separator ? ' has-separator' : ''}`;
+  // Pro 实机(2026-09-16 容器页截图):splitButton 的面板文案取第一个 button 子项
+  // (分裂按钮本体在 DAML 里没有 caption,Pro 无法显示自身文案,如「保存」显示为「另存为」)
+  const faceCaption =
+    type === 'splitButton' && children?.length
+      ? (children.find((child) => child.type === 'button') ?? children[0]).caption
+      : caption;
+  const label = size === 'small' && faceCaption.length > 3 ? faceCaption.slice(0, 3) : faceCaption;
+  const compact = Boolean(iconOnly) && size === 'small';
+  const className = `next-control-mock mode-${mode} next-${type} size-${size}${separator ? ' has-separator' : ''}${compact ? ' icon-only' : ''}`;
 
   if (type === 'comboBox') {
     return (
       <div className={className}>
         <div className="pro-input-line">
-          <span>{label}</span>
+          <span>{compact ? null : label}</span>
           <ChevronDown size={12} />
         </div>
       </div>
@@ -169,19 +177,20 @@ export function ControlMock({
     return (
       <div className={className}>
         <div className="pro-input-line">
-          <span>{label}</span>
+          <span>{compact ? null : label}</span>
         </div>
       </div>
     );
   }
 
   if (type === 'checkBox') {
+    // Pro 实机(2026-09-17):小尺寸也显示文字(捕捉/网格显示),不再是纯勾选框
     return (
       <div className={className}>
         <span className="pro-check-box">
           <Check size={10} />
         </span>
-        {size !== 'small' ? <span className="pro-label">{label}</span> : null}
+        {compact ? null : <span className="pro-label">{label}</span>}
       </div>
     );
   }
@@ -204,16 +213,16 @@ export function ControlMock({
       );
     }
     return (
+      // Pro 收起态画廊实测为「当前图块 + 文字 + 下拉箭头」的窄条（2026-09-16 实机截图），
+      // 图块阵列只在下拉展开后才出现——mock 若画展开态会与 Pro 观感脱节。
       <div className={className}>
-        <div className="pro-gallery-strip">
-          {Array.from({ length: size === 'large' ? 6 : 3 }).map((_, index) => (
-            <span key={index} className={`tone-${index % 4}`} />
-          ))}
+        <div className="pro-gallery-closed">
+          <span className="tone-0" />
+          {size !== 'small' ? <span className="pro-label">{label}</span> : null}
           <span className="gallery-arrow">
             <ChevronDown size={10} />
           </span>
         </div>
-        {size !== 'small' ? <span className="pro-label">{label}</span> : null}
       </div>
     );
   }
@@ -232,39 +241,35 @@ export function ControlMock({
   }
 
   if (type === 'toolPalette') {
-    const shown = (children ?? []).slice(0, 3);
+    // Pro 收起态(2026-09-17 实机):大尺寸=大图标+文字+箭头,中尺寸=文字+箭头窄条(无图标);
+    // 子工具图标排在展开的下拉里,不属于画布收起形态
     return (
       <div className={className}>
-        <div className="pro-tool-palette">
-          {shown.length
-            ? shown.map((child) => (
-                <ProImage
-                  key={child.id}
-                  file={child.icon.small || child.icon.large}
-                  pixels={16}
-                />
-              ))
-            : (
-                <>
-                  <ProIcon type="tool" size="small" iconFile={size === 'large' ? iconFile : undefined} />
-                  <Pencil size={14} />
-                  <Circle size={14} />
-                  <Diamond size={14} />
-                </>
-              )}
-        </div>
-        {size !== 'small' ? <span className="pro-label">{label}</span> : null}
+        {size === 'large' ? <ProIcon type="toolPalette" size="large" iconFile={iconFile} /> : null}
+        {size === 'small' ? (
+          <ProIcon type="toolPalette" size="small" iconFile={iconFile} />
+        ) : (
+          <span className="pro-label">{label}</span>
+        )}
+        {size !== 'small' ? (
+          <span className="pro-drop-arrow">
+            <ChevronDown size={11} />
+          </span>
+        ) : null}
       </div>
     );
   }
 
   const hasDrop = type === 'menu' || type === 'splitButton';
+  // Pro 实机(2026-09-17):菜单/分裂按钮中、小尺寸是「文字+箭头」无图标(另存为∨/更多∨),
+  // 大尺寸才有大图标;按钮/工具各尺寸都是图标+文字;「图标」形态(紧凑)只渲染纯图标
+  const showIcon = size === 'large' || !hasDrop || compact;
 
   return (
     <div className={className}>
-      <ProIcon type={type} size={size} iconFile={iconFile} />
-      {size !== 'small' ? <span className="pro-label">{label}</span> : null}
-      {hasDrop ? (
+      {showIcon ? <ProIcon type={type} size={size} iconFile={iconFile} /> : null}
+      {compact ? null : <span className="pro-label">{label}</span>}
+      {hasDrop && !compact ? (
         <span className="pro-drop-arrow">
           <ChevronDown size={11} />
         </span>

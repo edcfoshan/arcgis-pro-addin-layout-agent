@@ -15,8 +15,11 @@ export default async function (page) {
   ok(Number.isFinite(cell), `读不到 --cell，实际 ${cell}`);
   const expected = cell * CELLS;
 
-  const card = page.locator('.library-compact-card').filter({ hasText: '按钮' }).first();
-  ok((await card.count()) > 0, '找不到「按钮」卡片');
+  // D 形态：先在左栏选中「按钮」，详情区里尺寸徽章按 small/middle/large 排列
+  await page.locator('.palette-list-item', { hasText: '按钮' }).first().click();
+  await page.waitForTimeout(150);
+  const detail = page.locator('.palette-detail');
+  ok((await detail.count()) > 0, '找不到控件库详情区');
 
   // ===== A7 的一半：拖拽进行中分组编辑条必须抑制浮现 =====
   // 借本检查已有的真实拖拽手势来验（原先这条只验了「幽灵尺寸」）。先造一个分组并让它
@@ -41,7 +44,7 @@ export default async function (page) {
     [0, '小'],
     [2, '大'],
   ]) {
-    const badge = card.locator('button').nth(index);
+    const badge = detail.locator('.palette-size-cell button').nth(index);
     const box = await badge.boundingBox();
     ok(box, `找不到${sizeLabel}尺寸徽章`);
 

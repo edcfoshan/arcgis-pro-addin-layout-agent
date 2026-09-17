@@ -1,50 +1,59 @@
 import { eq, ok } from '../assert.mjs';
 
-export const name = 'P5 控件库卡片渲染三尺寸真实 mock';
+export const name = 'P5 控件库详情渲染全尺寸真实 mock';
 
-// 「按钮」的三种尺寸徽章与 mock 的对应关系由 data-size 标注（small/middle/large）。
 export default async function (page) {
-  const card = page.locator('.library-compact-card').filter({ hasText: '按钮' }).first();
-  ok((await card.count()) > 0, '找不到「按钮」卡片');
+  // D 形态：左栏选中「按钮」，右栏详情展示它的三种尺寸。
+  // hasText 会同时命中「分裂按钮」，但「按钮」排在命令组第一位，.first() 即命中。
+  await page.locator('.palette-list-item', { hasText: '按钮' }).first().click();
+  await page.waitForTimeout(150);
+  const detail = page.locator('.palette-detail');
 
-  const cells = card.locator('.library-mock-cell');
-  eq(await cells.count(), 3, '「按钮」卡片应渲染三个尺寸的 mock');
+  const cells = detail.locator('.palette-size-cell');
+  // 2026-09-17 起每类多一个「图标」形态(小尺寸 1×1 纯图标)
+  eq(await cells.count(), 4, '「按钮」详情应渲染三个尺寸加图标形态');
 
   for (const size of ['small', 'middle', 'large']) {
     ok(
-      (await card.locator(`.library-mock-cell[data-size="${size}"]`).count()) === 1,
-      `缺少 ${size} 尺寸的 mock 单元格`,
+      (await detail.locator(`.palette-size-cell[data-size="${size}"]`).count()) === 1,
+      `缺少 ${size} 尺寸的单元格`,
     );
   }
 
   // 每个单元格里必须有真实渲染的控件 mock，而不是空占位
-  const rendered = await card.locator('.library-mock-cell .next-control-mock').count();
-  eq(rendered, 3, '三个单元格里都应有 .next-control-mock');
+  const rendered = await detail.locator('.palette-size-cell .next-control-mock').count();
+  eq(rendered, 4, '四个单元格里都应有 .next-control-mock');
 
   // 大尺寸的 mock 必须真的比小尺寸大（验证按真实尺寸渲染，不是等比缩放）
-  const smallBox = await card
-    .locator('.library-mock-cell[data-size="small"] .next-control-mock')
+  const smallBox = await detail
+    .locator('.palette-size-cell[data-size="small"] .next-control-mock')
     .boundingBox();
-  const largeBox = await card
-    .locator('.library-mock-cell[data-size="large"] .next-control-mock')
+  const largeBox = await detail
+    .locator('.palette-size-cell[data-size="large"] .next-control-mock')
     .boundingBox();
   ok(
     largeBox.height > smallBox.height,
     `大尺寸 mock 应高于小尺寸：小 ${smallBox.height}px，大 ${largeBox.height}px`,
   );
 
-  // Task 3 的占格图示必须保留（同一信息不能因为加了 mock 就丢掉）
+  // 占格图示必须保留（mock、数字、图示三份信息并存，缺一不可）
   ok(
-    (await card.locator('.footprint-chip').count()) === 3,
-    '占格图示不应被 mock 取代',
+    (await detail.locator('.footprint-chip').count()) === 4,
+    '占格图示不应被 mock 或数字取代',
   );
+
+  // px 角标：标注 mock 的真实渲染尺寸（1 格 = 32px）
+  const pxLabel = await detail
+    .locator('.palette-size-cell[data-size="large"] .palette-stage-px')
+    .textContent();
+  eq(pxLabel?.trim(), '64×96px', '大尺寸按钮的 px 角标应为 64×96px');
 
   // 无障碍：占格图示只靠一条 1px 边框成形，axe 检测不到非文字对比度（WCAG 1.4.11），
   // 这里从解析后的颜色自己算：边框对图示自身底色必须 ≥3:1。
   // run.mjs 统一起始于浅色，两个主题都要咬住 —— 只守浅色的话，暗色那档的比值就是一句
   // 无人守护的声明（改坏了全套仍绿）。
   const chipStyle = () =>
-    card.locator('.footprint-chip').first().evaluate((el) => {
+    detail.locator('.footprint-chip').first().evaluate((el) => {
       const s = getComputedStyle(el);
       return { border: s.borderTopColor, fill: s.backgroundColor };
     });
@@ -76,12 +85,10 @@ export default async function (page) {
   );
   await assertChipContrast('暗色');
 
-  // ===== 默认高度必须装得下卡片 =====
-  // 首次使用（干净存储）时的控件库高度是按真实内容量出来的。它曾经写死 320，而实测内容
-  // 要 450 —— 默认配置自己就把卡片裁掉一截，用户的头号痛点在我们自己的默认值上重现，
-  // 而验收 A1 只要求「滚得到」，所以当时没有任何检查会失败。
-  // 判据取结果不取机制：放得下的窗口里，最后一张卡的下缘必须落在控件库可视区内。
-  // （窗口给不起时这条不成立，那是画布地板不变量的代价，见 22-splitter.mjs 的钳制断言。）
+  // ===== 默认高度必须装得下完整详情 =====
+  // 干净存储（没存过偏好）时的控件库高度是 D 形态详情的完整高度（常量 296）。
+  // 判据取结果不取机制：放得下的窗口里，详情尾行（DAML + 操作提示）必须落在
+  // 控件库可视区内，不滚就能看到。
   await page.setViewportSize({ width: 1920, height: 1080 });
   // 重新导航一次：run.mjs 的初始化脚本会在每次导航清空 localStorage，
   // 于是这一轮又回到「没存过偏好」的首次使用状态。
@@ -90,20 +97,17 @@ export default async function (page) {
   await page.waitForTimeout(500);
 
   const fit = await page.evaluate(() => {
-    const palette = document.querySelector('.next-bottom-palette');
-    const cards = [...document.querySelectorAll('.library-compact-card')];
-    const last = cards[cards.length - 1].getBoundingClientRect();
+    const palette = document.querySelector('.next-bottom-palette').getBoundingClientRect();
+    const meta = document.querySelector('.palette-detail-meta').getBoundingClientRect();
     return {
-      count: cards.length,
-      lastCardBottom: last.bottom,
-      viewBottom: palette.getBoundingClientRect().bottom,
       storedDefault: localStorage.getItem('gispro-ribbon-designer-palette-height'),
+      metaBottom: meta.bottom,
+      viewBottom: palette.bottom,
     };
   });
-  eq(fit.count, 9, '干净存储下控件库应展示全部九张卡');
   ok(
-    fit.lastCardBottom <= fit.viewBottom + 0.5,
-    `默认高度 ${fit.storedDefault} 装不下卡片：最后一张卡的下缘 ${Math.round(fit.lastCardBottom)}` +
+    fit.metaBottom <= fit.viewBottom + 0.5,
+    `默认高度 ${fit.storedDefault} 装不下完整详情：DAML 尾行下缘 ${Math.round(fit.metaBottom)}` +
       ` 超出了控件库可视区底部 ${Math.round(fit.viewBottom)}`,
   );
 }

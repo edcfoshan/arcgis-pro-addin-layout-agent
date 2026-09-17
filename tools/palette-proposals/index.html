@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>控件库重做·四方案对比</title>
+<style>
+:root{
+  --bg-app:#eef1f5;--bg-chrome:#f7f9fb;--bg-surface:#ffffff;
+  --bd:#cdd6df;--bd-soft:#dfe6ee;
+  --ink:#1e2a38;--ink-2:#3d4d61;--ink-3:#566779;--ink-4:#5c6b7a;
+  --acc:#1976d2;--acc-ink:#12406e;--acc-soft:#eaf3ff;--acc-deep:#d6e9fb;
+  --f:'Microsoft YaHei UI','Microsoft YaHei','Segoe UI',sans-serif;
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{background:var(--bg-app);color:var(--ink);font-family:var(--f);display:flex;flex-direction:column;overflow:hidden}
+header{flex:none;background:var(--bg-surface);border-bottom:1px solid var(--bd);padding:8px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+header h1{font-size:14px;font-weight:600}
+header .sub{font-size:12px;color:var(--ink-3)}
+.tabs{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
+.tabs button{font-family:inherit;cursor:pointer;height:28px;padding:0 13px;font-size:12.5px;color:var(--ink-2);background:var(--bg-chrome);border:1px solid var(--bd);border-radius:3px}
+.tabs button:hover{border-color:var(--acc)}
+.tabs button.on{background:var(--acc-soft);border-color:var(--acc);color:var(--acc-ink);font-weight:600}
+.tabs button i{font-style:normal;font-size:11px;color:var(--ink-4);margin-left:5px}
+.tabs button.on i{color:var(--acc-ink)}
+.blurb{flex:none;padding:5px 16px;font-size:12px;color:var(--ink-2);background:var(--bg-chrome);border-bottom:1px solid var(--bd-soft)}
+iframe{flex:1;min-height:0;width:100%;border:none;background:var(--bg-app)}
+</style>
+</head>
+<body>
+<header>
+  <h1>底部控件库重做 · 4 个方案</h1>
+  <span class="sub">共性：控件库拉高占画布灰底 · 占格＝图示＋数字 · 四板块角标签 · 描述缩短常显 · 真实 mock 保留 · 浅色稿（实装补暗色）</span>
+  <nav class="tabs">
+    <button class="on" data-src="proposal-a-grid.html" data-blurb="等宽网格：每类型一张等宽卡片，grid 对齐一屏约 3×3，总览最均衡。">A 等宽网格<i>🧱</i></button>
+    <button data-src="proposal-b-preview.html" data-blurb="大预览卡：所有尺寸按真实像素大图并排＋px 角标，所见即所得拉满；一屏约 3×2 张需滚动。">B 大预览卡<i>🖼️</i></button>
+    <button data-src="proposal-c-rows.html" data-blurb="行式列表：一行一类型一屏看全 9 种，分类段收掉，点徽章换行内真实预览；密度最高。">C 行式列表<i>📋</i></button>
+    <button data-src="proposal-d-master-detail.html" data-blurb="主从双栏：左类型窄列表（自带分类），右大详情＋DAML 尺寸值；空间利用率最高，多一次点击。">D 主从双栏<i>🗂️</i></button>
+    <button data-src="layout-docked.html" data-blurb="布局稿·三栏停靠：项目/文档结构两栏纵贯到底，控件库常驻夹在两栏之间（D 形态），画布在中列上方；层叠＝左右栏＞控件库＞画布，三条边界可拖。">E 三栏停靠<i>🪟</i></button>
+  </nav>
+</header>
+<div class="blurb" id="blurb">等宽网格：每类型一张等宽卡片，grid 对齐一屏约 3×3，总览最均衡。</div>
+<iframe id="frame" src="proposal-a-grid.html" title="方案预览"></iframe>
+<script>
+document.querySelectorAll('.tabs button').forEach(b=>{
+  b.onclick = ()=>{
+    document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on', x===b));
+    document.getElementById('frame').src = b.dataset.src;
+    document.getElementById('blurb').textContent = b.dataset.blurb;
+  };
+});
+</script>
+</body>
+</html>

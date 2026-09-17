@@ -55,7 +55,7 @@ cd tools/ui-check && npm install     # 仅首次,装 playwright 包;它没有 in
 $env:PLAYWRIGHT_DOWNLOAD_HOST='https://cdn.npmmirror.com/binaries/playwright'; npx playwright install chromium
 npm run check                        # 跑全部断言
 npm run check palette                # 按文件名过滤(13 个检查文件,文件名前缀即分组:00/10/20/30/40…)
-npm run check:node                   # 纯 TS 检查(不需浏览器):两变体 addInId 一致、改名不改身份、导入文档缺 metadata.id 必须回填成不同身份
+npm run check:node                   # 纯 TS 检查(不需浏览器):两变体 addInId 一致、改名不改身份、导入文档缺 metadata.id 必须回填成不同身份;DAML 分组引用顺序必须等于 controlIds 声明顺序(防"设计器所见≠Pro 所得"回归,node-checks/daml-group-order.mts)
 # ⚠️ run.mjs 在**每次导航前**都 clear localStorage + 钉回浅色 + 复位视口。检查若自己注册 addInitScript,
 #    Playwright 按注册顺序执行 -> 你的脚本会**盖过** runner 的清空(实修过一例泄漏)。要播种请用 URL 门控,见 checks/22-splitter.mjs
 ```
@@ -79,7 +79,7 @@ RibbonDocument (JSON)
 
 **开发侧验算管线(保留,`daml=None` 时走)**:写 Layout → `tools/build-arcgis-pro-validation.ps1` → sync(shared 版生成器)→ dotnet build → Rust 组 zip。Esri SDK 打包目标在 dotnet Core MSBuild 下不可用,build 脚本自行铺 temp_archive。
 
-**DAML 生成器两个变体必须镜像改**:`ribbon-designer/shared/arcgisProValidation.ts`(打包链/随机验算)与 `designer-app/src/core/arcgisProValidation.ts`(应用内 artifacts)。均仅在 icon 为 `.png` 完整文件名时输出 smallImage/largeImage;`placeholderBehaviors` 开关决定 className 走占位类还是逐控件生成类名。
+**DAML 生成器两个变体必须镜像改**:`ribbon-designer/shared/arcgisProValidation.ts`(打包链/随机验算)与 `designer-app/src/core/arcgisProValidation.ts`(应用内 artifacts)。均仅在 icon 为 `.png` 完整文件名时输出 smallImage/largeImage;`placeholderBehaviors` 开关决定 className 走占位类还是逐控件生成类名。**占位控件的 Pro 观感契约**:comboBox 写 `isEditable="false" isReadOnly="false"`(isReadOnly 会渲染成置灰不可交互)且占位类 `PlaceholderComboBox` 构造时种 3 个演示选项——空下拉在 Pro 里是灰条点不开;editBox 写 `sizeString=""`(内容预填标题会与名字重复)+`editHint=标题`作灰色水印。改占位类后必须重跑 `tools/placeholder-addin/build-placeholder.ps1`(产物自动拷到 src-tauri/resources/placeholder/,随安装包分发)。
 
 **逆向(第三方包导入)**:`.esriAddInX` → Rust `run_open_import_file`(解包、DAML/图标落盘)→ `src/core/damlImport.ts`(DAML → RibbonDocument,尽力还原子集:结构/类型/尺寸/标题/keytip/图标引用;DAML 无坐标故布局自动装箱;外部 refID 引用显示为占位控件;不支持的条件/状态/updateModule 静默忽略并计入 stats)。该文件带 `.ts` 扩展名 import,可用 `node --experimental-strip-types` 直接跑。
 
@@ -87,7 +87,9 @@ RibbonDocument (JSON)
 
 ## 数据模型与布局规则
 
-`RibbonDocument → tabs → groups → subgroups → controls`。subgroup 是内部兼容层,每 group 一网格;`control.layout {x,y,w,h}` 网格单位 `RIBBON_CELL=32px`,分组高 3 行、横向扩列(3–30 列)。占格 `getFootprint(type,size,variant)`;`variant='menuStyle'` 实测为带下拉箭头大按钮(2×3/2×1),勿改竖条形态;`variant='inline'` 为摊开式画廊(gallery `inline="true"`,5×3/5×1,占格待实机校准);comboBox/editBox `small` 为窄横框 2×1(待实机校准)。组内引用的 `separator="true"`(前置分隔线)已支持,导出对全部叶子类型透传;gallery 导出**显式写 inline**(true/false),不依赖 Pro 默认值。控件尺寸枚举 `small|middle|large` 与 Pro DAML 值域一字不差(Esri 核心 DAML 即用 `size="middle"`,勿改成 medium)。容器控件递归 `children` 不进网格。`normalizeDocumentLayouts` 尊重有效已存 layout,无效才找空位——保持此行为。
+`RibbonDocument → tabs → groups → subgroups → controls`。subgroup 是内部兼容层,每 group 一网格;`control.layout {x,y,w,h}` 网格单位 `RIBBON_CELL=32px`,分组高 3 行、横向扩列(3–30 列)。占格 `getFootprint(type,size,variant)`;`variant='menuStyle'` 实测为带下拉箭头大按钮(2×3/2×1),勿改竖条形态;`variant='inline'` 为摊开式画廊(gallery `inline="true"`,5×3/5×1,占格待实机校准)。**分裂按钮 large 实测 2×3**(图标+文字之外下拉箭头独占一行,2026-09-16 实机),menu large 是 2×3(曾误记 2×2)。**工具板收起态为按钮形态:large 2×3(大图标+文字+箭头)、middle 2×1(文字+箭头,无图标)**——2×2 图标格是下拉展开后的形态,画布只画收起态(2026-09-17 实机)。**小尺寸命令类(button/tool/menu/splitButton/checkBox)为 2×1 且显示文字**(2026-09-17 实机:捕捉/更多∨/刷新都带文字;菜单/分裂按钮中、小尺寸是「文字+箭头」无图标,大尺寸才有图标;gallery 小尺寸无实机证据维持 1×1),占格属性用户可在检查器自行调整。**「图标」形态(`control.iconOnly`,2026-09-17 新增)**:small 下渲染 1×1 纯图标,控件库每类有第四枚「图标」徽章、检查器尺寸下拉有「图标」选项;这是设计器侧形态——Pro 端小尺寸是否省略文字由其空间自适应决定,DAML 无对应属性,导出仍写 size="small";示例布局含全屏/帮助/设置/磁吸四个图标形态演示项。控件尺寸枚举 `small|middle|large` 与 Pro DAML 值域一字不差(Esri 核心 DAML 即用 `size="middle"`,勿改成 medium)。容器控件递归 `children` 不进网格。组内引用的 `separator="true"`(前置分隔线)已支持,导出对全部叶子类型透传;gallery 导出**显式写 inline**(true/false),不依赖 Pro 默认值。**分裂按钮的面板文案=第一个 button 子项**(DAML splitButton 无 caption,Pro 实机显示子项文案如「另存为」,ControlMock 已对齐)。
+
+**Pro 分组的画布派生规则(2026-09-16 实机三轮截图校准,`ribbonLayout.flowLayout` 单一实现,demoLayout 不再有第二份占格表)**:控件按 controlIds 声明顺序渲染,**连续同尺寸(small/middle/large)为一段,尺寸一变就换新列**,段内从上往下堆满 3 行再在段内开新列;两条例外:**large 一律占满整列 3 行**(menu 大也是 2×3,曾误记 2×2——实机菜单组图层管理占满列高,排序/打印在旁列);**small 段若前一列剩 ≥2 行则并入该列**(实机菜单组「帮助+更多+分享」同列;下拉框组中尺寸列只剩 1 行,small 段另起列)。宽度:middle 命令按钮随文字增长(图标 16+间距 6+内边距 12,中文 12px/字、拉丁 7px/字);输入类为「标签+框」估宽(comboBox 框宽按尺寸 64/60/56,small 无标签;editBox 框随内容不小于 56,用 round 取整)。**分裂按钮的面板文案=第一个 button 子项**(DAML splitButton 无 caption,Pro 实机显示子项文案如「另存为」,ControlMock 已对齐)。画布定位只读 flowLayout 派生结果,存储 layout 坐标仅旧文档兼容——`normalizeDocumentLayouts` 尊重有效已存 layout,无效才找空位,保持此行为。**分组宽度 = max(内容列数, 手动列数)**:拖入控件即插入、列堆满自动开新列(「分组太挤拉按钮进去要自动增加」是既有行为);分组工具条另有**列数 +/- 步进器**(手动最小宽,存 `subgroup.layout.columns`,新建分组默认 8,范围 1–30,− 最多收回到内容列数,undo 可撤销;批量尺寸「整组改大/中/小」已于 2026-09-17 按用户要求移除)。手动列宽只决定设计器里的拖放区——Pro 端没有宽度概念、按内容自动收紧,不影响导出。**分组支持同页签内拖拽排序**(编辑条左侧 GripVertical 手柄按住左右拖,插入指示线落位;手柄上←/→方向键逐格移动;分组顺序=导出后 Pro 页签上从左到右的顺序;注意 commit 绝不能放进 setState updater——StrictMode 双跑会双推历史,拖拽落点用局部变量记)。**导出默认文件名带项目名**(「项目名-版本.esriAddInX」,daml/json 同理;导出菜单标题与成功 toast 都带项目名——多项目时从文件就能看出导的是哪份)。**导出 DAML 的分组内引用顺序必须原样保持 controlIds 声明顺序**(Pro 按上述规则按声明顺序渲染,导出端曾按存储坐标 y/x 行优先排序,示例布局 7/9 分组因此在 Pro 里错位;两变体生成器都不许再引入任何重排,守卫 node-checks/daml-group-order.mts)。复选框 Pro 实际渲染约 26px 行距(略矮于 32px 格),画布按整格渲染,结构一致、纵向上略高,已与用户确认本轮保持整格。
 
 打包链手写 layout JSON 硬契约:每控件必填 `tooltip`/`aiNotes`(字符串)、`behavior{className,target,arguments:{}}`;`metadata.lastUpdated` 可 Date.parse;group.subgroupIds 含全部控件 subgroupId。
 

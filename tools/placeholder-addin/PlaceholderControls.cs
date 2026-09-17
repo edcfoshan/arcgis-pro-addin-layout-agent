@@ -29,6 +29,15 @@ namespace Generated
 
     public sealed class PlaceholderComboBox : ComboBox
     {
+        public PlaceholderComboBox()
+        {
+            // 空下拉在 Pro 里渲染成灰条且点不开;种几个演示选项让占位控件可交互,
+            // 观感接近真实控件(选项内容无业务含义,二开时替换为真实数据源)
+            for (var i = 1; i <= 3; i++)
+            {
+                Add(new ComboBoxItem($"选项 {i}"));
+            }
+        }
     }
 
     public sealed class PlaceholderEditBox : EditBox

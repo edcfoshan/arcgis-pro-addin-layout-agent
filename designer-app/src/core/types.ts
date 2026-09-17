@@ -69,6 +69,8 @@ export interface RibbonControl {
   variant?: 'menuStyle' | 'inline';
   /** 组内前置分隔线(DAML separator="true",官方语义:在组内同类控件间画分隔) */
   separator?: boolean;
+  /** 设计器侧:small 尺寸下渲染为 1×1 纯图标。Pro 端小尺寸是否去文字由其空间自适应决定,DAML 无对应属性,导出仍写 size="small" */
+  iconOnly?: boolean;
   children?: ControlChild[];
   icon: {
     small: string;
