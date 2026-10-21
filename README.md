@@ -46,6 +46,10 @@
 - 浅色 / 暗色主题，还原 ArcGIS Pro 本体的 Fluent 观感
 - 窗口大小与位置记忆
 
+## 赞助商
+
+感谢 **jizhanai.top** 赞助支持！通过[邀请链接注册开通](https://jizhanai.top/register?ref=PBUXGDHTFUAS)，填写邀请码 **`PBUXGDHTFUAS`** 可减 **5 元**。
+
 ## 导出是怎么做到免编译的
 
 传统做法要在用户机器上编译 C# 插件，依赖 .NET SDK 和 Esri Pro SDK，大众用户必然装不上。
@@ -126,6 +130,16 @@ cargo test --test import_addin_test  # 导入链路：解包 DAML / 图标落盘
 | 下拉框 ComboBox | - | `3x1` | `4x1` |
 | 输入框 EditBox | - | `3x1` | `4x1` |
 | 复选框 CheckBox | `1x1` | `2x1` | - |
+
+## 关注与赞赏
+
+扫码关注「极思G工作室」公众号、加入 QQ 交流群，获取工具更新、交流使用经验：
+
+<img src="./content/求关注-极思G-20261014.png" width="720" alt="关注极思G：公众号与 QQ 交流群" />
+
+如果这些工具对你有帮助，欢迎赞赏支持。赞赏完全自愿，感谢你的支持。
+
+<img src="./content/求赞赏-极思G-20261014.png" width="720" alt="支持极思G：微信赞赏与爱发电" />
 
 ## 许可证
 
