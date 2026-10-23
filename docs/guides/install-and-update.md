@@ -9,12 +9,12 @@
 ## 安装 Demo
 
 1. 打开 [Releases](https://github.com/edcfoshan/arcgis-pro-addin-layout-agent/releases)。
-2. 下载 `JisigG-Ribbon-Designer_0.1.0-demo.1_x64-setup.exe`。
+2. 下载 `JisigG-Ribbon-Designer_0.1.0-demo.2_x64-setup.exe`。
 3. 对照 Release 公布值核对 SHA256。
 4. 双击安装包，按简体中文向导为当前用户安装。安装后的名称为「极思G Ribbon 设计器」。
-5. 从开始菜单中的「极思G Ribbon 设计器」启动，在「关于」中确认版本为 `0.1.0-demo.1`。
+5. 从开始菜单中的「极思G Ribbon 设计器」启动，在「关于」中确认版本为 `0.1.0-demo.2`。
 
-旧版英文名称 `JisigG-GISpro-Addin-Designer` / `JisigG-Ribbon-Designer` 安装在默认用户目录时，新安装器会调用旧卸载器移除旧程序和快捷方式，再建立中文入口。应用标识保持不变，迁移不会选择删除布局草稿与设置。若旧版安装在自定义位置或注册信息不匹配，安装器会提示先通过 Windows 设置卸载旧版；请保留应用数据后再重装。
+旧版英文名称 `JisigG-GISpro-Addin-Designer` / `JisigG-Ribbon-Designer` 安装在默认用户目录时，新安装器会调用旧卸载器移除旧程序和快捷方式，再建立中文入口。应用标识保持不变，迁移不会选择删除布局草稿与设置。若旧版安装在自定义位置但发布方、主程序和卸载器都匹配，仍会迁移；不匹配的历史注册残留只记录后跳过，不会阻塞新安装。
 
 后续版本固定使用同一中文安装名称。GitHub 安装包仍使用上面的英文文件名，该文件名与开始菜单名称相互独立。
 

@@ -33,6 +33,6 @@ jobs:
           npm ci
           npx tsc --noEmit
 
-      - name: Rust 单元测试
-        run: cargo test --lib
+      - name: Rust 单元测试与能力白名单测试
+        run: cargo test --lib --test capabilities_test
         working-directory: designer-app/src-tauri

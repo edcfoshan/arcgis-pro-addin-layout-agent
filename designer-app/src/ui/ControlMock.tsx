@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
   Check,
   ChevronDown,
@@ -18,7 +18,15 @@ import { getIconUrl } from './iconsClient';
 
 const iconSize = (size: RibbonControlSize) => (size === 'large' ? 32 : 16);
 
-function ProImage({ file, pixels }: { file: string; pixels: number }) {
+function ProImage({
+  file,
+  pixels,
+  fallback,
+}: {
+  file: string;
+  pixels: number;
+  fallback: ReactNode;
+}) {
   const [url, setUrl] = useState<string | null>(() => null);
   useEffect(() => {
     let cancelled = false;
@@ -30,14 +38,16 @@ function ProImage({ file, pixels }: { file: string; pixels: number }) {
       cancelled = true;
     };
   }, [file]);
-  // 无 Tauri 环境/加载失败时返回占位灰块,保持格子占位不塔形
+  // 无 Tauri 环境/加载失败时退回类型图标,保持布局可见且不出现空黑块。
   if (!url) {
     return (
       <span
         className="pro-icon pro-icon-placeholder"
         style={{ width: pixels, height: pixels }}
         aria-hidden
-      />
+      >
+        {fallback}
+      </span>
     );
   }
   return (
@@ -45,6 +55,79 @@ function ProImage({ file, pixels }: { file: string; pixels: number }) {
       <img src={url} width={pixels} height={pixels} alt="" draggable={false} />
     </span>
   );
+}
+
+function DefaultProIcon({
+  type,
+  pixels,
+}: {
+  type: RibbonControl['type'];
+  pixels: number;
+}) {
+  const className = `pro-icon type-${type} size-${pixels > 16 ? 'large' : 'small'}`;
+
+  switch (type) {
+    case 'button':
+      return (
+        <span className={className}>
+          <FolderPlus size={pixels} strokeWidth={1.7} />
+        </span>
+      );
+    case 'tool':
+      return (
+        <span className={className}>
+          <MousePointer2 size={pixels} strokeWidth={1.7} />
+        </span>
+      );
+    case 'splitButton':
+      return (
+        <span className={className}>
+          <Layers size={pixels} strokeWidth={1.7} />
+        </span>
+      );
+    case 'toolPalette':
+      return (
+        <span className={className}>
+          <SquareDashedMousePointer size={pixels} strokeWidth={1.6} />
+        </span>
+      );
+    case 'menu':
+      return (
+        <span className={className}>
+          <PanelTop size={pixels} strokeWidth={1.7} />
+        </span>
+      );
+    case 'gallery':
+      return (
+        <span className={className}>
+          <Table2 size={pixels} strokeWidth={1.6} />
+        </span>
+      );
+    case 'comboBox':
+      return (
+        <span className={className}>
+          <Database size={pixels} strokeWidth={1.6} />
+        </span>
+      );
+    case 'editBox':
+      return (
+        <span className={className}>
+          <FileText size={pixels} strokeWidth={1.6} />
+        </span>
+      );
+    case 'checkBox':
+      return (
+        <span className={className}>
+          <Check size={pixels} strokeWidth={2} />
+        </span>
+      );
+    default:
+      return (
+        <span className={className}>
+          <Diamond size={pixels} strokeWidth={1.7} />
+        </span>
+      );
+  }
 }
 
 function ProIcon({
@@ -57,77 +140,9 @@ function ProIcon({
   iconFile?: string;
 }) {
   const pixels = iconSize(size);
-  if (iconFile) return <ProImage file={iconFile} pixels={pixels} />;
-  const className = `pro-icon type-${type} size-${size}`;
-
-  if (type === 'button') {
-    return (
-      <span className={className}>
-        <FolderPlus size={pixels} strokeWidth={1.7} />
-      </span>
-    );
-  }
-  if (type === 'tool') {
-    return (
-      <span className={className}>
-        <MousePointer2 size={pixels} strokeWidth={1.7} />
-      </span>
-    );
-  }
-  if (type === 'splitButton') {
-    return (
-      <span className={className}>
-        <Layers size={pixels} strokeWidth={1.7} />
-      </span>
-    );
-  }
-  if (type === 'toolPalette') {
-    return (
-      <span className={className}>
-        <SquareDashedMousePointer size={pixels} strokeWidth={1.6} />
-      </span>
-    );
-  }
-  if (type === 'menu') {
-    return (
-      <span className={className}>
-        <PanelTop size={pixels} strokeWidth={1.7} />
-      </span>
-    );
-  }
-  if (type === 'gallery') {
-    return (
-      <span className={className}>
-        <Table2 size={pixels} strokeWidth={1.6} />
-      </span>
-    );
-  }
-  if (type === 'comboBox') {
-    return (
-      <span className={className}>
-        <Database size={pixels} strokeWidth={1.6} />
-      </span>
-    );
-  }
-  if (type === 'editBox') {
-    return (
-      <span className={className}>
-        <FileText size={pixels} strokeWidth={1.6} />
-      </span>
-    );
-  }
-  if (type === 'checkBox') {
-    return (
-      <span className={className}>
-        <Check size={pixels} strokeWidth={2} />
-      </span>
-    );
-  }
-  return (
-    <span className={className}>
-      <Diamond size={pixels} strokeWidth={1.7} />
-    </span>
-  );
+  const fallback = <DefaultProIcon type={type} pixels={pixels} />;
+  if (iconFile) return <ProImage file={iconFile} pixels={pixels} fallback={fallback} />;
+  return fallback;
 }
 
 export function ControlMock({

@@ -8,7 +8,7 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 
 仓库 `https://github.com/edcfoshan/arcgis-pro-addin-layout-agent`(public,MIT)。**历史含 Esri 提取图标,2026-09-15 已 filter-repo 重写并删库重建**,当前远端历史干净——不要提交任何 Esri 提取资源。本机 `tools/icon-cache-import/` 还有一批散落 Esri PNG,已 gitignore,仅作开发参考。
 
-- `designer-app/` — Tauri 2 + React 19 + TypeScript 桌面设计器(当前主线,identifier `com.jisig.gispro-addin-designer`,版本 `0.1.0-demo.1`)。**安装身份固定为中文 productName `极思G Ribbon 设计器`，不要为下载文件名改写它**；GitHub 资产通过 `release.yml` 的 `assetNamePattern` 独立命名为 ASCII `JisigG-Ribbon-Designer_<版本>_x64-setup.exe`。
+- `designer-app/` — Tauri 2 + React 19 + TypeScript 桌面设计器(当前主线,identifier `com.jisig.gispro-addin-designer`,版本 `0.1.0-demo.2`)。**安装身份固定为中文 productName `极思G Ribbon 设计器`，不要为下载文件名改写它**；GitHub 资产通过 `release.yml` 的 `assetNamePattern` 独立命名为 ASCII `JisigG-Ribbon-Designer_<版本>_x64-setup.exe`。
 - `ribbon-designer/` — 旧版 Web 设计器(Vite,端口 4173),仅 `shared/arcgisProValidation.ts`(打包链仍用)与 `src/core` 逻辑有参考价值
 - `arcgis-pro-validation/GisProRibbonLayoutValidator.AddIn` — .NET 8 验算插件(开发侧装机验算用)
 - `tools/tabler-icons/svg/` — vendored 的 Tabler Icons outline 全集(约 5100 个 SVG,MIT)

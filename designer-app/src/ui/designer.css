@@ -92,6 +92,9 @@
   --shadow-2: 0 6px 18px rgba(15, 23, 42, 0.14);
   --shadow-3: 0 18px 48px rgba(15, 23, 42, 0.22);
 
+  /* Tabler 仅出浅色版；暗色下用统一 filter 提亮，不改变图形结构 */
+  --icon-filter: none;
+
   /* z-index */
   /* 三栏停靠层叠:左右停靠栏(项目/文档结构)最上层,控件库中层,画布最底层。
      几何上三块互不重叠;顺序在拖拽控件跨板块、弹层出现时生效。 */
@@ -1231,6 +1234,10 @@ body,
   color: var(--icon-ink);
 }
 
+.pro-icon img {
+  filter: var(--icon-filter);
+}
+
 .pro-input-line {
   display: flex;
   align-items: center;
@@ -1926,7 +1933,8 @@ body,
 
 .library-compact-icon.fallback {
   border-radius: 3px;
-  background: var(--border-strong);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-faint);
 }
 
 /* 尺寸横向摊开，每格：上为真实 mock 大图、下为可点/可拖的尺寸徽章。
@@ -2264,6 +2272,7 @@ body,
 
 .icon-cell img {
   image-rendering: pixelated;
+  filter: var(--icon-filter);
 }
 
 .icon-cell span {
@@ -2348,26 +2357,29 @@ body,
 
 /* ============ 13 暗色主题(token 全量覆盖;画布 mock 保持浅色底还原 Pro 观感) ============ */
 :root[data-theme='dark'] {
+  color-scheme: dark;
+
   /* 背景:与浅色同层级反转 */
-  --bg-app: #1b222c;
-  --bg-canvas: #161c24;
-  --bg-chrome: #232b36;
-  --bg-sunken: #1f2630;
-  --bg-surface: #2a333f;
-  --bg-ctl: #262f3a;
+  --bg-app: #191f27;
+  --bg-canvas: #121820;
+  --bg-chrome: #222a34;
+  --bg-sunken: #1d252e;
+  --bg-surface: #28313d;
+  --bg-ctl: #2a333f;
 
   /* 边框 */
-  --border-strong: #55647a;
-  --border: #3d4a59;
-  --border-soft: #344050;
-  --border-faint: #2c3644;
+  --border-strong: #5c6a7d;
+  --border: #414d5c;
+  --border-soft: #37424f;
+  --border-faint: #2d3641;
 
   /* 文字 */
   --ink: #e6ecf3;
   --ink-2: #c2cdd9;
   --ink-3: #a3b0bf;
   --ink-4: #9fabbb;
-  --icon-ink: #b6c3d1;
+  --icon-ink: #c4d0dd;
+  --icon-filter: brightness(0) invert(0.82);
 
   /* 主色:同蓝提亮保对比度 */
   --accent: #5ba3f0;
@@ -2392,9 +2404,9 @@ body,
   --scroll-thumb-hover: #4a586a;
 
   /* 阴影加深 */
-  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-2: 0 6px 18px rgba(0, 0, 0, 0.5);
-  --shadow-3: 0 18px 48px rgba(0, 0, 0, 0.6);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.32);
+  --shadow-2: 0 6px 18px rgba(0, 0, 0, 0.42);
+  --shadow-3: 0 18px 48px rgba(0, 0, 0, 0.52);
 
   /* 网格线 */
   --grid-line-strong: rgba(79, 155, 239, 0.2);
