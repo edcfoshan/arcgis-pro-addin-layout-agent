@@ -2058,7 +2058,7 @@ export default function Designer() {
         data-tauri-drag-region
         onDoubleClick={() => void appWindow?.toggleMaximize()}
       >
-        <h1 className="visually-hidden">极思G GISpro 插件设计器</h1>
+        <h1 className="visually-hidden">极思G Ribbon 设计器 · Demo</h1>
         <div className="titlebar-side titlebar-side-left" data-tauri-drag-region>
           <div className="window-handle" data-tauri-drag-region>
             <img className="window-app-icon" src="/app-icon.png" alt="" draggable={false} />

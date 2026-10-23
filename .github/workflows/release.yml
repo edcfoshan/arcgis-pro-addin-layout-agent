@@ -34,11 +34,13 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: designer-app
+          # 安装身份固定为中文；上传资产独立使用 ASCII 名称，签名文件沿用同一规则。
+          assetNamePattern: 'JisigG-Ribbon-Designer_[version]_[arch][setup][ext]'
           tagName: ${{ github.ref_name }}
-          releaseName: '极思G GISpro 插件设计器 ${{ github.ref_name }}'
-          releaseBody: '在应用内「关于 → 检查更新」或直接下载下方 .exe 安装包升级。'
+          releaseName: '极思G Ribbon 设计器 ${{ github.ref_name }} · Demo'
+          releaseBody: 'Demo 社区预览。下载下方安装包，或在本机已安装版本中通过「关于 → 检查更新」升级。当前版本只完成 Ribbon 布局，导出控件暂不执行真实业务命令。'
           releaseDraft: true
-          prerelease: false
+          prerelease: true
 
       # latest.json 回写仓库根见 sync-latest-json.yml:草稿 Release 的资产下载不到,
       # 必须等 Release 正式发布后再同步

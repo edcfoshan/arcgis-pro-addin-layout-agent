@@ -119,7 +119,7 @@ export function AboutDialog({ open, onClose }: { open: boolean; onClose: () => v
       <div className="about-body">
         <div className="about-logo">G</div>
         <div className="about-title">
-          <strong>极思G GISpro 插件设计器</strong>
+          <strong>极思G Ribbon 设计器 · Demo</strong>
           <span>版本 {version || '...'}</span>
         </div>
       </div>

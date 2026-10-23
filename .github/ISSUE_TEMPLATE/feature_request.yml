@@ -1,0 +1,34 @@
+name: 功能建议
+description: 为 Ribbon 设计体验提出可验证的改进建议
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: scenario
+    attributes:
+      label: 真实使用场景
+      description: 当前在做什么、卡在哪里、目前如何处理。
+    validations:
+      required: true
+  - type: textarea
+    id: desired
+    attributes:
+      label: 期望行为
+    validations:
+      required: true
+  - type: textarea
+    id: boundary
+    attributes:
+      label: 与 Demo 边界的关系
+      description: 属于布局能力、导出能力、更新体验，还是将来的业务命令绑定。
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 已搜索现有 Issue 和 Discussions。
+          required: true
+        - label: 内容不含个人信息或敏感业务数据。
+          required: true

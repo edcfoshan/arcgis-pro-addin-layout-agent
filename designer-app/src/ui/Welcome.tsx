@@ -30,7 +30,7 @@ export function Welcome({
 }) {
   return (
     <Modal
-      label="欢迎使用 极思G GISpro 插件设计器"
+      label="欢迎使用 极思G Ribbon 设计器（Demo）"
       className="welcome-modal"
       cardClassName="welcome-card"
       onClose={onClose}
@@ -39,7 +39,7 @@ export function Welcome({
         <X size={14} />
       </button>
       <div className="welcome-head">
-        <strong>欢迎使用 极思G GISpro 插件设计器</strong>
+        <strong>欢迎使用 极思G Ribbon 设计器（Demo）</strong>
         <span>三步做出你的第一个 ArcGIS Pro 功能区插件</span>
       </div>
       <div className="welcome-steps">

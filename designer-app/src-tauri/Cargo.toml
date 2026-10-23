@@ -1,7 +1,7 @@
 [package]
 name = "designer-app"
-version = "1.0.0"
-description = "极思G GISpro 插件设计器 — 可视化设计 ArcGIS Pro Add-in 功能区"
+version = "0.1.0-demo.1"
+description = "极思G Ribbon 设计器 — 可视化设计 ArcGIS Pro Add-in 功能区（Demo）"
 authors = ["极思G"]
 edition = "2021"
 

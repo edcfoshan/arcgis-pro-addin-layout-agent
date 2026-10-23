@@ -1,0 +1,57 @@
+name: 缺陷报告
+description: 报告可复现的安装、导出、兼容或界面问题
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: "这是 Demo 社区预览。请移除个人信息、账号、密钥和业务数据后再提交。"
+  - type: input
+    id: designer_version
+    attributes:
+      label: 设计器版本
+      placeholder: 例如 0.1.0-demo.1
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows 版本
+      placeholder: 例如 Windows 11 24H2
+    validations:
+      required: true
+  - type: input
+    id: arcgis
+    attributes:
+      label: ArcGIS Pro 版本
+      placeholder: 例如 3.5.2
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期结果与实际结果
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 截图或日志
+      description: 请先遮住个人信息、密钥和业务数据。
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 已搜索现有 Issue，未发现相同问题。
+          required: true
+        - label: 内容不含凭据、私钥、个人信息或敏感业务数据。
+          required: true
